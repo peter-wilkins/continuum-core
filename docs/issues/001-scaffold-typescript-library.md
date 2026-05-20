@@ -1,5 +1,9 @@
 # 001: Scaffold TypeScript Library
 
+## Status
+
+Done.
+
 ## Goal
 
 Create the minimal standalone TypeScript package that Host Apps can install or link locally.
