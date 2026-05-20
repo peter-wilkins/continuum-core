@@ -52,6 +52,10 @@ _Avoid_: resume pack, continuation state, snapshot
 A user's request to continue an ongoing context, usually expressed in natural language such as `Resume boiler quote` or `Re kitchen redesign`. A Resume Request produces a **Resume Brief**.
 _Avoid_: search query, command invocation, open request
 
+**Ambiguous Resume**:
+A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
+_Avoid_: failed search, guessed match, forced match
+
 **Open Thread**:
 An unresolved question, task, tension, or next step that remains active within a **Continuation**. Open Threads help a Resume Brief restart action rather than merely summarize history.
 _Avoid_: todo, task only, reminder
