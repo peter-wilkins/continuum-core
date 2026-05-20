@@ -28,7 +28,7 @@ Resume Jobs Done onboarding
 
 Expected behaviour:
 
-- infer likely continuation stream
+- infer likely Continuation
 - retrieve relevant context
 - surface unresolved items
 - construct continuation summary
@@ -56,7 +56,7 @@ Examples:
 
 ```txt
 Forget last 10 minutes
-Forget this stream
+Forget this Continuation
 Never remember this topic
 ```
 

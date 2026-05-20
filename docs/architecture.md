@@ -7,7 +7,7 @@ Apps should not need to implement their own:
 - memory system
 - retrieval layer
 - continuation inference
-- stream segmentation
+- Continuation segmentation
 - semantic ranking
 - context assembly
 
@@ -27,8 +27,8 @@ Responsibilities:
 
 - receive audio/text events
 - normalise event format
-- attach metadata
-- support streaming ingestion
+- attach Capture Context
+- support incremental ingestion
 
 Inputs may include:
 
@@ -36,15 +36,15 @@ Inputs may include:
 - transcripts
 - typed text
 - app events
-- location/device metadata
+- location/device Context Clues
 
 ## segment/
 
 Responsibilities:
 
 - identify topic shifts
-- split continuous streams into meaningful units
-- infer likely stream boundaries
+- split continuous capture into meaningful units
+- infer likely Continuation boundaries
 
 Potential techniques:
 
@@ -70,7 +70,7 @@ Responsibilities:
 - summaries
 - embeddings
 - temporal weighting
-- stream linking
+- Continuation linking
 - deletion support
 
 Storage should avoid forcing rigid hierarchies.

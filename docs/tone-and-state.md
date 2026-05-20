@@ -61,7 +61,7 @@ Examples:
 - reflective -> broader contextual retrieval
 - decisive -> surface action items first
 
-## Stream segmentation
+## Continuation segmentation
 
 Tone shifts may indicate:
 

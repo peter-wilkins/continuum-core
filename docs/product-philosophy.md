@@ -38,7 +38,7 @@ Human thought is:
 The concept of a strict project/folder hierarchy is often a historical constraint inherited from older software.
 
 The user may believe they are resuming a thread.
-Internally the system may actually be assembling a probabilistic continuation state from:
+Internally the system may actually be assembling a probabilistic Resume Brief from:
 
 - semantic similarity
 - temporal proximity
@@ -68,7 +68,7 @@ Contrast with:
 
 Those imply manual retrieval.
 
-Resume implies the system already understands the context stream.
+Resume implies the system already understands the Continuation.
 
 ## Always recording + always searching
 
@@ -99,7 +99,7 @@ Deletion and forgetting must feel tangible and immediate.
 Examples:
 
 - Forget last 10 minutes
-- Erase this stream
+- Erase this Continuation
 - Never remember this topic
 
 Without trust, users will self-censor and the quality of capture collapses.

@@ -53,7 +53,7 @@ Forget last 10 minutes
 2. Transcript storage
 3. Embedding generation
 4. Semantic retrieval
-5. Stream inference
+5. Continuation inference
 6. Resume command parsing
 7. Continuation summary generation
 
@@ -70,7 +70,7 @@ A minimal command-line or API-first implementation is acceptable initially.
 Possible loop:
 
 1. ingest transcript chunks
-2. infer stream/topic
+2. infer Continuation/topic
 3. store embeddings + summaries
 4. parse Resume command
 5. retrieve likely context

@@ -37,7 +37,7 @@ Examples:
 - Copy a tracking number -> suggest a parcel lookup or message draft
 - Copy a product model -> retrieve prior discussion, warranty notes, buying context
 - Copy an address -> retrieve job/customer/property context
-- Copy a half-written message -> suggest continuation using current stream context
+- Copy a half-written message -> suggest continuation using current Continuation context
 - Copy a GitHub issue -> retrieve related repo/task context
 
 ## Possible surfaces

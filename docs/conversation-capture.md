@@ -67,7 +67,7 @@ The user may think they are resuming literal threads.
 
 Internally there may be no literal thread structure at all.
 
-Instead the system may construct continuation state dynamically from:
+Instead the system may construct a Resume Brief dynamically from:
 
 - semantic similarity
 - temporal proximity

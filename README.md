@@ -30,10 +30,10 @@ The target interaction is closer to:
 
 ## Important vocabulary
 
-- **Resume**: user-facing command/protocol for re-entering a context stream. Example: `Resume tumble dryer discussion`.
+- **Resume**: user-facing command/protocol for re-entering a Continuation. Example: `Resume tumble dryer discussion`.
 - **Re:**: lightweight protocol marker inspired by email headers. It signals continuity without requiring literal folders or threads.
-- **Stream**: an ongoing area of thought, work, job, customer, topic, or situation. Streams may be inferred; they do not need to be manually created.
-- **Continuation state**: the assembled context needed to continue thinking or acting effectively.
+- **Continuation**: an ongoing and potentially unbounded area of thought, work, job, customer, topic, or situation. Continuations may be inferred; they do not need to be manually created.
+- **Resume Brief**: the assembled context needed to continue thinking or acting effectively at a specific moment.
 - **No UI**: not literally no interface, but no visible maintenance burden. The interface should disappear into intent.
 
 ## Design principle
@@ -57,7 +57,7 @@ A thought-continuity app. It may use this core to support ambient capture, autom
 ```txt
 continuum-core/
   ingest/          # audio/text events in
-  segment/         # split streams into useful thought/job units
+  segment/         # split capture into useful thought/job units
   memory/          # summaries, embeddings, temporal memory
   retrieve/        # always-searching context engine
   infer/           # intent, topic, entity, task extraction
