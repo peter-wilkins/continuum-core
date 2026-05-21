@@ -1,6 +1,12 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { postponedSourceCatalogue, sourceCatalogue } from "./source-catalogue";
+import {
+  postponedSourceCatalogue,
+  renderSourceCatalogueMarkdownTable,
+  sourceCatalogue,
+} from "./source-catalogue";
 
 describe("source catalogue", () => {
   it("ranks active import sources without putting ChatGPT in the active path", () => {
@@ -44,5 +50,14 @@ describe("source catalogue", () => {
         "google-maps-location-activity",
       ]),
     );
+  });
+
+  it("keeps the Markdown source catalogue table generated from the typed catalogue", () => {
+    const docs = readFileSync(
+      fileURLToPath(new URL("../docs/source-catalogue.md", import.meta.url)),
+      "utf8",
+    );
+
+    expect(docs).toContain(renderSourceCatalogueMarkdownTable());
   });
 });

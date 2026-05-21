@@ -392,3 +392,32 @@ export const postponedSourceCatalogue = [
     },
   },
 ] as const satisfies SourceCatalogueEntry[];
+
+function sourceCatalogueStatusLabel(status: SourceCatalogueStatus): string {
+  return status.replaceAll("_", " ");
+}
+
+function exampleDataLabel(exampleDataPath: string | null): string {
+  return exampleDataPath === null ? "none yet" : `\`${exampleDataPath}\``;
+}
+
+export function renderSourceCatalogueMarkdownTable(
+  entries: readonly SourceCatalogueEntry[] = sourceCatalogue,
+): string {
+  return [
+    "| Rank | Source | Status | Personal value | Schema stress | Privacy risk | Next event target | Example data |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...entries.map((entry) =>
+      [
+        `| ${entry.rank}`,
+        entry.name,
+        sourceCatalogueStatusLabel(entry.status),
+        entry.personalContinuityValue,
+        entry.schemaStressValue,
+        entry.privacyRisk,
+        entry.nextEventTarget,
+        `${exampleDataLabel(entry.exampleDataPath)} |`,
+      ].join(" | "),
+    ),
+  ].join("\n");
+}
