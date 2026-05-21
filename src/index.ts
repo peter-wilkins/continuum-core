@@ -12,17 +12,19 @@ export function describeContinuumCorePackage(): ContinuumCorePackage {
 
 export type CanonicalActorRole = "user" | "assistant" | "system" | "tool" | "other";
 
+export type CanonicalSourcePlatform = "chatgpt" | "claude";
+
 export type TimeConfidence = "exact" | "inferred" | "unknown";
 
 export type CanonicalEvent = {
   id: string;
   source: {
-    platform: "chatgpt";
+    platform: CanonicalSourcePlatform;
     key: string;
     fingerprint: string;
     externalConversationId: string;
     externalMessageId: string;
-    externalParentId: string;
+    externalParentId: string | null;
     canonicalParentEventId: string | null;
   };
   time: {
@@ -71,6 +73,28 @@ export type ChatGptConversationExport = {
   mapping: Record<string, ChatGptMessageNormalizationInput["node"]>;
 };
 
+export type ClaudeMessageNormalizationInput = {
+  conversation: {
+    uuid: string;
+    name: string;
+    created_at: string;
+    updated_at: string;
+  };
+  message: {
+    uuid: string;
+    sender: "human" | "assistant";
+    text: string;
+    created_at: string;
+    content: unknown[];
+    attachments: unknown[];
+    files: unknown[];
+  };
+};
+
+export type ClaudeConversationExport = ClaudeMessageNormalizationInput["conversation"] & {
+  chat_messages: ClaudeMessageNormalizationInput["message"][];
+};
+
 export type ImportReport = {
   new: number;
   known: number;
@@ -116,6 +140,36 @@ function chatGptSourceFingerprint(
   );
 }
 
+function claudeSourceKey(input: ClaudeMessageNormalizationInput): string {
+  return `claude:${input.conversation.uuid}:${input.message.uuid}`;
+}
+
+function claudeSourceFingerprint(input: ClaudeMessageNormalizationInput): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "claude",
+      conversationId: input.conversation.uuid,
+      messageId: input.message.uuid,
+      createdAt: input.message.created_at,
+      role: input.message.sender,
+      text: input.message.text,
+      content: input.message.content,
+      attachments: input.message.attachments,
+      files: input.message.files,
+    }),
+  );
+}
+
+function normalizeClaudeSender(
+  sender: ClaudeMessageNormalizationInput["message"]["sender"],
+): CanonicalActorRole {
+  if (sender === "human") {
+    return "user";
+  }
+
+  return sender;
+}
+
 export function normalizeChatGptMessage(
   input: ChatGptMessageNormalizationInput,
 ): CanonicalEvent {
@@ -146,6 +200,36 @@ export function normalizeChatGptMessage(
   };
 }
 
+export function normalizeClaudeMessage(
+  input: ClaudeMessageNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = claudeSourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "claude",
+      key: sourceKey,
+      fingerprint: claudeSourceFingerprint(input),
+      externalConversationId: input.conversation.uuid,
+      externalMessageId: input.message.uuid,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    time: {
+      createdAt: new Date(input.message.created_at).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: normalizeClaudeSender(input.message.sender),
+    },
+    content: {
+      kind: "text",
+      text: input.message.text,
+    },
+  };
+}
+
 export function normalizeChatGptConversations(
   conversations: ChatGptConversationExport[],
 ): CanonicalEvent[] {
@@ -158,6 +242,19 @@ export function normalizeChatGptConversations(
           node,
         }),
       ),
+  );
+}
+
+export function normalizeClaudeConversations(
+  conversations: ClaudeConversationExport[],
+): CanonicalEvent[] {
+  return conversations.flatMap((conversation) =>
+    conversation.chat_messages.map((message) =>
+      normalizeClaudeMessage({
+        conversation,
+        message,
+      }),
+    ),
   );
 }
 

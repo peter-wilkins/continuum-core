@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import claudeFixture from "./fixtures/claude-one-conversation.json" with {
+  type: "json",
+};
 
 import {
+  type ClaudeConversationExport,
   mergeCanonicalEvents,
   continuumCorePackageName,
   describeContinuumCorePackage,
+  normalizeClaudeConversations,
   normalizeChatGptMessage,
 } from "./index";
 
@@ -240,5 +245,63 @@ describe("ChatGPT import normalization", () => {
       changed: 1,
       uncertain: 0,
     });
+  });
+});
+
+describe("Claude import normalization", () => {
+  it("imports one Claude exchange into the same canonical event model", () => {
+    const events = normalizeClaudeConversations(
+      claudeFixture as ClaudeConversationExport[],
+    );
+
+    expect(events).toHaveLength(2);
+    expect(events).toMatchObject([
+      {
+        id: "claude:claude_conv_123:claude_msg_456",
+        source: {
+          platform: "claude",
+          key: "claude:claude_conv_123:claude_msg_456",
+          externalConversationId: "claude_conv_123",
+          externalMessageId: "claude_msg_456",
+          externalParentId: null,
+          canonicalParentEventId: null,
+        },
+        time: {
+          createdAt: "2026-05-21T10:42:03.000Z",
+          createdAtConfidence: "exact",
+        },
+        actor: {
+          role: "user",
+        },
+        content: {
+          kind: "text",
+          text: "Need to quote Bob for the boiler.",
+        },
+      },
+      {
+        id: "claude:claude_conv_123:claude_msg_789",
+        source: {
+          platform: "claude",
+          key: "claude:claude_conv_123:claude_msg_789",
+          externalConversationId: "claude_conv_123",
+          externalMessageId: "claude_msg_789",
+          externalParentId: null,
+          canonicalParentEventId: null,
+        },
+        time: {
+          createdAt: "2026-05-21T10:43:00.000Z",
+          createdAtConfidence: "exact",
+        },
+        actor: {
+          role: "assistant",
+        },
+        content: {
+          kind: "text",
+          text: "You should ask Bob whether the boiler is combi or system.",
+        },
+      },
+    ]);
+    expect(events[0]?.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
+    expect(events[1]?.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
   });
 });

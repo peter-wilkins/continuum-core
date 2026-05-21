@@ -35,9 +35,9 @@ export const canonicalEventSchema = {
       fields: [
         {
           name: "platform",
-          type: '"chatgpt"',
+          type: '"chatgpt" | "claude"',
           required: true,
-          description: "Source platform for this first importer slice.",
+          description: "Source platform for the importer adapter.",
         },
         {
           name: "key",
@@ -57,19 +57,20 @@ export const canonicalEventSchema = {
           name: "externalConversationId",
           type: "string",
           required: true,
-          description: "ChatGPT conversation id.",
+          description: "Source conversation or thread id.",
         },
         {
           name: "externalMessageId",
           type: "string",
           required: true,
-          description: "ChatGPT message id.",
+          description: "Source message or record id.",
         },
         {
           name: "externalParentId",
-          type: "string",
+          type: "string | null",
           required: true,
-          description: "Source graph parent id from ChatGPT.",
+          description:
+            "Source graph parent id when exported; null when the source export is linear.",
         },
         {
           name: "canonicalParentEventId",

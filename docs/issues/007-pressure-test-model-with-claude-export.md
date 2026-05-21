@@ -18,10 +18,34 @@ One Claude user/assistant exchange normalizes into the same canonical event shap
 
 ## Acceptance Criteria
 
-- [ ] Claude export docs or representative fixture shape are recorded.
-- [ ] One Claude source record maps to canonical event fields.
-- [ ] Any model gap is documented before implementation.
-- [ ] ChatGPT-specific source graph assumptions are not baked into canonical fields.
+- [x] Claude export docs or representative fixture shape are recorded.
+- [x] One Claude source record maps to canonical event fields.
+- [x] Any model gap is documented before implementation.
+- [x] ChatGPT-specific source graph assumptions are not baked into canonical fields.
+
+## Evidence
+
+- Official Anthropic compliance API docs describe chat metadata plus a `chat_messages` array sorted by `created_at`; message senders are user/assistant and each message carries text content.
+- Observed Claude account exports use `conversations.json` as an array of conversations with `uuid`, `name`, `created_at`, `updated_at`, and `chat_messages[]`.
+- Observed message fields used by this slice: `uuid`, `sender`, `text`, `created_at`, `content`, `attachments`, and `files`.
+- Representative fixture: `src/fixtures/claude-one-conversation.json`.
+
+Sources:
+
+- https://platform.claude.com/docs/en/manage-claude/compliance-content-data
+- https://platform.claude.com/docs/en/api/compliance/apps/chats/messages
+- https://portable-ai-memory.org/providers/anthropic/
+
+## Model Gap
+
+Claude export evidence is mostly linear. It does not force a source parent id for every message.
+
+Decision for this slice:
+
+- Keep `source.externalParentId` required but allow `null`.
+- Keep source identity generic as `source.key` and `source.fingerprint`.
+- Widen `source.platform` to `"chatgpt" | "claude"`.
+- Do not add Claude-specific fields to `CanonicalEvent`.
 
 ## TDD Notes
 
