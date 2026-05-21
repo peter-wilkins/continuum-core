@@ -102,6 +102,36 @@ export type ImportedEntry = {
   content: CanonicalEvent["content"];
 };
 
+export type ResumeRequest = {
+  text: string;
+  requestedAt: string;
+};
+
+export type RankingSignalKind =
+  | "text_overlap"
+  | "recency"
+  | "recurrence"
+  | "explicit_resume_cue";
+
+export type RankingSignal = {
+  kind: RankingSignalKind;
+  value: number;
+  weight: number;
+};
+
+export type ContinuationCandidate = {
+  id: string;
+  title: string;
+  confidence: number;
+  supportingEntryIds: string[];
+  rankingSignals: RankingSignal[];
+};
+
+export type ContinuityRetrievalInput = {
+  resumeRequest: ResumeRequest;
+  entries: ImportedEntry[];
+};
+
 export type ChatGptMessageNormalizationInput = {
   conversation: {
     id: string;
@@ -473,6 +503,70 @@ function stableHash(input: string): string {
   }
 
   return hash.toString(16).padStart(16, "0");
+}
+
+function clampConfidence(value: number): number {
+  return Math.max(0, Math.min(1, Number(value.toFixed(4))));
+}
+
+function tokenSet(value: string): Set<string> {
+  return new Set(
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length > 2),
+  );
+}
+
+function entryRetrievalText(entry: ImportedEntry): string {
+  return [entry.content.subject, entry.content.text]
+    .filter((value): value is string => value !== null && value.length > 0)
+    .join("\n");
+}
+
+function textOverlapScore(left: string, right: string): number {
+  const leftTokens = tokenSet(left);
+  const rightTokens = tokenSet(right);
+
+  if (leftTokens.size === 0 || rightTokens.size === 0) {
+    return 0;
+  }
+
+  const overlap = [...leftTokens].filter((token) => rightTokens.has(token)).length;
+
+  return overlap / leftTokens.size;
+}
+
+function recencyScore(entry: ImportedEntry, requestedAt: string): number {
+  const requested = new Date(requestedAt).getTime();
+  const occurred = new Date(entry.time.occurredAt).getTime();
+
+  if (Number.isNaN(requested) || Number.isNaN(occurred)) {
+    return 0;
+  }
+
+  const ageDays = Math.max(0, (requested - occurred) / 86_400_000);
+
+  return 1 / (1 + ageDays / 30);
+}
+
+function hasExplicitResumeCue(request: ResumeRequest): boolean {
+  return /^(resume|continue|re\b|find|show|what)\b/i.test(request.text.trim());
+}
+
+function continuationTitle(entry: ImportedEntry): string {
+  if (entry.content.subject !== null && entry.content.subject.trim().length > 0) {
+    return entry.content.subject.trim();
+  }
+
+  return entry.content.text
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .slice(0, 6)
+    .join(" ");
 }
 
 function keyBuffer(keyMaterial: string): Buffer {
@@ -1698,6 +1792,89 @@ export function createImportedEntryFromCanonicalEvent(
     participants: event.participants,
     content: event.content,
   };
+}
+
+export function retrieveContinuationCandidates(
+  input: ContinuityRetrievalInput,
+): ContinuationCandidate[] {
+  const grouped = new Map<
+    string,
+    {
+      title: string;
+      entries: ImportedEntry[];
+      textOverlap: number;
+      recency: number;
+    }
+  >();
+
+  for (const entry of input.entries) {
+    const title = continuationTitle(entry);
+    const key = title.toLowerCase();
+    const existing = grouped.get(key) ?? {
+      title,
+      entries: [],
+      textOverlap: 0,
+      recency: 0,
+    };
+    const overlap = textOverlapScore(input.resumeRequest.text, entryRetrievalText(entry));
+    const recency = recencyScore(entry, input.resumeRequest.requestedAt);
+
+    existing.entries.push(entry);
+    existing.textOverlap = Math.max(existing.textOverlap, overlap);
+    existing.recency = Math.max(existing.recency, recency);
+    grouped.set(key, existing);
+  }
+
+  const explicitCue = hasExplicitResumeCue(input.resumeRequest) ? 1 : 0;
+
+  return [...grouped.values()]
+    .map((candidate) => {
+      const recurrence = Math.min(1, candidate.entries.length / 3);
+      const rankingSignals: RankingSignal[] = [
+        {
+          kind: "text_overlap",
+          value: clampConfidence(candidate.textOverlap),
+          weight: 0.5,
+        },
+        {
+          kind: "recency",
+          value: clampConfidence(candidate.recency),
+          weight: 0.2,
+        },
+        {
+          kind: "recurrence",
+          value: clampConfidence(recurrence),
+          weight: 0.2,
+        },
+        {
+          kind: "explicit_resume_cue",
+          value: explicitCue,
+          weight: 0.1,
+        },
+      ];
+      const confidence = clampConfidence(
+        rankingSignals.reduce(
+          (total, signal) => total + signal.value * signal.weight,
+          0,
+        ),
+      );
+
+      return {
+        id: `continuation-candidate:${stableHash(candidate.title.toLowerCase())}`,
+        title: candidate.title,
+        confidence,
+        supportingEntryIds: candidate.entries.map((entry) => entry.id),
+        rankingSignals,
+      };
+    })
+    .filter((candidate) => candidate.confidence > 0)
+    .sort((left, right) => {
+      if (right.confidence !== left.confidence) {
+        return right.confidence - left.confidence;
+      }
+
+      return left.title.localeCompare(right.title);
+    });
 }
 
 type CanonicalEventBuildInput = {

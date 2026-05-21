@@ -1,6 +1,6 @@
 # 051: Return Continuation Candidates From Deterministic Retrieval
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,12 +20,12 @@ Implement the **Retrieval Tracer Bullet**: given Imported Entries and a **Resume
 
 ## Acceptance Criteria
 
-- [ ] Accept a Resume Request and a small set of Imported Entries.
-- [ ] Return a ranked list of Continuation Candidates.
-- [ ] Use deterministic Ranking Signals such as text overlap, recency, recurrence, and explicit cues.
-- [ ] Include Retrieval Confidence as bounded 0..1 evidence strength.
-- [ ] Return multiple candidates when multiple Continuations plausibly match.
-- [ ] Do not require embeddings or model calls.
+- [x] Accept a Resume Request and a small set of Imported Entries.
+- [x] Return a ranked list of Continuation Candidates.
+- [x] Use deterministic Ranking Signals such as text overlap, recency, recurrence, and explicit cues.
+- [x] Include Retrieval Confidence as bounded 0..1 evidence strength.
+- [x] Return multiple candidates when multiple Continuations plausibly match.
+- [x] Do not require embeddings or model calls.
 
 ## Blocked by
 
