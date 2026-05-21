@@ -56,6 +56,10 @@ _Avoid_: stream, folder, project, thread
 A user-facing projection over **Continuations**, **Entries**, and **Resume Briefs**. A Continuation Surface may look like a chat list, timeline, graph, recent activity list, or explicit "new subject" affordance, but it is not the source of truth.
 _Avoid_: conversation as source truth, folder UI, canonical chat
 
+**Subject Boundary Cue**:
+A user or interface signal that the current subject may be changing, such as starting a new chat or saying "new subject". A Subject Boundary Cue may influence **Continuation Link** Confidence, but it does not create a hard boundary and can be overridden by stronger Entry evidence.
+_Avoid_: hard thread split, conversation boundary, forced new Continuation
+
 **Continuation Link**:
 A relationship between an **Entry** and a **Continuation**, including why the Entry appears relevant and how confident that relationship is. One **Entry** may have many **Continuation Links**.
 _Avoid_: membership, filing, tag
