@@ -148,4 +148,5 @@ import {
 - [`docs/protocol.md`](docs/protocol.md)
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/agent-brief.md`](docs/agent-brief.md)
+- [`docs/agent-mailbox/README.md`](docs/agent-mailbox/README.md)
 - [`docs/conversation-capture.md`](docs/conversation-capture.md)
