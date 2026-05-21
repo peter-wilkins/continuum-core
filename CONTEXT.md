@@ -20,6 +20,10 @@ _Avoid_: tag, category, note
 A bounded 0..1 strength value used when the system is uncertain, such as Context Clue reliability, Continuation Links, and retrieval ranking. Confidence is not a user-facing truth claim.
 _Avoid_: certainty, score without bounds, priority
 
+**Retrieval Confidence**:
+A **Confidence** value describing the strength of evidence for a **Continuation Candidate**. Retrieval Confidence may combine semantic similarity, recency, recurrence, explicit cues, and **Link Reasons**; it is not a probability that the system is correct.
+_Avoid_: truth probability, raw similarity score, certainty
+
 **Source Log**:
 The append-only record of **Entries** that acts as the source of truth for captured context. Derived material must not be treated as source truth.
 _Avoid_: memory, archive, database
