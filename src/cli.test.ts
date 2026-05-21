@@ -192,6 +192,7 @@ describe("continuum-import CLI", () => {
       recordsSeen: 2,
       validationErrors: 0,
       importableEvents: 2,
+      warnings: 0,
     });
   });
 
@@ -332,6 +333,7 @@ describe("continuum-import CLI", () => {
       recordsSeen: 1,
       validationErrors: 0,
       importableEvents: 1,
+      warnings: 0,
     });
   });
 
@@ -418,8 +420,9 @@ describe("continuum-import CLI", () => {
         inputPath: dir,
         conversationsSeen: 0,
         recordsSeen: 6,
-        validationErrors: 1,
+        validationErrors: 0,
         importableEvents: 6,
+        warnings: 1,
       });
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -602,6 +605,7 @@ describe("continuum-import CLI", () => {
         throw new Error("Expected dry-run result.");
       }
       expect(result.batch.stats.recordsQuarantined).toBe(1);
+      expect(result.batch.stats.warnings).toBe(0);
 
       const preview = JSON.parse(await readFile(previewPath, "utf8"));
       expect(preview.sourceFiles).toEqual([

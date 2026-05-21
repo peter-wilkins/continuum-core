@@ -375,6 +375,7 @@ Current dry-run preview includes:
 - quarantine records
 - source file summaries
 - event summaries
+- warning counts for skipped unsupported files
 
 Later previews should include import profile summaries:
 
@@ -417,6 +418,7 @@ Done:
 - CLI dry-run can preview a Google Takeout folder across known files.
 - CLI import can write a Google Takeout folder idempotently.
 - Malformed files inside a Google Takeout folder are quarantined without aborting the folder.
+- Unsupported files inside a Google Takeout folder are skipped as warnings, not validation errors.
 
 Next:
 

@@ -83,6 +83,7 @@ export type InspectCliResult = {
   recordsSeen: number;
   validationErrors: number;
   importableEvents: number;
+  warnings: number;
 };
 
 export type DryRunCliResult = {
@@ -266,6 +267,7 @@ type NormalizedSourceInput = {
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
   sourceFiles: SourceFilePreview[];
+  warnings: number;
 };
 
 async function readSourceInput(
@@ -363,24 +365,16 @@ function validationErrorsToQuarantine(
   }));
 }
 
-function unsupportedTakeoutFile(file: TakeoutFolderFile): ImportErrorRecord {
-  return {
-    sourcePath: file.relativePath,
-    recordIndex: null,
-    errorCode: "unsupported_source_file",
-    message: `google-takeout-folder:${file.relativePath}: no importer matched this file`,
-    recoverable: true,
-  };
-}
-
 function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
   sourceFiles: SourceFilePreview[];
+  warnings: number;
 } {
   const incomingEvents: CanonicalEvent[] = [];
   const quarantine: ImportErrorRecord[] = [];
   const sourceFiles: SourceFilePreview[] = [];
+  let warnings = 0;
 
   for (const file of files) {
     const lowerPath = file.relativePath.toLowerCase();
@@ -398,13 +392,13 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
               : null;
 
     if (source === null) {
-      quarantine.push(unsupportedTakeoutFile(file));
+      warnings += 1;
       sourceFiles.push({
         path: file.relativePath,
         source: null,
         status: "skipped",
         eventsCreated: 0,
-        quarantineRecords: 1,
+        quarantineRecords: 0,
       });
       continue;
     }
@@ -452,7 +446,7 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
     });
   }
 
-  return { incomingEvents, quarantine, sourceFiles };
+  return { incomingEvents, quarantine, sourceFiles, warnings };
 }
 
 function normalizeSourceInput(
@@ -470,6 +464,7 @@ function normalizeSourceInput(
       ),
       quarantine: [],
       sourceFiles: [],
+      warnings: 0,
     };
   }
 
@@ -481,6 +476,7 @@ function normalizeSourceInput(
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
         sourceFiles: [],
+        warnings: 0,
       };
     }
 
@@ -488,6 +484,7 @@ function normalizeSourceInput(
       incomingEvents: normalizeGoogleChromeHistoryExport(result.value),
       quarantine: [],
       sourceFiles: [],
+      warnings: 0,
     };
   }
 
@@ -499,6 +496,7 @@ function normalizeSourceInput(
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
         sourceFiles: [],
+        warnings: 0,
       };
     }
 
@@ -506,6 +504,7 @@ function normalizeSourceInput(
       incomingEvents: normalizeGoogleChromeBookmarksExport(result.value),
       quarantine: [],
       sourceFiles: [],
+      warnings: 0,
     };
   }
 
@@ -517,6 +516,7 @@ function normalizeSourceInput(
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
         sourceFiles: [],
+        warnings: 0,
       };
     }
 
@@ -524,6 +524,7 @@ function normalizeSourceInput(
       incomingEvents: normalizeGoogleChromeReadingListExport(result.value),
       quarantine: [],
       sourceFiles: [],
+      warnings: 0,
     };
   }
 
@@ -535,6 +536,7 @@ function normalizeSourceInput(
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
         sourceFiles: [],
+        warnings: 0,
       };
     }
 
@@ -542,6 +544,7 @@ function normalizeSourceInput(
       incomingEvents: normalizeGoogleMyActivityExport(result.value),
       quarantine: [],
       sourceFiles: [],
+      warnings: 0,
     };
   }
 
@@ -551,11 +554,12 @@ function normalizeSourceInput(
     incomingEvents: normalizeClaudeConversations(result.conversations),
     quarantine: result.quarantine,
     sourceFiles: [],
+    warnings: 0,
   };
 }
 
 function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input: SourceInput): InspectCliResult {
-  const { incomingEvents, quarantine, sourceFiles } = normalizeSourceInput(
+  const { incomingEvents, quarantine, warnings } = normalizeSourceInput(
     command.source,
     input.parsed,
   );
@@ -573,6 +577,7 @@ function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input:
     recordsSeen: incomingEvents.length,
     validationErrors: quarantine.length,
     importableEvents: incomingEvents.length,
+    warnings,
   };
 }
 
@@ -580,7 +585,7 @@ async function dryRunImport(
   command: Extract<CliCommand, { kind: "dry-run" }>,
   input: SourceInput,
 ): Promise<DryRunCliResult> {
-  const { incomingEvents, quarantine, sourceFiles } = normalizeSourceInput(
+  const { incomingEvents, quarantine, sourceFiles, warnings } = normalizeSourceInput(
     command.source,
     input.parsed,
   );
@@ -593,6 +598,7 @@ async function dryRunImport(
     recordsSeen: incomingEvents.length + quarantine.length,
     report,
     quarantine,
+    warnings,
   });
   const preview: ImportPreview = {
     batch,
@@ -656,6 +662,7 @@ function createImportBatch(input: {
   recordsSeen: number;
   report: ImportReport;
   quarantine: ImportErrorRecord[];
+  warnings: number;
 }): ImportBatch {
   return {
     id: `batch:${input.inputHash.slice(0, 16)}`,
@@ -674,7 +681,7 @@ function createImportBatch(input: {
       eventsChanged: input.report.changed,
       eventsUncertain: input.report.uncertain,
       recordsQuarantined: input.quarantine.length,
-      warnings: 0,
+      warnings: input.warnings,
     },
   };
 }
