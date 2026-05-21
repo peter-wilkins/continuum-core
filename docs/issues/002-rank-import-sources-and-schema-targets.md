@@ -31,13 +31,22 @@ Expected top group:
 9. Notion export / API pages
 10. Wikimedia / Wikipedia / Wikidata
 
+Current decision: ChatGPT is postponed until Peter receives the export. The active catalogue ranks ten other/available sources first and keeps ChatGPT in a postponed list.
+
 ## Acceptance Criteria
 
-- [ ] Catalogue names candidate sources and ranks them by value.
-- [ ] Top 10 sources include links to official schema/export docs where available.
-- [ ] Catalogue distinguishes personal continuity value from schema stress value.
-- [ ] Wikimedia is represented as a family of sources, not one schema.
-- [ ] Catalogue identifies which source should produce the first canonical event test.
+- [x] Catalogue names candidate sources and ranks them by value.
+- [x] Top 10 sources include links to official schema/export docs where available.
+- [x] Catalogue distinguishes personal continuity value from schema stress value.
+- [x] Wikimedia is represented as a family of sources, not one schema.
+- [x] Catalogue identifies which source should produce the first canonical event test.
+
+## Output
+
+- Living catalogue: `docs/source-catalogue.md`.
+- Typed catalogue: `src/source-catalogue.ts`.
+- Active first target: Claude export.
+- Postponed source: ChatGPT export.
 
 ## TDD Notes
 

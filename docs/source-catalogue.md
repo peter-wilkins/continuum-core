@@ -1,0 +1,50 @@
+# Source Catalogue
+
+ChatGPT is postponed until the export arrives. Active ranking starts with sources we can inspect now or soon.
+
+| Rank | Source | Status | Personal value | Schema stress | Privacy risk | Next event target | Example data |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Claude export | implemented fixture | high | medium | high | Claude chat message | `src/fixtures/claude-one-conversation.json` |
+| 2 | Email / MBOX | implemented fixture | high | high | high | RFC 5322 email message | `data/email/rfc-style-example.mbox` |
+| 3 | Git commits | sample available | high | high | medium | Git commit | `data/git/continuum-core-log.txt` |
+| 4 | GitHub issues, PRs, reviews, commits, discussions | sample available | high | high | medium | GitHub issue comment | `data/github/octocat-hello-world-issue-comments.json` |
+| 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | MediaWiki page revision | `data/wikimedia/boiler-revisions.json` |
+| 6 | Calendar / iCalendar | sample available | high | medium | high | Calendar event | `data/calendar/basic-event.ics` |
+| 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |
+| 8 | Markdown / Obsidian / local docs | sample available | high | medium | medium | Markdown file revision snapshot | `README.md` |
+| 9 | Google My Activity / Gemini / Takeout | needs user export | high | high | high | Google activity record | none yet |
+| 10 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
+
+## Postponed
+
+| Rank | Source | Reason |
+| --- | --- | --- |
+| 11 | ChatGPT export | Peter is waiting on export delivery. Keep fixture coverage, but do not spend the next real-data cycle here. |
+
+## Wikimedia Family
+
+Wikimedia is not one schema:
+
+- MediaWiki page revisions: content/artifact change events.
+- MediaWiki page metadata: page identity, namespace, title, redirects, protection.
+- MediaWiki links/categories: graph edges.
+- Wikidata entities/claims: structured knowledge assertions.
+- Pageviews: aggregate metric events.
+
+## Evidence Links
+
+- Claude compliance data: https://platform.claude.com/docs/en/manage-claude/compliance-content-data
+- Claude chat messages API: https://platform.claude.com/docs/en/api/compliance/apps/chats/messages
+- MBOX: https://www.rfc-editor.org/rfc/rfc4155
+- Internet Message Format: https://www.rfc-editor.org/rfc/rfc5322
+- Git pretty formats: https://git-scm.com/docs/pretty-formats
+- GitHub issue comments: https://docs.github.com/en/rest/issues/comments
+- GitHub pull requests: https://docs.github.com/en/rest/pulls/pulls
+- MediaWiki revisions: https://www.mediawiki.org/wiki/API:Revisions
+- Wikimedia pageviews: https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html
+- iCalendar: https://www.rfc-editor.org/rfc/rfc5545
+- Slack exports: https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports
+- CommonMark: https://spec.commonmark.org/
+- Google My Activity schema: https://developers.google.com/data-portability/schema-reference/my_activity
+- Google Takeout: https://support.google.com/accounts/answer/3024190
+- Notion export: https://www.notion.com/help/export-your-content
