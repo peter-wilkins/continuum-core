@@ -104,6 +104,10 @@ _Avoid_: final score only, throwaway explanation, hidden ranking state
 A loop that compares **Continuity Retrieval** results with later evidence, user behaviour, explicit corrections, and debugging observations to improve ranking and **Link Reasons**. A Retrieval Feedback Loop teaches the system from outcomes without treating feedback as unquestionable truth.
 _Avoid_: self-training black box, static scoring, uninspected optimisation
 
+**Feedback Signal**:
+Evidence fed into a **Retrieval Feedback Loop**. Feedback Signals may include explicit user corrections, user behaviour, debugging observations, later successful resumes, failed resumes, and model-assisted critique. Model-assisted critique is evidence to inspect, not an authority.
+_Avoid_: hidden training label, LLM judge as truth, behaviour-only metric
+
 **Ambiguous Resume**:
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match
