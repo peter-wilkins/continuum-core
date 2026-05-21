@@ -1,6 +1,170 @@
 import { canonicalEventSchema, type EventSchema } from "../../src/schema/canonical-event-schema";
-import "./styles.css";
 import { gitHash } from "virtual:continuum-git-hash";
+import { importWorkbenchData } from "virtual:continuum-import-workbench-data";
+import "./styles.css";
+
+type CanonicalEvent = (typeof importWorkbenchData.events)[number];
+type RetrievalCandidate = (typeof importWorkbenchData.retrieval.candidates)[number];
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function shortId(value: string): string {
+  return value.length > 18 ? `${value.slice(0, 18)}...` : value;
+}
+
+function eventTitle(event: CanonicalEvent): string {
+  if (event.content.subject !== null && event.content.subject.trim().length > 0) {
+    return event.content.subject;
+  }
+
+  return event.content.text.replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
+}
+
+function previewStats(preview: unknown): {
+  recordsSeen: number;
+  eventsCreated: number;
+  recordsQuarantined: number;
+  warnings: number;
+} {
+  if (
+    typeof preview === "object" &&
+    preview !== null &&
+    "batch" in preview &&
+    typeof preview.batch === "object" &&
+    preview.batch !== null &&
+    "stats" in preview.batch &&
+    typeof preview.batch.stats === "object" &&
+    preview.batch.stats !== null
+  ) {
+    const stats = preview.batch.stats as Record<string, unknown>;
+
+    return {
+      recordsSeen: Number(stats.recordsSeen ?? 0),
+      eventsCreated: Number(stats.eventsCreated ?? 0),
+      recordsQuarantined: Number(stats.recordsQuarantined ?? 0),
+      warnings: Number(stats.warnings ?? 0),
+    };
+  }
+
+  return {
+    recordsSeen: 0,
+    eventsCreated: 0,
+    recordsQuarantined: 0,
+    warnings: 0,
+  };
+}
+
+function renderMetric(label: string, value: string | number): string {
+  return `
+    <div class="metric">
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${escapeHtml(String(value))}</dd>
+    </div>
+  `;
+}
+
+function renderSourceBars(): string {
+  const total = Math.max(importWorkbenchData.events.length, 1);
+
+  return Object.entries(importWorkbenchData.sourceCounts)
+    .sort((left, right) => right[1] - left[1])
+    .map(([source, count]) => {
+      const width = `${Math.max(4, (count / total) * 100).toFixed(1)}%`;
+
+      return `
+        <li class="source-row">
+          <span>${escapeHtml(source)}</span>
+          <strong>${count}</strong>
+          <div><i style="width: ${width}"></i></div>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function renderPreviewRows(): string {
+  return Object.entries(importWorkbenchData.previews)
+    .map(([source, preview]) => {
+      const stats = previewStats(preview);
+
+      return `
+        <tr>
+          <td><code>${escapeHtml(source)}</code></td>
+          <td>${stats.recordsSeen}</td>
+          <td>${stats.eventsCreated}</td>
+          <td>${stats.recordsQuarantined}</td>
+          <td>${stats.warnings}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function renderTimelineRows(events: CanonicalEvent[]): string {
+  return events
+    .slice()
+    .sort((left, right) => right.time.createdAt.localeCompare(left.time.createdAt))
+    .slice(0, 40)
+    .map(
+      (event) => `
+        <tr>
+          <td>${escapeHtml(new Date(event.time.createdAt).toLocaleString())}</td>
+          <td><code>${escapeHtml(event.source.platform)}</code></td>
+          <td>${escapeHtml(event.actor.role)}</td>
+          <td>${escapeHtml(eventTitle(event))}</td>
+          <td><code>${escapeHtml(shortId(event.id))}</code></td>
+        </tr>
+      `,
+    )
+    .join("");
+}
+
+function renderCandidate(candidate: RetrievalCandidate, index: number): string {
+  const signals = candidate.rankingSignals
+    .map(
+      (signal) => `
+        <li>
+          <span>${escapeHtml(signal.kind)}</span>
+          <strong>${signal.value.toFixed(4)} x ${signal.weight}</strong>
+        </li>
+      `,
+    )
+    .join("");
+  const evidence = candidate.signalEvidenceTrail
+    .map(
+      (signal) => `
+        <li>
+          <code>${escapeHtml(signal.rankingSignalKind)}</code>
+          <span>${escapeHtml(signal.reason)}</span>
+        </li>
+      `,
+    )
+    .join("");
+
+  return `
+    <article class="candidate">
+      <header>
+        <span>${index + 1}</span>
+        <div>
+          <h3>${escapeHtml(candidate.title)}</h3>
+          <p>${candidate.supportingEntryIds.length} supporting entries</p>
+        </div>
+        <strong>${candidate.confidence.toFixed(4)}</strong>
+      </header>
+      <div class="candidate-grid">
+        <ul class="signal-list">${signals}</ul>
+        <ul class="evidence-list">${evidence}</ul>
+      </div>
+    </article>
+  `;
+}
 
 function fieldCount(schema: EventSchema): number {
   return schema.sections.reduce(
@@ -14,19 +178,19 @@ function renderSection(section: EventSchema["sections"][number]): string {
     .map(
       (field) => `
         <tr>
-          <td><code>${field.name}</code></td>
-          <td><code>${field.type}</code></td>
+          <td><code>${escapeHtml(field.name)}</code></td>
+          <td><code>${escapeHtml(field.type)}</code></td>
           <td>${field.required ? "yes" : "no"}</td>
-          <td>${field.description}</td>
+          <td>${escapeHtml(field.description)}</td>
         </tr>
       `,
     )
     .join("");
 
   return `
-    <section class="schema-card">
-      <h2>${section.name}</h2>
-      <p>${section.purpose}</p>
+    <section class="panel schema-card">
+      <h2>${escapeHtml(section.name)}</h2>
+      <p>${escapeHtml(section.purpose)}</p>
       <table>
         <thead>
           <tr>
@@ -42,87 +206,81 @@ function renderSection(section: EventSchema["sections"][number]): string {
   `;
 }
 
-function renderDiagram(schema: EventSchema): string {
-  const sectionNodes = schema.sections
-    .map(
-      (section, index) => `
-        <g transform="translate(${80 + index * 250}, 170)">
-          <rect width="210" height="96" rx="8" />
-          <text x="18" y="34" class="node-title">${section.name}</text>
-          <text x="18" y="62">${section.fields.length} fields</text>
-        </g>
-      `,
-    )
-    .join("");
-
-  const lines = schema.sections
-    .map((_, index) => {
-      const x = 185 + index * 250;
-      return `<line x1="520" y1="105" x2="${x}" y2="170" />`;
-    })
-    .join("");
-
-  return `
-    <section class="diagram-card">
-      <h2>Event Shape</h2>
-      <svg viewBox="0 0 1040 330" role="img" aria-label="Canonical event schema diagram">
-        <g class="link-lines">${lines}</g>
-        <g transform="translate(405, 35)">
-          <rect width="230" height="70" rx="8" />
-          <text x="22" y="42" class="node-title">${schema.name}</text>
-        </g>
-        ${sectionNodes}
-      </svg>
-    </section>
-  `;
-}
-
-function renderRelations(schema: EventSchema): string {
-  return schema.relations
-    .map(
-      (relation) => `
-        <li>
-          <code>${relation.from}</code>
-          <span>-></span>
-          <code>${relation.to}</code>
-          <small>${relation.label}</small>
-        </li>
-      `,
-    )
-    .join("");
-}
-
 function renderApp(schema: EventSchema): string {
+  const candidates = importWorkbenchData.retrieval.candidates
+    .map(renderCandidate)
+    .join("");
+
   return `
     <header class="page-header">
       <div>
-        <p class="eyebrow">Continuum schema workbench</p>
-        <h1>${schema.name}</h1>
-        <p>${schema.purpose}</p>
-        <p class="git-hash">Git <code>${gitHash}</code></p>
+        <p class="eyebrow">Continuum workbench</p>
+        <h1>Import Run</h1>
+        <p class="path-line"><code>${escapeHtml(importWorkbenchData.eventsPath)}</code></p>
+        <p class="git-hash">Git <code>${escapeHtml(gitHash)}</code></p>
       </div>
       <dl>
-        <div>
-          <dt>Sections</dt>
-          <dd>${schema.sections.length}</dd>
-        </div>
-        <div>
-          <dt>Fields</dt>
-          <dd>${fieldCount(schema)}</dd>
-        </div>
+        ${renderMetric("Events", importWorkbenchData.events.length)}
+        ${renderMetric("Sources", Object.keys(importWorkbenchData.sourceCounts).length)}
+        ${renderMetric("Schema Fields", fieldCount(schema))}
       </dl>
     </header>
 
-    ${renderDiagram(schema)}
-
-    <section class="relations-card">
-      <h2>Important Relations</h2>
-      <ul>${renderRelations(schema)}</ul>
+    <section class="dashboard-grid">
+      <div class="panel">
+        <h2>Source Mix</h2>
+        <ul class="source-list">${renderSourceBars()}</ul>
+      </div>
+      <div class="panel">
+        <h2>Dry Run Previews</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Records</th>
+              <th>Events</th>
+              <th>Quarantine</th>
+              <th>Warnings</th>
+            </tr>
+          </thead>
+          <tbody>${renderPreviewRows()}</tbody>
+        </table>
+      </div>
     </section>
 
-    <div class="schema-grid">
+    <section class="panel retrieval-panel">
+      <header class="section-header">
+        <div>
+          <h2>Retrieval Probe</h2>
+          <p><code>${escapeHtml(importWorkbenchData.retrieval.resumeRequest.text)}</code></p>
+        </div>
+        <dl>
+          ${renderMetric("Ambiguous", importWorkbenchData.retrieval.isAmbiguous ? "yes" : "no")}
+          ${renderMetric("Spread", importWorkbenchData.retrieval.candidateSpread ?? "none")}
+        </dl>
+      </header>
+      <div class="candidate-stack">${candidates}</div>
+    </section>
+
+    <section class="panel">
+      <h2>Timeline</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Source</th>
+            <th>Actor</th>
+            <th>Event</th>
+            <th>ID</th>
+          </tr>
+        </thead>
+        <tbody>${renderTimelineRows(importWorkbenchData.events)}</tbody>
+      </table>
+    </section>
+
+    <section class="schema-grid">
       ${schema.sections.map(renderSection).join("")}
-    </div>
+    </section>
   `;
 }
 
