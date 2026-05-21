@@ -22,6 +22,7 @@
     "textBody": "Need to quote Bob for the boiler.",
     "inReplyTo": ["<quote-123@example.com>"],
     "references": ["<quote-123@example.com>"],
-    "attachmentCount": 0
+    "attachmentCount": 0,
+    "headers": {}
   }
 }

@@ -177,7 +177,39 @@ export type EmailMessageNormalizationInput = {
     inReplyTo: string[];
     references: string[];
     attachmentCount: number;
+    headers: Record<string, string>;
   };
+};
+
+export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
+
+export type ImportFilterAction = "include" | "exclude" | "needs_review";
+
+export type ImportFilterReason =
+  | "profile_everything"
+  | "not_promotional_or_bulk"
+  | "sent_by_user"
+  | "replied_contact"
+  | "thread_participated"
+  | "promotional_or_bulk"
+  | "no_prior_engagement";
+
+export type ImportFilterDecision = {
+  action: ImportFilterAction;
+  reason: ImportFilterReason;
+  confidence: number;
+};
+
+export type EmailEngagementIndex = {
+  repliedToAddresses: Set<string>;
+  participatedThreadIds: Set<string>;
+};
+
+export type ImportFilterSummary = {
+  included: number;
+  excluded: number;
+  needsReview: number;
+  reasons: Partial<Record<ImportFilterReason, number>>;
 };
 
 export type MediaWikiRevisionNormalizationInput = {
@@ -671,6 +703,185 @@ function emailParticipants(input: EmailMessageNormalizationInput): CanonicalPart
       ...participant,
     })),
   ];
+}
+
+function normalizeAddress(address: string): string {
+  return address.trim().toLowerCase();
+}
+
+function addressSet(addresses: string[]): Set<string> {
+  return new Set(addresses.map(normalizeAddress));
+}
+
+function messageAddresses(addresses: EmailAddress[]): string[] {
+  return addresses.map((address) => normalizeAddress(address.address));
+}
+
+function emailThreadIds(message: EmailMessageNormalizationInput): string[] {
+  return [
+    ...message.message.references,
+    ...message.message.inReplyTo,
+    message.message.messageId,
+  ];
+}
+
+function isSentByUser(
+  message: EmailMessageNormalizationInput,
+  myAddresses: Set<string>,
+): boolean {
+  return myAddresses.has(normalizeAddress(message.message.from.address));
+}
+
+function hasPromotionalSignals(message: EmailMessageNormalizationInput): boolean {
+  const headers = Object.fromEntries(
+    Object.entries(message.message.headers).map(([key, value]) => [
+      key.toLowerCase(),
+      value.toLowerCase(),
+    ]),
+  );
+  const sender = normalizeAddress(message.message.from.address);
+  const subject = message.message.subject.toLowerCase();
+
+  return (
+    "list-unsubscribe" in headers ||
+    headers.precedence === "bulk" ||
+    headers["auto-submitted"] === "auto-generated" ||
+    sender.startsWith("noreply@") ||
+    sender.startsWith("no-reply@") ||
+    sender.startsWith("newsletter@") ||
+    subject.includes("unsubscribe") ||
+    subject.includes("offer") ||
+    subject.includes("discount") ||
+    subject.includes("% off")
+  );
+}
+
+export function buildEmailEngagementIndex(
+  messages: EmailMessageNormalizationInput[],
+  myAddressesInput: string[],
+): EmailEngagementIndex {
+  const myAddresses = addressSet(myAddressesInput);
+  const repliedToAddresses = new Set<string>();
+  const participatedThreadIds = new Set<string>();
+
+  for (const message of messages) {
+    if (!isSentByUser(message, myAddresses)) {
+      continue;
+    }
+
+    for (const address of [
+      ...messageAddresses(message.message.to),
+      ...messageAddresses(message.message.cc),
+      ...messageAddresses(message.message.bcc),
+    ]) {
+      if (!myAddresses.has(address)) {
+        repliedToAddresses.add(address);
+      }
+    }
+
+    for (const threadId of emailThreadIds(message)) {
+      participatedThreadIds.add(threadId);
+    }
+  }
+
+  return {
+    repliedToAddresses,
+    participatedThreadIds,
+  };
+}
+
+export function evaluateEmailImportProfile(input: {
+  profile: ImportProfile;
+  message: EmailMessageNormalizationInput;
+  engagement: EmailEngagementIndex;
+  myAddresses: string[];
+}): ImportFilterDecision {
+  const myAddresses = addressSet(input.myAddresses);
+
+  if (input.profile === "everything") {
+    return {
+      action: "include",
+      reason: "profile_everything",
+      confidence: 1,
+    };
+  }
+
+  if (hasPromotionalSignals(input.message)) {
+    return {
+      action: "exclude",
+      reason: "promotional_or_bulk",
+      confidence: 0.95,
+    };
+  }
+
+  if (input.profile === "clean_default") {
+    return {
+      action: "include",
+      reason: "not_promotional_or_bulk",
+      confidence: 0.85,
+    };
+  }
+
+  if (isSentByUser(input.message, myAddresses)) {
+    return {
+      action: "include",
+      reason: "sent_by_user",
+      confidence: 1,
+    };
+  }
+
+  const sender = normalizeAddress(input.message.message.from.address);
+
+  if (input.engagement.repliedToAddresses.has(sender)) {
+    return {
+      action: "include",
+      reason: "replied_contact",
+      confidence: 0.95,
+    };
+  }
+
+  if (
+    emailThreadIds(input.message).some((threadId) =>
+      input.engagement.participatedThreadIds.has(threadId),
+    )
+  ) {
+    return {
+      action: "include",
+      reason: "thread_participated",
+      confidence: 0.9,
+    };
+  }
+
+  return {
+    action: "exclude",
+    reason: "no_prior_engagement",
+    confidence: input.profile === "engaged_contacts" ? 0.8 : 0.6,
+  };
+}
+
+export function summarizeImportFilterDecisions(
+  decisions: ImportFilterDecision[],
+): ImportFilterSummary {
+  const summary: ImportFilterSummary = {
+    included: 0,
+    excluded: 0,
+    needsReview: 0,
+    reasons: {},
+  };
+
+  for (const decision of decisions) {
+    if (decision.action === "include") {
+      summary.included += 1;
+    } else if (decision.action === "exclude") {
+      summary.excluded += 1;
+    } else {
+      summary.needsReview += 1;
+    }
+
+    summary.reasons[decision.reason] = (summary.reasons[decision.reason] ?? 0) + 1;
+  }
+
+  return summary;
 }
 
 export function normalizeChatGptMessage(

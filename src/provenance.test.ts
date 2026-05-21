@@ -25,6 +25,7 @@ describe("provenance-aware ingestion", () => {
         inReplyTo: [],
         references: [],
         attachmentCount: 0,
+        headers: {},
       },
     });
 

@@ -55,6 +55,7 @@ raw file or archive
   -> import batch
   -> source adapter
   -> Zod-validated source records
+  -> scan pass / import profile
   -> canonical events
   -> protected payloads
   -> dedupe/reimport report
@@ -209,6 +210,40 @@ Later hardening:
 - replay erasure ledger after restore
 - add prompt/export/share policies
 
+## Import Profiles
+
+Import profiles let the user export broadly from vendor tools and filter locally.
+
+Profiles:
+
+```ts
+type ImportProfile =
+  | "everything"
+  | "clean_default"
+  | "engaged_contacts";
+```
+
+Rules:
+
+- `everything`: include every valid source record.
+- `clean_default`: exclude obvious junk/promotional/bulk records, include ordinary records.
+- `engaged_contacts`: include records involving people/threads the user engaged with.
+
+Email `engaged_contacts` is two-pass:
+
+1. Scan pass builds an engagement index:
+   - user addresses
+   - addresses the user sent to
+   - threads the user participated in
+2. Import pass decides:
+   - sent by user -> include
+   - sender user replied to -> include
+   - same thread as sent reply -> include
+   - promotional/bulk -> exclude
+   - no prior engagement -> exclude
+
+This avoids making the user fight Google Takeout selection UI while still keeping junk out of canonical events by default.
+
 ## Zod Boundary
 
 Use Zod at adapter boundaries.
@@ -334,6 +369,13 @@ Current dry-run preview includes:
 - quarantine records
 - event summaries
 
+Later previews should include import profile summaries:
+
+- included
+- excluded
+- needs review
+- reasons such as `promotional_or_bulk` and `no_prior_engagement`
+
 User actions:
 
 - approve all visible
@@ -358,6 +400,7 @@ Done:
 - Claude malformed conversations are quarantined.
 - Claude inspect command reports importable counts.
 - Claude dry-run writes a local preview JSON.
+- email import profiles can include engaged contacts and exclude promotional/unreplied messages.
 
 Next:
 
