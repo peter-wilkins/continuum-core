@@ -34,6 +34,9 @@ const markdownFixturePath = fileURLToPath(
 const gitFixturePath = fileURLToPath(
   new URL("./fixtures/git-one-commit.txt", import.meta.url),
 );
+const mediawikiFixturePath = fileURLToPath(
+  new URL("./fixtures/mediawiki-one-revision.json", import.meta.url),
+);
 
 describe("continuum-import CLI", () => {
   it("formats inspect output with warnings and source file counts", () => {
@@ -1048,6 +1051,42 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("imports a MediaWiki revision file through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "mediawiki-revisions",
+        mediawikiFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "wikimedia",
+          externalConversationId: "en.wikipedia.org:page:12345",
+          externalMessageId: "67890",
+        },
+        content: {
+          subject: "Boiler",
+          text: "Add maintenance note",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("routes Markdown files inside a Google Takeout zip", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
     const zipPath = join(dir, "takeout.zip");
@@ -1080,6 +1119,144 @@ describe("continuum-import CLI", () => {
         {
           path: "Takeout/Keep/boiler.md",
           source: "markdown",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs a MediaWiki revision through CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "preview.json");
+
+    try {
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "mediawiki-revisions",
+        mediawikiFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+      expect(result.batch.stats.recordsQuarantined).toBe(0);
+
+      const preview = JSON.parse(await readFile(outputPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "mediawiki-one-revision.json",
+          source: "mediawiki-revisions",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("quarantines malformed MediaWiki JSON during dry-run", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const badPath = join(dir, "bad-mediawiki.json");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(badPath, "{", "utf8");
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "mediawiki-revisions",
+        badPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.quarantine[0]).toMatchObject({
+        sourcePath: "bad-mediawiki.json",
+        errorCode: "source_parse_failed",
+        recoverable: true,
+      });
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "bad-mediawiki.json",
+          source: "mediawiki-revisions",
+          status: "invalid",
+          eventsCreated: 0,
+          quarantineRecords: 1,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes MediaWiki files inside a Google Takeout zip", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+    const boilerMediaWikiFixture = JSON.parse(
+      await readFile(mediawikiFixturePath, "utf8"),
+    ) as {
+      revision: {
+        revid: number;
+      };
+    };
+    boilerMediaWikiFixture.revision.revid = 67891;
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Wikipedia/page-revisions.json": strToU8(
+          await readFile(mediawikiFixturePath, "utf8"),
+        ),
+        "Takeout/Data/boiler.json": strToU8(
+          JSON.stringify(boilerMediaWikiFixture),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(2);
+      expect(result.batch.stats.filesSeen).toBe(2);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Data/boiler.json",
+          source: "mediawiki-revisions",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+        {
+          path: "Takeout/Wikipedia/page-revisions.json",
+          source: "mediawiki-revisions",
           status: "matched",
           eventsCreated: 1,
           quarantineRecords: 0,

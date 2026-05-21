@@ -13,6 +13,7 @@ import {
   normalizeGitCommit,
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
+  normalizeMediaWikiRevision,
   parseClaudeConversationsWithQuarantine,
   parseGitLog,
   parseGoogleChromeBookmarksExport,
@@ -20,6 +21,7 @@ import {
   parseGoogleChromeReadingListExport,
   parseGoogleMyActivityExport,
   parseICalendarEvents,
+  parseMediaWikiRevision,
 } from "./index";
 
 export type SourceImportCommand =
@@ -31,7 +33,8 @@ export type SourceImportCommand =
   | "google-my-activity"
   | "git-log"
   | "icalendar"
-  | "markdown";
+  | "markdown"
+  | "mediawiki-revisions";
 
 export type ArchiveImportCommand = "google-takeout-folder" | "google-takeout-zip";
 
@@ -294,6 +297,40 @@ const sourceAdapters: SourceAdapter[] = [
           content: input.raw,
         }),
       ]);
+    },
+  },
+  {
+    source: "mediawiki-revisions",
+    parseMode: "json",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".json") &&
+        (lowerPath.includes("wikipedia") ||
+          lowerPath.includes("wikimedia") ||
+          lowerPath.includes("mediawiki") ||
+          lowerPath.includes("revision"))
+      );
+    },
+    parsedMatches: (parsed) => parseMediaWikiRevision(parsed).ok,
+    prepareInput: (parsed) => parsed,
+    normalize: (parsed) => {
+      const result = parseMediaWikiRevision(parsed);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine(
+            "mediawiki-revisions",
+            result.errors,
+          ),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return emptyNormalizedInput([normalizeMediaWikiRevision(result.value)]);
     },
   },
   {

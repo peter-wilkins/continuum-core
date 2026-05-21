@@ -1130,6 +1130,38 @@ const googleMyActivityRecordSchema = z
   })
   .passthrough();
 
+const mediaWikiRevisionSchema = z
+  .object({
+    project: z.string(),
+    page: z
+      .object({
+        pageid: z.number(),
+        ns: z.number(),
+        title: z.string(),
+      })
+      .passthrough(),
+    revision: z
+      .object({
+        revid: z.number(),
+        parentid: z.number(),
+        timestamp: isoDatetimeSchema,
+        user: z.string(),
+        userid: z.number().nullable(),
+        comment: z.string(),
+        sha1: z.string(),
+        size: z.number(),
+        slots: z.object({
+          main: z.object({
+            contentmodel: z.string(),
+            contentformat: z.string(),
+            contentSha1: z.string(),
+          }),
+        }),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
 const googleMyActivityExportSchema = z.array(googleMyActivityRecordSchema);
 
 function validationPath(path: PropertyKey[]): string {
@@ -1310,6 +1342,27 @@ export function parseGoogleMyActivityExport(
   input: unknown,
 ): SourceValidationResult<GoogleMyActivityExport> {
   const result = googleMyActivityExportSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parseMediaWikiRevision(
+  input: unknown,
+): SourceValidationResult<MediaWikiRevisionNormalizationInput> {
+  const result = mediaWikiRevisionSchema.safeParse(input);
 
   if (result.success) {
     return {
