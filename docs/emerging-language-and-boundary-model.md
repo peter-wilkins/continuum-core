@@ -2,6 +2,94 @@
 
 This document captures the emerging Continuum domain language. It is intentionally a living glossary rather than a final ontology.
 
+## Meta Principles
+
+### Bootstrapping Continuum
+The principle that Continuum should increasingly be used to build and evolve itself.
+
+The project should eventually:
+
+- ingest its own conversations
+- organize its own continuations
+- generate and refine its own narratives
+- detect conceptual overlap and drift
+- reduce its own entropy
+- preserve continuity across development
+
+The goal is for the system itself to become the primary dogfood environment.
+
+### Continuum Proxy
+A temporary substitute system used before Continuum fully exists.
+
+Examples:
+
+- ChatGPT conversations
+- markdown documents
+- GitHub repos
+- voice notes
+- exports from other systems
+
+These proxies already contain partial continuity data that can later be imported into Continuum.
+
+### Event Stream
+The underlying chronological stream of cognition artifacts.
+
+Potential events:
+
+- messages
+- conversations
+- edits
+- commits
+- voice transcripts
+- decisions
+- exports
+- summaries
+- links
+- captures
+
+The event stream is closer to the true source of continuity than static documents.
+
+### Materialized View
+A generated projection over underlying cognition data.
+
+Examples:
+
+- glossary
+- roadmap
+- design document
+- narrative summary
+- relationship graph
+- organizational memory
+
+The source of truth is the event stream and concept graph, not the generated document.
+
+### Narrative Compiler
+A system that transforms continuations, concepts, chronology, and interactions into coherent evolving narratives or documents.
+
+### Concept Registry
+A living registry of concepts, aliases, relationships, definitions, and tensions.
+
+The registry may eventually become more important than static folders or document hierarchies.
+
+### Continuity Recovery
+The process of reconnecting fragmented or forgotten cognition from historical artifacts.
+
+The realization that much of human continuity is not truly lost, only fragmented across systems.
+
+### Unified Event Model
+A canonical internal representation capable of importing heterogeneous cognition artifacts.
+
+Potential primitives:
+
+- Event
+- Actor
+- Continuation
+- Timestamp
+- Reference
+- Artifact
+- Embedding
+- Boundary
+
 ## Core Cognitive Terms
 
 ### Continuum
