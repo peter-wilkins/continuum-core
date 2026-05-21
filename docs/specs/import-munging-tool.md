@@ -422,6 +422,7 @@ Done:
 - Import results report warning counts and ignore their own output file during folder reimport.
 - Malformed single JSON source files are quarantined during dry-run instead of throwing before preview.
 - Google Takeout folder JSON files can be classified by schema when filenames are generic.
+- Inspect results include source-file routing summaries for Takeout folders.
 
 Next:
 

@@ -85,6 +85,7 @@ export type InspectCliResult = {
   validationErrors: number;
   importableEvents: number;
   warnings: number;
+  sourceFiles: SourceFilePreview[];
 };
 
 export type DryRunCliResult = {
@@ -653,7 +654,7 @@ function normalizeSourceInput(
 }
 
 function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input: SourceInput): InspectCliResult {
-  const { incomingEvents, quarantine, warnings } = normalizeCommandInput(
+  const { incomingEvents, quarantine, sourceFiles, warnings } = normalizeCommandInput(
     command.source,
     command.inputPath,
     input,
@@ -673,6 +674,7 @@ function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input:
     validationErrors: quarantine.length,
     importableEvents: incomingEvents.length,
     warnings,
+    sourceFiles,
   };
 }
 

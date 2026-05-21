@@ -196,6 +196,7 @@ describe("continuum-import CLI", () => {
       validationErrors: 0,
       importableEvents: 2,
       warnings: 0,
+      sourceFiles: [],
     });
   });
 
@@ -337,6 +338,7 @@ describe("continuum-import CLI", () => {
       validationErrors: 0,
       importableEvents: 1,
       warnings: 0,
+      sourceFiles: [],
     });
   });
 
@@ -426,6 +428,43 @@ describe("continuum-import CLI", () => {
         validationErrors: 0,
         importableEvents: 6,
         warnings: 1,
+        sourceFiles: [
+          {
+            path: "Takeout/Chrome/Bookmarks.html",
+            source: "google-chrome-bookmarks",
+            status: "matched",
+            eventsCreated: 1,
+            quarantineRecords: 0,
+          },
+          {
+            path: "Takeout/Chrome/BrowserHistory.json",
+            source: "google-chrome-history",
+            status: "matched",
+            eventsCreated: 1,
+            quarantineRecords: 0,
+          },
+          {
+            path: "Takeout/Chrome/ReadingList.html",
+            source: "google-chrome-reading-list",
+            status: "matched",
+            eventsCreated: 1,
+            quarantineRecords: 0,
+          },
+          {
+            path: "Takeout/My Activity/YouTube/MyActivity.json",
+            source: "google-my-activity",
+            status: "matched",
+            eventsCreated: 3,
+            quarantineRecords: 0,
+          },
+          {
+            path: "Takeout/unknown.txt",
+            source: null,
+            status: "skipped",
+            eventsCreated: 0,
+            quarantineRecords: 0,
+          },
+        ],
       });
     } finally {
       await rm(dir, { recursive: true, force: true });
