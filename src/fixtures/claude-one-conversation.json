@@ -2,14 +2,20 @@
   {
     "uuid": "claude_conv_123",
     "name": "Boiler quote",
+    "summary": "Discuss a boiler quote.",
     "created_at": "2026-05-21T10:40:00.000Z",
     "updated_at": "2026-05-21T10:45:00.000Z",
+    "account": {
+      "uuid": "account_123"
+    },
     "chat_messages": [
       {
         "uuid": "claude_msg_456",
         "sender": "human",
         "text": "Need to quote Bob for the boiler.",
         "created_at": "2026-05-21T10:42:03.000Z",
+        "updated_at": "2026-05-21T10:42:04.000Z",
+        "parent_message_uuid": null,
         "content": [],
         "attachments": [],
         "files": []
@@ -19,6 +25,8 @@
         "sender": "assistant",
         "text": "You should ask Bob whether the boiler is combi or system.",
         "created_at": "2026-05-21T10:43:00.000Z",
+        "updated_at": "2026-05-21T10:43:01.000Z",
+        "parent_message_uuid": "claude_msg_456",
         "content": [],
         "attachments": [],
         "files": []

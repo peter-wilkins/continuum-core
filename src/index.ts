@@ -3,6 +3,7 @@ import {
   createDecipheriv,
   randomBytes,
 } from "node:crypto";
+import { z } from "zod";
 
 export const continuumCorePackageName = "@continuum/core";
 
@@ -112,6 +113,8 @@ export type ClaudeMessageNormalizationInput = {
     sender: "human" | "assistant";
     text: string;
     created_at: string;
+    updated_at: string;
+    parent_message_uuid: string | null;
     content: unknown[];
     attachments: unknown[];
     files: unknown[];
@@ -119,8 +122,25 @@ export type ClaudeMessageNormalizationInput = {
 };
 
 export type ClaudeConversationExport = ClaudeMessageNormalizationInput["conversation"] & {
+  summary: string | null;
+  account: unknown;
   chat_messages: ClaudeMessageNormalizationInput["message"][];
 };
+
+export type SourceValidationError = {
+  path: string;
+  message: string;
+};
+
+export type SourceValidationResult<T> =
+  | {
+      ok: true;
+      value: T;
+    }
+  | {
+      ok: false;
+      errors: SourceValidationError[];
+    };
 
 export type EmailAddress = {
   name: string | null;
@@ -407,6 +427,63 @@ export function discloseThroughMembrane(
   return { events, decisions };
 }
 
+const isoDatetimeSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)), {
+  message: "Invalid ISO datetime",
+});
+
+const claudeMessageSchema = z
+  .object({
+    uuid: z.string(),
+    sender: z.enum(["human", "assistant"]),
+    text: z.string(),
+    created_at: isoDatetimeSchema,
+    updated_at: isoDatetimeSchema,
+    parent_message_uuid: z.string().nullable(),
+    content: z.array(z.unknown()),
+    attachments: z.array(z.unknown()),
+    files: z.array(z.unknown()),
+  })
+  .passthrough();
+
+const claudeConversationSchema = z
+  .object({
+    uuid: z.string(),
+    name: z.string(),
+    summary: z.string().nullable(),
+    created_at: isoDatetimeSchema,
+    updated_at: isoDatetimeSchema,
+    account: z.unknown(),
+    chat_messages: z.array(claudeMessageSchema),
+  })
+  .passthrough();
+
+const claudeConversationsSchema = z.array(claudeConversationSchema);
+
+function validationPath(path: PropertyKey[]): string {
+  return path.map(String).join(".");
+}
+
+export function parseClaudeConversations(
+  input: unknown,
+): SourceValidationResult<ClaudeConversationExport[]> {
+  const result = claudeConversationsSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
   return `chatgpt:${input.conversation.id}:${input.node.message.id}`;
 }
@@ -595,7 +672,7 @@ export function normalizeClaudeMessage(
       externalConversationId: input.conversation.uuid,
       externalMessageId: input.message.uuid,
       artifactId: null,
-      externalParentId: null,
+      externalParentId: input.message.parent_message_uuid,
       canonicalParentEventId: null,
     },
     provenance: {

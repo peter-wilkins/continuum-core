@@ -4,7 +4,9 @@ import { readFile, writeFile } from "node:fs/promises";
 
 import {
   mergeCanonicalEvents,
+  normalizeClaudeConversations,
   normalizeChatGptConversations,
+  parseClaudeConversations,
   type CanonicalEvent,
   type ChatGptConversationExport,
   type ImportReport,
@@ -16,19 +18,27 @@ export type ContinuumImportCliResult = {
   report: ImportReport;
 };
 
-function parseChatGptCommand(args: string[]): {
+type ImportCommand = "chatgpt" | "claude";
+
+function parseImportCommand(args: string[]): {
+  command: ImportCommand;
   inputPath: string;
   outputPath: string;
 } {
   const [command, inputPath, outFlag, outputPath] = args;
 
-  if (command !== "chatgpt" || !inputPath || outFlag !== "--out" || !outputPath) {
+  if (
+    (command !== "chatgpt" && command !== "claude") ||
+    !inputPath ||
+    outFlag !== "--out" ||
+    !outputPath
+  ) {
     throw new Error(
-      "Usage: continuum-import chatgpt <conversations.json> --out <events.jsonl>",
+      "Usage: continuum-import <chatgpt|claude> <conversations.json> --out <events.jsonl>",
     );
   }
 
-  return { inputPath, outputPath };
+  return { command, inputPath, outputPath };
 }
 
 async function readExistingEvents(outputPath: string): Promise<CanonicalEvent[]> {
@@ -52,10 +62,13 @@ async function readExistingEvents(outputPath: string): Promise<CanonicalEvent[]>
 export async function runContinuumImportCli(
   args: string[],
 ): Promise<ContinuumImportCliResult> {
-  const { inputPath, outputPath } = parseChatGptCommand(args);
+  const { command, inputPath, outputPath } = parseImportCommand(args);
   const raw = await readFile(inputPath, "utf8");
-  const conversations = JSON.parse(raw) as ChatGptConversationExport[];
-  const incomingEvents = normalizeChatGptConversations(conversations);
+  const parsed = JSON.parse(raw) as unknown;
+  const incomingEvents =
+    command === "chatgpt"
+      ? normalizeChatGptConversations(parsed as ChatGptConversationExport[])
+      : normalizeClaudeConversations(parseClaudeConversationsOrThrow(parsed));
   const existingEvents = await readExistingEvents(outputPath);
   const { events, report } = mergeCanonicalEvents(existingEvents, incomingEvents);
   const jsonl = events.map((event) => JSON.stringify(event)).join("\n");
@@ -67,6 +80,20 @@ export async function runContinuumImportCli(
     outputPath,
     report,
   };
+}
+
+function parseClaudeConversationsOrThrow(parsed: unknown) {
+  const result = parseClaudeConversations(parsed);
+
+  if (result.ok) {
+    return result.value;
+  }
+
+  throw new Error(
+    `Claude export validation failed: ${result.errors
+      .map((error) => `${error.path}: ${error.message}`)
+      .join("; ")}`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

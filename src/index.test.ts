@@ -377,7 +377,7 @@ describe("Claude import normalization", () => {
           key: "claude:claude_conv_123:claude_msg_789",
           externalConversationId: "claude_conv_123",
           externalMessageId: "claude_msg_789",
-          externalParentId: null,
+          externalParentId: "claude_msg_456",
           canonicalParentEventId: null,
         },
         time: {
