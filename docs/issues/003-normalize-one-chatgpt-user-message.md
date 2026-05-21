@@ -1,5 +1,9 @@
 # 003: Normalize One ChatGPT User Message
 
+## Status
+
+Done.
+
 ## Type
 
 AFK.
