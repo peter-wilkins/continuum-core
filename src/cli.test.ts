@@ -765,6 +765,71 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("inspects and imports a Google Takeout zip idempotently", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const chromeHistoryFixture = JSON.parse(
+        await readFile(chromeHistoryFixturePath, "utf8"),
+      );
+      const zipped = zipSync({
+        "Takeout/Chrome/BrowserHistory.json": strToU8(
+          JSON.stringify({ "Browser History": [chromeHistoryFixture.history] }),
+        ),
+        "Takeout/My Activity/Search/MyActivity.json": strToU8(
+          await readFile(googleMyActivityFixturePath, "utf8"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const inspected = await runContinuumImportCli([
+        "inspect",
+        "google-takeout-zip",
+        zipPath,
+      ]);
+      const first = await runContinuumImportCli([
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        outputPath,
+      ]);
+      const second = await runContinuumImportCli([
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(inspected).toMatchObject({
+        command: "inspect",
+        recordsSeen: 4,
+        validationErrors: 0,
+        importableEvents: 4,
+        warnings: 0,
+      });
+      expect(first).toMatchObject({
+        command: "import",
+        eventsWritten: 4,
+        warnings: 0,
+      });
+      expect(second).toMatchObject({
+        command: "import",
+        eventsWritten: 0,
+        warnings: 0,
+        report: {
+          new: 0,
+          known: 4,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("quarantines malformed JSON inside a Google Takeout folder", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
     const previewPath = join(dir, "preview.json");

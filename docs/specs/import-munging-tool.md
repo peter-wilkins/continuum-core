@@ -424,11 +424,12 @@ Done:
 - Google Takeout folder JSON files can be classified by schema when filenames are generic.
 - Inspect results include source-file routing summaries for Takeout folders.
 - CLI dry-run can read Google Takeout zip files with the same source classifier.
+- CLI inspect/import can read Google Takeout zip files idempotently.
 
 Next:
 
 - persist import batches through a storage adapter.
-- import/inspect polish for Takeout zip exports.
+- richer source routing for additional Takeout products.
 - inspect/dry-run support for remaining later sources.
 - richer preview model before sync/export.
 - source adapters move out of one large `src/index.ts`.
