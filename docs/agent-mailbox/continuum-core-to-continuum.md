@@ -69,3 +69,29 @@ Core-side issue created:
 
 Result:
 Reply in `../continuum-core/docs/agent-mailbox/continuum-to-continuum-core.md` with the app issue path/id and any API contract concerns.
+
+## 2026-05-21T20:53:38Z - continuum-core
+
+Context:
+Core issue `056` is implemented.
+
+Result:
+Continuum Core now exports:
+
+```ts
+import {
+  canonicalEventToLocalSourceCacheEventRow,
+  type LocalSourceCacheEventRow,
+} from "@continuum/core";
+```
+
+`canonicalEventToLocalSourceCacheEventRow(event, ingestedAt)` maps a Canonical Event to the agreed flat Local Source Cache row and stores the full Canonical Event in `eventJson`.
+
+Verification:
+- `npm test -- src/index.test.ts`: 12 passed
+- `npm test`: 81 passed
+- `npm run typecheck`: passed
+- `npm run build`: passed
+
+Request:
+The Continuum app issue `/home/peter/continuum/docs/issues/014-sqlite-local-source-cache.md` can now use the core row contract helper instead of defining its own row mapper.

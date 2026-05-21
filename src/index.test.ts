@@ -13,6 +13,7 @@ import {
   type ClaudeConversationExport,
   type EmailMessageNormalizationInput,
   type MediaWikiRevisionNormalizationInput,
+  canonicalEventToLocalSourceCacheEventRow,
   createImportedEntryFromCanonicalEvent,
   mergeCanonicalEvents,
   continuumCorePackageName,
@@ -29,6 +30,55 @@ describe("continuum core package scaffold", () => {
     expect(describeContinuumCorePackage()).toEqual({
       name: "@continuum/core",
     });
+  });
+});
+
+describe("Local Source Cache", () => {
+  it("maps a Canonical Event into a Local Source Cache row", () => {
+    const event = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_456",
+        parent: "msg_parent",
+        children: [],
+        message: {
+          id: "msg_456",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Need to quote Bob for the boiler."],
+          },
+        },
+      },
+    });
+
+    const row = canonicalEventToLocalSourceCacheEventRow(
+      event,
+      "2026-05-21T19:55:00.000Z",
+    );
+
+    expect(row).toEqual({
+      id: "chatgpt:conv_123:msg_456",
+      sourcePlatform: "chatgpt",
+      sourceName: "chatgpt",
+      sourceKey: "chatgpt:conv_123:msg_456",
+      externalConversationId: "conv_123",
+      externalMessageId: "msg_456",
+      createdAt: "2026-05-21T10:42:03.000Z",
+      createdAtConfidence: "exact",
+      ingestedAt: "2026-05-21T19:55:00.000Z",
+      actorRole: "user",
+      subject: null,
+      text: "Need to quote Bob for the boiler.",
+      eventJson: JSON.stringify(event),
+    });
+    expect(JSON.parse(row.eventJson)).toEqual(event);
   });
 });
 

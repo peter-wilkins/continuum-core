@@ -84,6 +84,22 @@ export type CanonicalEvent = {
   };
 };
 
+export type LocalSourceCacheEventRow = {
+  id: string;
+  sourcePlatform: CanonicalSourcePlatform;
+  sourceName: string;
+  sourceKey: string;
+  externalConversationId: string;
+  externalMessageId: string;
+  createdAt: string;
+  createdAtConfidence: TimeConfidence;
+  ingestedAt: string;
+  actorRole: CanonicalActorRole;
+  subject: string | null;
+  text: string;
+  eventJson: string;
+};
+
 export type ImportedEntry = {
   id: string;
   canonicalEventId: string;
@@ -728,6 +744,27 @@ function stableHash(input: string): string {
 
 function clampConfidence(value: number): number {
   return Math.max(0, Math.min(1, Number(value.toFixed(4))));
+}
+
+export function canonicalEventToLocalSourceCacheEventRow(
+  event: CanonicalEvent,
+  ingestedAt: string,
+): LocalSourceCacheEventRow {
+  return {
+    id: event.id,
+    sourcePlatform: event.source.platform,
+    sourceName: event.provenance.sourceName,
+    sourceKey: event.source.key,
+    externalConversationId: event.source.externalConversationId,
+    externalMessageId: event.source.externalMessageId,
+    createdAt: event.time.createdAt,
+    createdAtConfidence: event.time.createdAtConfidence,
+    ingestedAt,
+    actorRole: event.actor.role,
+    subject: event.content.subject,
+    text: event.content.text,
+    eventJson: JSON.stringify(event),
+  };
 }
 
 function tokenSet(value: string): Set<string> {

@@ -1,6 +1,6 @@
 # 056: Define Local Source Cache Row Contract
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,9 +20,9 @@ Define the Continuum Core contract for a **Local Source Cache** row without taki
 
 ## Acceptance Criteria
 
-- [ ] Export `LocalSourceCacheEventRow`.
-- [ ] Export `canonicalEventToLocalSourceCacheEventRow(event, ingestedAt)`.
-- [ ] Row includes flat columns from the agreed cache schema:
+- [x] Export `LocalSourceCacheEventRow`.
+- [x] Export `canonicalEventToLocalSourceCacheEventRow(event, ingestedAt)`.
+- [x] Row includes flat columns from the agreed cache schema:
   - `id`
   - `sourcePlatform`
   - `sourceName`
@@ -36,9 +36,9 @@ Define the Continuum Core contract for a **Local Source Cache** row without taki
   - `subject`
   - `text`
   - `eventJson`
-- [ ] `eventJson` preserves the full Canonical Event.
-- [ ] No SQLite dependency is added to Continuum Core.
-- [ ] Tests prove required fields are explicit and deterministic.
+- [x] `eventJson` preserves the full Canonical Event.
+- [x] No SQLite dependency is added to Continuum Core.
+- [x] Tests prove required fields are explicit and deterministic.
 
 ## Blocked by
 
