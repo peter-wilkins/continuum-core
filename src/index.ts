@@ -1,3 +1,9 @@
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+} from "node:crypto";
+
 export const continuumCorePackageName = "@continuum/core";
 
 export type ContinuumCorePackage = {
@@ -169,6 +175,67 @@ export type ImportMergeResult = {
   report: ImportReport;
 };
 
+export type PayloadClassification = "public" | "internal" | "private" | "secret";
+
+export type ErasureReason = "user_request" | "retention_expired" | "policy_violation";
+
+export type ProtectedPayload = {
+  id: string;
+  classification: PayloadClassification;
+  createdAt: string;
+  ciphertext: string;
+  keyMaterial: string | null;
+  erasure: {
+    status: "available" | "erased";
+    requestedAt: string | null;
+    reason: ErasureReason | null;
+  };
+};
+
+export type ProtectPayloadInput = {
+  id: string;
+  plaintext: string;
+  classification: PayloadClassification;
+  createdAt: string;
+};
+
+export type ErasureRequest = {
+  requestedAt: string;
+  reason: ErasureReason;
+};
+
+export type ProtectedPayloadReadResult =
+  | {
+      status: "available";
+      plaintext: string;
+    }
+  | {
+      status: "erased";
+      plaintext: null;
+    };
+
+export type DisclosurePurpose = "export" | "prompt" | "sync" | "share";
+
+export type MembraneDecision = {
+  eventId: string;
+  action: "allowed" | "blocked";
+  reason: "payload_available" | "payload_erased" | "payload_missing";
+  decidedAt: string;
+  purpose: DisclosurePurpose;
+};
+
+export type DisclosureMembraneInput = {
+  events: CanonicalEvent[];
+  payloadsByEventId: Record<string, ProtectedPayload>;
+  requestedAt: string;
+  purpose: DisclosurePurpose;
+};
+
+export type DisclosureMembraneResult = {
+  events: CanonicalEvent[];
+  decisions: MembraneDecision[];
+};
+
 function stableHash(input: string): string {
   let hash = 0xcbf29ce484222325n;
   const prime = 0x100000001b3n;
@@ -179,6 +246,139 @@ function stableHash(input: string): string {
   }
 
   return hash.toString(16).padStart(16, "0");
+}
+
+function keyBuffer(keyMaterial: string): Buffer {
+  return Buffer.from(keyMaterial, "hex");
+}
+
+function encodePayload(plaintext: string, keyMaterial: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", keyBuffer(keyMaterial), iv);
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, "utf8"),
+    cipher.final(),
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  return [
+    iv.toString("base64"),
+    authTag.toString("base64"),
+    encrypted.toString("base64"),
+  ].join(".");
+}
+
+function decodePayload(ciphertext: string, keyMaterial: string): string {
+  const parts = ciphertext.split(".");
+
+  if (parts.length !== 3) {
+    throw new Error("Protected payload ciphertext is malformed.");
+  }
+
+  const iv = Buffer.from(parts[0] ?? "", "base64");
+  const authTag = Buffer.from(parts[1] ?? "", "base64");
+  const encrypted = Buffer.from(parts[2] ?? "", "base64");
+  const decipher = createDecipheriv("aes-256-gcm", keyBuffer(keyMaterial), iv);
+
+  decipher.setAuthTag(authTag);
+
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
+    "utf8",
+  );
+}
+
+export function protectPayload(input: ProtectPayloadInput): ProtectedPayload {
+  const keyMaterial = randomBytes(32).toString("hex");
+
+  return {
+    id: input.id,
+    classification: input.classification,
+    createdAt: input.createdAt,
+    ciphertext: encodePayload(input.plaintext, keyMaterial),
+    keyMaterial,
+    erasure: {
+      status: "available",
+      requestedAt: null,
+      reason: null,
+    },
+  };
+}
+
+export function readProtectedPayload(
+  payload: ProtectedPayload,
+): ProtectedPayloadReadResult {
+  if (payload.erasure.status === "erased" || payload.keyMaterial === null) {
+    return {
+      status: "erased",
+      plaintext: null,
+    };
+  }
+
+  return {
+    status: "available",
+    plaintext: decodePayload(payload.ciphertext, payload.keyMaterial),
+  };
+}
+
+export function applyErasureRequest(
+  payload: ProtectedPayload,
+  request: ErasureRequest,
+): ProtectedPayload {
+  return {
+    ...payload,
+    keyMaterial: null,
+    erasure: {
+      status: "erased",
+      requestedAt: request.requestedAt,
+      reason: request.reason,
+    },
+  };
+}
+
+export function discloseThroughMembrane(
+  input: DisclosureMembraneInput,
+): DisclosureMembraneResult {
+  const decisions: MembraneDecision[] = [];
+  const events: CanonicalEvent[] = [];
+
+  for (const event of input.events) {
+    const payload = input.payloadsByEventId[event.id];
+
+    if (!payload) {
+      decisions.push({
+        eventId: event.id,
+        action: "blocked",
+        reason: "payload_missing",
+        decidedAt: input.requestedAt,
+        purpose: input.purpose,
+      });
+      continue;
+    }
+
+    const readResult = readProtectedPayload(payload);
+
+    if (readResult.status === "erased") {
+      decisions.push({
+        eventId: event.id,
+        action: "blocked",
+        reason: "payload_erased",
+        decidedAt: input.requestedAt,
+        purpose: input.purpose,
+      });
+      continue;
+    }
+
+    decisions.push({
+      eventId: event.id,
+      action: "allowed",
+      reason: "payload_available",
+      decidedAt: input.requestedAt,
+      purpose: input.purpose,
+    });
+    events.push(event);
+  }
+
+  return { events, decisions };
 }
 
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
