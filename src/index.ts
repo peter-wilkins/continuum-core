@@ -119,6 +119,19 @@ export type RankingSignal = {
   weight: number;
 };
 
+export type RankingProfileName =
+  | "balanced"
+  | "semantic_heavy"
+  | "recency_heavy"
+  | "recurrence_heavy"
+  | "explicit_cue_heavy";
+
+export type RankingProfile = {
+  name: RankingProfileName;
+  debugOnly: true;
+  weights: Record<RankingSignalKind, number>;
+};
+
 export type LinkReason = {
   text: string;
   rankingSignalKind: RankingSignalKind;
@@ -149,6 +162,21 @@ export type ContinuationCandidate = {
 export type ContinuityRetrievalInput = {
   resumeRequest: ResumeRequest;
   entries: ImportedEntry[];
+  rankingProfile: RankingProfile;
+};
+
+export type RankingProfileComparisonInput = {
+  resumeRequest: ResumeRequest;
+  entries: ImportedEntry[];
+  rankingProfiles: RankingProfile[];
+};
+
+export type RankingProfileComparisonResult = {
+  resumeRequest: ResumeRequest;
+  profileResults: {
+    profile: RankingProfile;
+    candidates: ContinuationCandidate[];
+  }[];
 };
 
 export type AmbiguousResumeSurface = {
@@ -507,6 +535,59 @@ export type DisclosureMembraneInput = {
 export type DisclosureMembraneResult = {
   events: CanonicalEvent[];
   decisions: MembraneDecision[];
+};
+
+export const debugRankingProfiles: Record<RankingProfileName, RankingProfile> = {
+  balanced: {
+    name: "balanced",
+    debugOnly: true,
+    weights: {
+      text_overlap: 0.5,
+      recency: 0.2,
+      recurrence: 0.2,
+      explicit_resume_cue: 0.1,
+    },
+  },
+  semantic_heavy: {
+    name: "semantic_heavy",
+    debugOnly: true,
+    weights: {
+      text_overlap: 0.8,
+      recency: 0.1,
+      recurrence: 0.05,
+      explicit_resume_cue: 0.05,
+    },
+  },
+  recency_heavy: {
+    name: "recency_heavy",
+    debugOnly: true,
+    weights: {
+      text_overlap: 0.2,
+      recency: 0.65,
+      recurrence: 0.1,
+      explicit_resume_cue: 0.05,
+    },
+  },
+  recurrence_heavy: {
+    name: "recurrence_heavy",
+    debugOnly: true,
+    weights: {
+      text_overlap: 0.2,
+      recency: 0.1,
+      recurrence: 0.65,
+      explicit_resume_cue: 0.05,
+    },
+  },
+  explicit_cue_heavy: {
+    name: "explicit_cue_heavy",
+    debugOnly: true,
+    weights: {
+      text_overlap: 0.25,
+      recency: 0.1,
+      recurrence: 0.1,
+      explicit_resume_cue: 0.55,
+    },
+  },
 };
 
 function provenanceKey(provenance: EventProvenance): string {
@@ -1865,6 +1946,7 @@ export function createImportedEntryFromCanonicalEvent(
 export function retrieveContinuationCandidates(
   input: ContinuityRetrievalInput,
 ): ContinuationCandidate[] {
+  const { weights } = input.rankingProfile;
   const grouped = new Map<
     string,
     {
@@ -1902,22 +1984,22 @@ export function retrieveContinuationCandidates(
         {
           kind: "text_overlap",
           value: clampConfidence(candidate.textOverlap),
-          weight: 0.5,
+          weight: weights.text_overlap,
         },
         {
           kind: "recency",
           value: clampConfidence(candidate.recency),
-          weight: 0.2,
+          weight: weights.recency,
         },
         {
           kind: "recurrence",
           value: clampConfidence(recurrence),
-          weight: 0.2,
+          weight: weights.recurrence,
         },
         {
           kind: "explicit_resume_cue",
           value: explicitCue,
-          weight: 0.1,
+          weight: weights.explicit_resume_cue,
         },
       ];
       const confidence = clampConfidence(
@@ -1930,7 +2012,7 @@ export function retrieveContinuationCandidates(
         {
           rankingSignalKind: "text_overlap",
           value: clampConfidence(candidate.textOverlap),
-          weight: 0.5,
+          weight: weights.text_overlap,
           reason:
             candidate.textOverlap > 0
               ? "Candidate has request terms in supporting Entries."
@@ -1939,19 +2021,19 @@ export function retrieveContinuationCandidates(
         {
           rankingSignalKind: "recency",
           value: clampConfidence(candidate.recency),
-          weight: 0.2,
+          weight: weights.recency,
           reason: "Candidate uses the most recent supporting Entry.",
         },
         {
           rankingSignalKind: "recurrence",
           value: clampConfidence(recurrence),
-          weight: 0.2,
+          weight: weights.recurrence,
           reason: `Candidate has ${candidate.entries.length} supporting Entries.`,
         },
         {
           rankingSignalKind: "explicit_resume_cue",
           value: explicitCue,
-          weight: 0.1,
+          weight: weights.explicit_resume_cue,
           reason:
             explicitCue > 0
               ? "Resume Request contains an explicit retrieval cue."
@@ -1980,6 +2062,22 @@ export function retrieveContinuationCandidates(
 
       return left.title.localeCompare(right.title);
     });
+}
+
+export function compareRankingProfiles(
+  input: RankingProfileComparisonInput,
+): RankingProfileComparisonResult {
+  return {
+    resumeRequest: input.resumeRequest,
+    profileResults: input.rankingProfiles.map((profile) => ({
+      profile,
+      candidates: retrieveContinuationCandidates({
+        resumeRequest: input.resumeRequest,
+        entries: input.entries,
+        rankingProfile: profile,
+      }),
+    })),
+  };
 }
 
 export function createAmbiguousResumeSurface(

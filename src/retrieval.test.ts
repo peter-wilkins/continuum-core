@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  compareRankingProfiles,
   createAmbiguousResumeSurface,
+  debugRankingProfiles,
   type ImportedEntry,
   retrieveContinuationCandidates,
 } from "./index";
@@ -61,6 +63,7 @@ describe("Continuity Retrieval", () => {
         text: "resume membranes",
         requestedAt: "2026-05-21T12:00:00.000Z",
       },
+      rankingProfile: debugRankingProfiles.balanced,
       entries: [
         importedEntry({
           id: "entry:membranes-1",
@@ -121,6 +124,7 @@ describe("Continuity Retrieval", () => {
         text: "resume membranes",
         requestedAt: "2026-05-21T12:00:00.000Z",
       },
+      rankingProfile: debugRankingProfiles.balanced,
       entries: [
         importedEntry({
           id: "entry:membranes-1",
@@ -179,6 +183,7 @@ describe("Continuity Retrieval", () => {
         text: "resume membranes",
         requestedAt: "2026-05-21T12:00:00.000Z",
       },
+      rankingProfile: debugRankingProfiles.balanced,
       narrowSpreadThreshold: 0.1,
       entries: [
         importedEntry({
@@ -241,6 +246,7 @@ describe("Continuity Retrieval", () => {
         text: "resume membranes",
         requestedAt: "2026-05-21T12:00:00.000Z",
       },
+      rankingProfile: debugRankingProfiles.balanced,
       narrowSpreadThreshold: 0.05,
       entries: [
         importedEntry({
@@ -272,5 +278,71 @@ describe("Continuity Retrieval", () => {
       "Boiler quote",
     ]);
     expect(surface.isAmbiguous).toBe(false);
+  });
+
+  it("compares Continuation Candidate rankings across Ranking Profiles", () => {
+    const entries = [
+      importedEntry({
+        id: "entry:membranes-1",
+        canonicalEventId: "markdown:membranes-1",
+        occurredAt: "2026-03-21T12:00:00.000Z",
+        subject: "Membranes",
+        text: "Membranes filter data before it leaves the private core.",
+      }),
+      importedEntry({
+        id: "entry:membranes-2",
+        canonicalEventId: "markdown:membranes-2",
+        occurredAt: "2026-03-20T12:00:00.000Z",
+        subject: "Membranes",
+        text: "Disclosure membranes and erasure need a safety layer.",
+      }),
+      importedEntry({
+        id: "entry:boiler-1",
+        canonicalEventId: "markdown:boiler-1",
+        occurredAt: "2026-05-21T11:30:00.000Z",
+        subject: "Boiler quote",
+        text: "Ask Bob whether the boiler is combi or system.",
+      }),
+    ];
+
+    const comparison = compareRankingProfiles({
+      resumeRequest: {
+        text: "resume membranes",
+        requestedAt: "2026-05-21T12:00:00.000Z",
+      },
+      entries,
+      rankingProfiles: [
+        debugRankingProfiles.balanced,
+        debugRankingProfiles.recency_heavy,
+      ],
+    });
+
+    expect(comparison.profileResults).toHaveLength(2);
+    expect(comparison.profileResults[0]?.profile).toMatchObject({
+      name: "balanced",
+      debugOnly: true,
+      weights: {
+        text_overlap: 0.5,
+        recency: 0.2,
+        recurrence: 0.2,
+        explicit_resume_cue: 0.1,
+      },
+    });
+    expect(comparison.profileResults[0]?.candidates[0]).toMatchObject({
+      title: "Membranes",
+    });
+    expect(comparison.profileResults[1]?.profile).toMatchObject({
+      name: "recency_heavy",
+      debugOnly: true,
+      weights: {
+        text_overlap: 0.2,
+        recency: 0.65,
+        recurrence: 0.1,
+        explicit_resume_cue: 0.05,
+      },
+    });
+    expect(comparison.profileResults[1]?.candidates[0]).toMatchObject({
+      title: "Boiler quote",
+    });
   });
 });

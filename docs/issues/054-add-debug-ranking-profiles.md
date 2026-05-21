@@ -1,6 +1,6 @@
 # 054: Add Debug Ranking Profiles
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,12 +20,12 @@ Add debug-only **Ranking Profiles** so QA and user testing can compare different
 
 ## Acceptance Criteria
 
-- [ ] Define named Ranking Profiles for debug/QA use.
-- [ ] Include at least a balanced profile and one profile that changes ranking order.
-- [ ] Run the same Resume Request through multiple profiles.
-- [ ] Return enough profile metadata to inspect which weighting was used.
-- [ ] Do not expose Ranking Profiles as normal user-facing controls.
-- [ ] Tests prove deterministic profile comparison.
+- [x] Define named Ranking Profiles for debug/QA use.
+- [x] Include at least a balanced profile and one profile that changes ranking order.
+- [x] Run the same Resume Request through multiple profiles.
+- [x] Return enough profile metadata to inspect which weighting was used.
+- [x] Do not expose Ranking Profiles as normal user-facing controls.
+- [x] Tests prove deterministic profile comparison.
 
 ## Blocked by
 
