@@ -28,6 +28,10 @@ _Avoid_: memory, archive, database
 An immutable normalized event in Continuum's unified event model. A Canonical Event may come from live capture or from an imported external source record.
 _Avoid_: vendor record, raw message, source-specific event
 
+**Imported Entry**:
+An **Entry** created from a **Canonical Event** during import. Retrieval and **Continuation** inference work over Entries in the **Source Log**, not over source-specific Canonical Events directly.
+_Avoid_: imported event, vendor memory, raw import record
+
 **Source Graph Reference**:
 A source-system relationship identifier preserved during import, such as a ChatGPT parent message id. A Source Graph Reference is not the same thing as a canonical parent event id until both source records have been normalized and linked.
 _Avoid_: canonical parent, internal graph edge
