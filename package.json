@@ -23,6 +23,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap",
+    "schema:dev": "vite schema-workbench --host 127.0.0.1 --port 5173",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -33,6 +34,7 @@
     "@types/node": "^25.9.1",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
+    "vite": "^7.2.4",
     "vitest": "^4.1.7"
   }
 }

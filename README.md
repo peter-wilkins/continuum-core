@@ -66,6 +66,22 @@ continuum-core/
   docs/            # specs and agent briefs
 ```
 
+## Schema workbench
+
+Run a local visual inspector for the canonical event schema:
+
+```bash
+npm run schema:dev
+```
+
+Open the local URL printed by Vite, usually:
+
+```text
+http://127.0.0.1:5173/
+```
+
+If that port is busy, Vite prints the next available port. The page reloads when schema files change.
+
 ## Read next
 
 - [`docs/product-philosophy.md`](docs/product-philosophy.md)
