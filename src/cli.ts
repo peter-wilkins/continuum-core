@@ -243,6 +243,7 @@ type SourceInput = {
   raw: string;
   parsed: unknown;
   hash: string;
+  filesSeen: number;
 };
 
 type TakeoutFolderFile = {
@@ -269,6 +270,7 @@ async function readSourceInput(
       raw: "",
       parsed: files,
       hash: hash.digest("hex"),
+      filesSeen: files.length,
     };
   }
 
@@ -278,6 +280,7 @@ async function readSourceInput(
     raw,
     parsed: sourceInputNeedsJson(source) ? JSON.parse(raw) as unknown : raw,
     hash: createHash("sha256").update(raw).digest("hex"),
+    filesSeen: 1,
   };
 }
 
@@ -526,6 +529,7 @@ async function dryRunImport(
     source: command.source,
     inputPath: command.inputPath,
     inputHash: input.hash,
+    filesSeen: input.filesSeen,
     recordsSeen: incomingEvents.length + quarantine.length,
     report,
     quarantine,
@@ -558,6 +562,7 @@ function createImportBatch(input: {
   source: ImportCommand;
   inputPath: string;
   inputHash: string;
+  filesSeen: number;
   recordsSeen: number;
   report: ImportReport;
   quarantine: ImportErrorRecord[];
@@ -572,7 +577,7 @@ function createImportBatch(input: {
     completedAt: null,
     status: "previewed",
     stats: {
-      filesSeen: 1,
+      filesSeen: input.filesSeen,
       recordsSeen: input.recordsSeen,
       eventsCreated: input.report.new,
       eventsKnown: input.report.known,

@@ -425,4 +425,65 @@ describe("continuum-import CLI", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("dry-runs a Google Takeout folder into one combined preview", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const chromeDir = join(dir, "Takeout", "Chrome");
+      const activityDir = join(dir, "Takeout", "My Activity", "YouTube");
+      await mkdir(chromeDir, { recursive: true });
+      await mkdir(activityDir, { recursive: true });
+
+      const chromeHistoryFixture = JSON.parse(
+        await readFile(chromeHistoryFixturePath, "utf8"),
+      );
+      await writeFile(
+        join(chromeDir, "BrowserHistory.json"),
+        JSON.stringify({ "Browser History": [chromeHistoryFixture.history] }),
+        "utf8",
+      );
+      await writeFile(
+        join(chromeDir, "Bookmarks.html"),
+        await readFile(chromeBookmarksFixturePath, "utf8"),
+        "utf8",
+      );
+      await writeFile(
+        join(activityDir, "MyActivity.json"),
+        await readFile(googleMyActivityFixturePath, "utf8"),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-folder",
+        dir,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+
+      expect(result.batch.sourcePlatform).toBe("google-takeout-folder");
+      expect(result.batch.stats.filesSeen).toBe(3);
+      expect(result.batch.stats.recordsSeen).toBe(5);
+      expect(result.batch.stats.eventsCreated).toBe(5);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.events).toHaveLength(5);
+      expect(preview.events.map((event: { platform: string }) => event.platform)).toEqual([
+        "google_chrome",
+        "google_chrome",
+        "google_activity",
+        "google_activity",
+        "google_activity",
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });
