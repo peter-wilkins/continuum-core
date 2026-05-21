@@ -136,10 +136,23 @@ Then import from the package root:
 
 ```ts
 import {
+  createAmbiguousResumeSurface,
   createImportedEntryFromCanonicalEvent,
   debugRankingProfiles,
   retrieveContinuationCandidates,
 } from "@continuum/core";
+```
+
+For app-facing retrieval experiments, prefer `createAmbiguousResumeSurface`.
+Use `narrowSpreadThreshold: 0.1` as the MVP/debug starting value; lower values make ambiguity less likely, higher values make it more likely.
+
+```ts
+const surface = createAmbiguousResumeSurface({
+  resumeRequest,
+  entries,
+  rankingProfile: debugRankingProfiles.balanced,
+  narrowSpreadThreshold: 0.1,
+});
 ```
 
 ## Read next

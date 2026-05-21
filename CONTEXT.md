@@ -134,6 +134,7 @@ _Avoid_: blocking chooser, single forced answer, hidden alternates
 
 **Candidate Spread**:
 The distance between ranked **Continuation Candidates** in **Retrieval Confidence** and supporting evidence. A narrow Candidate Spread should produce an **Ambiguous Resume** instead of forcing a single Continuation.
+For MVP/debug app experiments, use `0.1` as the starting narrow-spread threshold. Treat this as calibration evidence, not product truth.
 _Avoid_: winner by default, hidden uncertainty, arbitrary tie break
 
 **Open Thread**:
