@@ -96,6 +96,10 @@ _Avoid_: opaque score, hidden embedding match, magic relevance
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match
 
+**Candidate Spread**:
+The distance between ranked **Continuation Candidates** in **Retrieval Confidence** and supporting evidence. A narrow Candidate Spread should produce an **Ambiguous Resume** instead of forcing a single Continuation.
+_Avoid_: winner by default, hidden uncertainty, arbitrary tie break
+
 **Open Thread**:
 An unresolved question, task, tension, or next step that remains active within a **Continuation**. Open Threads help a Resume Brief restart action rather than merely summarize history.
 _Avoid_: todo, task only, reminder
