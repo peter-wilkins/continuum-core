@@ -1,0 +1,27 @@
+{
+  "mailbox": {
+    "path": "takeout/Mail/All mail Including Spam and Trash.mbox"
+  },
+  "message": {
+    "messageId": "<quote-456@example.com>",
+    "date": "Thu, 21 May 2026 10:42:03 +0000",
+    "from": {
+      "name": "Peter Wilkins",
+      "address": "peter@example.com"
+    },
+    "to": [
+      {
+        "name": "Bob",
+        "address": "bob@example.com"
+      }
+    ],
+    "cc": [],
+    "bcc": [],
+    "replyTo": [],
+    "subject": "Boiler quote",
+    "textBody": "Need to quote Bob for the boiler.",
+    "inReplyTo": ["<quote-123@example.com>"],
+    "references": ["<quote-123@example.com>"],
+    "attachmentCount": 0
+  }
+}

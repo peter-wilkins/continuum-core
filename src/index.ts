@@ -12,7 +12,15 @@ export function describeContinuumCorePackage(): ContinuumCorePackage {
 
 export type CanonicalActorRole = "user" | "assistant" | "system" | "tool" | "other";
 
-export type CanonicalSourcePlatform = "chatgpt" | "claude";
+export type CanonicalSourcePlatform = "chatgpt" | "claude" | "email";
+
+export type CanonicalParticipantRole = "sender" | "recipient" | "cc" | "bcc" | "reply_to";
+
+export type CanonicalParticipant = {
+  role: CanonicalParticipantRole;
+  name: string | null;
+  address: string;
+};
 
 export type TimeConfidence = "exact" | "inferred" | "unknown";
 
@@ -34,8 +42,10 @@ export type CanonicalEvent = {
   actor: {
     role: CanonicalActorRole;
   };
+  participants: CanonicalParticipant[];
   content: {
     kind: "text";
+    subject: string | null;
     text: string;
   };
 };
@@ -93,6 +103,31 @@ export type ClaudeMessageNormalizationInput = {
 
 export type ClaudeConversationExport = ClaudeMessageNormalizationInput["conversation"] & {
   chat_messages: ClaudeMessageNormalizationInput["message"][];
+};
+
+export type EmailAddress = {
+  name: string | null;
+  address: string;
+};
+
+export type EmailMessageNormalizationInput = {
+  mailbox: {
+    path: string;
+  };
+  message: {
+    messageId: string;
+    date: string;
+    from: EmailAddress;
+    to: EmailAddress[];
+    cc: EmailAddress[];
+    bcc: EmailAddress[];
+    replyTo: EmailAddress[];
+    subject: string;
+    textBody: string;
+    inReplyTo: string[];
+    references: string[];
+    attachmentCount: number;
+  };
 };
 
 export type ImportReport = {
@@ -160,6 +195,35 @@ function claudeSourceFingerprint(input: ClaudeMessageNormalizationInput): string
   );
 }
 
+function emailThreadId(input: EmailMessageNormalizationInput): string {
+  return input.message.references[0] ?? input.message.messageId;
+}
+
+function emailSourceKey(input: EmailMessageNormalizationInput): string {
+  return `email:${input.message.messageId}`;
+}
+
+function emailSourceFingerprint(input: EmailMessageNormalizationInput): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "email",
+      mailboxPath: input.mailbox.path,
+      messageId: input.message.messageId,
+      date: input.message.date,
+      from: input.message.from,
+      to: input.message.to,
+      cc: input.message.cc,
+      bcc: input.message.bcc,
+      replyTo: input.message.replyTo,
+      subject: input.message.subject,
+      textBody: input.message.textBody,
+      inReplyTo: input.message.inReplyTo,
+      references: input.message.references,
+      attachmentCount: input.message.attachmentCount,
+    }),
+  );
+}
+
 function normalizeClaudeSender(
   sender: ClaudeMessageNormalizationInput["message"]["sender"],
 ): CanonicalActorRole {
@@ -168,6 +232,28 @@ function normalizeClaudeSender(
   }
 
   return sender;
+}
+
+function emailParticipants(input: EmailMessageNormalizationInput): CanonicalParticipant[] {
+  return [
+    { role: "sender", ...input.message.from },
+    ...input.message.to.map((participant) => ({
+      role: "recipient" as const,
+      ...participant,
+    })),
+    ...input.message.cc.map((participant) => ({
+      role: "cc" as const,
+      ...participant,
+    })),
+    ...input.message.bcc.map((participant) => ({
+      role: "bcc" as const,
+      ...participant,
+    })),
+    ...input.message.replyTo.map((participant) => ({
+      role: "reply_to" as const,
+      ...participant,
+    })),
+  ];
 }
 
 export function normalizeChatGptMessage(
@@ -193,8 +279,10 @@ export function normalizeChatGptMessage(
     actor: {
       role: input.node.message.author.role,
     },
+    participants: [],
     content: {
       kind: "text",
+      subject: null,
       text: input.node.message.content.parts.join("\n"),
     },
   };
@@ -223,9 +311,43 @@ export function normalizeClaudeMessage(
     actor: {
       role: normalizeClaudeSender(input.message.sender),
     },
+    participants: [],
     content: {
       kind: "text",
+      subject: null,
       text: input.message.text,
+    },
+  };
+}
+
+export function normalizeEmailMessage(
+  input: EmailMessageNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = emailSourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "email",
+      key: sourceKey,
+      fingerprint: emailSourceFingerprint(input),
+      externalConversationId: emailThreadId(input),
+      externalMessageId: input.message.messageId,
+      externalParentId: input.message.inReplyTo[0] ?? null,
+      canonicalParentEventId: null,
+    },
+    time: {
+      createdAt: new Date(input.message.date).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: emailParticipants(input),
+    content: {
+      kind: "text",
+      subject: input.message.subject,
+      text: input.message.textBody,
     },
   };
 }

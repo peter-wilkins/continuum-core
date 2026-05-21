@@ -35,7 +35,7 @@ export const canonicalEventSchema = {
       fields: [
         {
           name: "platform",
-          type: '"chatgpt" | "claude"',
+          type: '"chatgpt" | "claude" | "email"',
           required: true,
           description: "Source platform for the importer adapter.",
         },
@@ -112,6 +112,31 @@ export const canonicalEventSchema = {
       ],
     },
     {
+      name: "participants",
+      purpose:
+        "People or addresses involved in the event when the source has explicit participants.",
+      fields: [
+        {
+          name: "role",
+          type: '"sender" | "recipient" | "cc" | "bcc" | "reply_to"',
+          required: true,
+          description: "Participant's role in the source event.",
+        },
+        {
+          name: "name",
+          type: "string | null",
+          required: true,
+          description: "Display name from the source, or null when absent.",
+        },
+        {
+          name: "address",
+          type: "string",
+          required: true,
+          description: "Email address or equivalent source address.",
+        },
+      ],
+    },
+    {
       name: "content",
       purpose: "The normalized payload that can later feed memory/retrieval.",
       fields: [
@@ -122,10 +147,18 @@ export const canonicalEventSchema = {
           description: "Content kind supported by the first importer slice.",
         },
         {
+          name: "subject",
+          type: "string | null",
+          required: true,
+          description:
+            "Event subject or title when the source has one; null for chat messages.",
+        },
+        {
           name: "text",
           type: "string",
           required: true,
-          description: "Normalized message text.",
+          description:
+            "Normalized event body text without hiding quote/threading questions.",
         },
       ],
     },
@@ -140,6 +173,11 @@ export const canonicalEventSchema = {
       from: "source.externalParentId",
       to: "source.canonicalParentEventId",
       label: "source id can later resolve to canonical id",
+    },
+    {
+      from: "participants.address",
+      to: "Identity Model",
+      label: "email aliases need a later identity-resolution model",
     },
     {
       from: "content.text",

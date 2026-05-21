@@ -19,7 +19,11 @@ describe("canonical event schema descriptor", () => {
       "time.createdAt",
       "time.createdAtConfidence",
       "actor.role",
+      "participants.role",
+      "participants.name",
+      "participants.address",
       "content.kind",
+      "content.subject",
       "content.text",
     ]);
   });

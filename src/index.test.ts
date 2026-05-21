@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 import claudeFixture from "./fixtures/claude-one-conversation.json" with {
   type: "json",
 };
+import emailFixture from "./fixtures/email-one-message.json" with {
+  type: "json",
+};
 
 import {
   type ClaudeConversationExport,
+  type EmailMessageNormalizationInput,
   mergeCanonicalEvents,
   continuumCorePackageName,
   describeContinuumCorePackage,
   normalizeClaudeConversations,
   normalizeChatGptMessage,
+  normalizeEmailMessage,
 } from "./index";
 
 describe("continuum core package scaffold", () => {
@@ -48,7 +53,9 @@ describe("ChatGPT import normalization", () => {
 
     expect(event.id).toBe("chatgpt:conv_123:msg_456");
     expect(event.actor.role).toBe("user");
+    expect(event.participants).toEqual([]);
     expect(event.content.text).toBe("Need to quote Bob for the boiler.");
+    expect(event.content.subject).toBeNull();
     expect(event.source.platform).toBe("chatgpt");
     expect(event.source.key).toBe("chatgpt:conv_123:msg_456");
     expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
@@ -245,6 +252,51 @@ describe("ChatGPT import normalization", () => {
       changed: 1,
       uncertain: 0,
     });
+  });
+});
+
+describe("Email import normalization", () => {
+  it("imports one RFC email message into the canonical event model", () => {
+    const event = normalizeEmailMessage(
+      emailFixture as EmailMessageNormalizationInput,
+    );
+
+    expect(event).toMatchObject({
+      id: "email:<quote-456@example.com>",
+      source: {
+        platform: "email",
+        key: "email:<quote-456@example.com>",
+        externalConversationId: "<quote-123@example.com>",
+        externalMessageId: "<quote-456@example.com>",
+        externalParentId: "<quote-123@example.com>",
+        canonicalParentEventId: null,
+      },
+      time: {
+        createdAt: "2026-05-21T10:42:03.000Z",
+        createdAtConfidence: "exact",
+      },
+      actor: {
+        role: "other",
+      },
+      participants: [
+        {
+          role: "sender",
+          name: "Peter Wilkins",
+          address: "peter@example.com",
+        },
+        {
+          role: "recipient",
+          name: "Bob",
+          address: "bob@example.com",
+        },
+      ],
+      content: {
+        kind: "text",
+        subject: "Boiler quote",
+        text: "Need to quote Bob for the boiler.",
+      },
+    });
+    expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
   });
 });
 
