@@ -9,7 +9,15 @@ import {
   mergeCanonicalEvents,
   normalizeClaudeConversations,
   normalizeChatGptConversations,
+  normalizeGoogleChromeBookmarksExport,
+  normalizeGoogleChromeHistoryExport,
+  normalizeGoogleChromeReadingListExport,
+  normalizeGoogleMyActivityExport,
   parseClaudeConversationsWithQuarantine,
+  parseGoogleChromeBookmarksExport,
+  parseGoogleChromeHistoryExport,
+  parseGoogleChromeReadingListExport,
+  parseGoogleMyActivityExport,
   type CanonicalEvent,
   type ChatGptConversationExport,
   type ImportReport,
@@ -100,19 +108,39 @@ type CliCommand =
       previewPath: string;
     };
 
-type ImportCommand = "chatgpt" | "claude";
+type ImportCommand =
+  | "chatgpt"
+  | "claude"
+  | "google-chrome-history"
+  | "google-chrome-bookmarks"
+  | "google-chrome-reading-list"
+  | "google-my-activity";
+
+const importCommands = [
+  "chatgpt",
+  "claude",
+  "google-chrome-history",
+  "google-chrome-bookmarks",
+  "google-chrome-reading-list",
+  "google-my-activity",
+] as const satisfies ImportCommand[];
+const importCommandUsage = importCommands.join("|");
+
+function isImportCommand(source: string | undefined): source is ImportCommand {
+  return importCommands.some((command) => command === source);
+}
 
 function parseCliCommand(args: string[]): CliCommand {
   const [command, inputPath, outFlag, outputPath] = args;
 
   if (
-    (command !== "chatgpt" && command !== "claude") ||
+    !isImportCommand(command) ||
     !inputPath ||
     outFlag !== "--out" ||
     !outputPath
   ) {
     throw new Error(
-      "Usage: continuum-import <chatgpt|claude> <conversations.json> --out <events.jsonl>",
+      `Usage: continuum-import <${importCommandUsage}> <source-file> --out <events.jsonl>`,
     );
   }
 
@@ -122,8 +150,8 @@ function parseCliCommand(args: string[]): CliCommand {
 function parseInspectCommand(args: string[]): CliCommand {
   const [, source, inputPath] = args;
 
-  if ((source !== "chatgpt" && source !== "claude") || !inputPath) {
-    throw new Error("Usage: continuum-import inspect <chatgpt|claude> <conversations.json>");
+  if (!isImportCommand(source) || !inputPath) {
+    throw new Error(`Usage: continuum-import inspect <${importCommandUsage}> <source-file>`);
   }
 
   return { kind: "inspect", source, inputPath };
@@ -133,13 +161,13 @@ function parseDryRunCommand(args: string[]): CliCommand {
   const [, source, inputPath, outFlag, previewPath] = args;
 
   if (
-    (source !== "chatgpt" && source !== "claude") ||
+    !isImportCommand(source) ||
     !inputPath ||
     outFlag !== "--out" ||
     !previewPath
   ) {
     throw new Error(
-      "Usage: continuum-import dry-run <chatgpt|claude> <conversations.json> --out <preview.json>",
+      `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> --out <preview.json>`,
     );
   }
 
@@ -219,17 +247,33 @@ async function readSourceInput(
   source: ImportCommand,
   inputPath: string,
 ): Promise<SourceInput> {
-  if (source !== "claude" && source !== "chatgpt") {
-    throw new Error(`Unsupported source ${source}`);
-  }
-
   const raw = await readFile(inputPath, "utf8");
 
   return {
     raw,
-    parsed: JSON.parse(raw) as unknown,
+    parsed: sourceInputNeedsJson(source) ? JSON.parse(raw) as unknown : raw,
     hash: createHash("sha256").update(raw).digest("hex"),
   };
+}
+
+function sourceInputNeedsJson(source: ImportCommand): boolean {
+  return ![
+    "google-chrome-bookmarks",
+    "google-chrome-reading-list",
+  ].includes(source);
+}
+
+function validationErrorsToQuarantine(
+  source: ImportCommand,
+  errors: Array<{ path: string; message: string }>,
+): ImportErrorRecord[] {
+  return errors.map((error) => ({
+    sourcePath: error.path,
+    recordIndex: null,
+    errorCode: "source_validation_failed",
+    message: `${source}:${error.path}: ${error.message}`,
+    recoverable: true,
+  }));
 }
 
 function normalizeSourceInput(
@@ -244,6 +288,70 @@ function normalizeSourceInput(
       incomingEvents: normalizeChatGptConversations(
         parsed as ChatGptConversationExport[],
       ),
+      quarantine: [],
+    };
+  }
+
+  if (source === "google-chrome-history") {
+    const result = parseGoogleChromeHistoryExport(parsed);
+
+    if (!result.ok) {
+      return {
+        incomingEvents: [],
+        quarantine: validationErrorsToQuarantine(source, result.errors),
+      };
+    }
+
+    return {
+      incomingEvents: normalizeGoogleChromeHistoryExport(result.value),
+      quarantine: [],
+    };
+  }
+
+  if (source === "google-chrome-bookmarks") {
+    const result = parseGoogleChromeBookmarksExport(String(parsed));
+
+    if (!result.ok) {
+      return {
+        incomingEvents: [],
+        quarantine: validationErrorsToQuarantine(source, result.errors),
+      };
+    }
+
+    return {
+      incomingEvents: normalizeGoogleChromeBookmarksExport(result.value),
+      quarantine: [],
+    };
+  }
+
+  if (source === "google-chrome-reading-list") {
+    const result = parseGoogleChromeReadingListExport(String(parsed));
+
+    if (!result.ok) {
+      return {
+        incomingEvents: [],
+        quarantine: validationErrorsToQuarantine(source, result.errors),
+      };
+    }
+
+    return {
+      incomingEvents: normalizeGoogleChromeReadingListExport(result.value),
+      quarantine: [],
+    };
+  }
+
+  if (source === "google-my-activity") {
+    const result = parseGoogleMyActivityExport(parsed);
+
+    if (!result.ok) {
+      return {
+        incomingEvents: [],
+        quarantine: validationErrorsToQuarantine(source, result.errors),
+      };
+    }
+
+    return {
+      incomingEvents: normalizeGoogleMyActivityExport(result.value),
       quarantine: [],
     };
   }

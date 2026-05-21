@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,18 @@ const fixturePath = fileURLToPath(
 );
 const claudeFixturePath = fileURLToPath(
   new URL("./fixtures/claude-one-conversation.json", import.meta.url),
+);
+const chromeHistoryFixturePath = fileURLToPath(
+  new URL("./fixtures/google-chrome-history-one-record.json", import.meta.url),
+);
+const chromeBookmarksFixturePath = fileURLToPath(
+  new URL("./fixtures/google-chrome-bookmarks-one-record.html", import.meta.url),
+);
+const chromeReadingListFixturePath = fileURLToPath(
+  new URL("./fixtures/google-chrome-reading-list-one-record.html", import.meta.url),
+);
+const googleMyActivityFixturePath = fileURLToPath(
+  new URL("./fixtures/google-my-activity-three-records.json", import.meta.url),
 );
 
 describe("continuum-import CLI", () => {
@@ -216,6 +228,144 @@ describe("continuum-import CLI", () => {
       });
       expect(preview.events).toHaveLength(2);
       expect(preview.quarantine).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports one Chrome history fixture through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+    const chromeHistoryExportPath = join(dir, "chrome-history.json");
+
+    try {
+      const chromeHistoryFixture = JSON.parse(
+        await readFile(chromeHistoryFixturePath, "utf8"),
+      );
+      await writeFile(
+        chromeHistoryExportPath,
+        JSON.stringify({ "Browser History": [chromeHistoryFixture.history] }),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "google-chrome-history",
+        chromeHistoryExportPath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        outputPath,
+        report: {
+          new: 1,
+          known: 0,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "google_chrome",
+          externalConversationId: "chrome-client-123",
+        },
+        content: {
+          subject: "Continuum core issue tracker",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs Chrome bookmarks HTML through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-chrome-bookmarks",
+        chromeBookmarksFixturePath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.sourcePlatform).toBe("google-chrome-bookmarks");
+      expect(result.batch.stats.recordsSeen).toBe(1);
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.events).toEqual([
+        expect.objectContaining({
+          platform: "google_chrome",
+          subject: "Continuum core",
+        }),
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("inspects Chrome reading list HTML through the CLI", async () => {
+    const result = await runContinuumImportCli([
+      "inspect",
+      "google-chrome-reading-list",
+      chromeReadingListFixturePath,
+    ]);
+
+    expect(result).toEqual({
+      command: "inspect",
+      sourcePlatform: "google-chrome-reading-list",
+      sourceName: "google-chrome-reading-list",
+      inputPath: chromeReadingListFixturePath,
+      conversationsSeen: 0,
+      recordsSeen: 1,
+      validationErrors: 0,
+      importableEvents: 1,
+    });
+  });
+
+  it("imports mixed Google My Activity records through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "google-my-activity",
+        googleMyActivityFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 3,
+        outputPath,
+        report: {
+          new: 3,
+          known: 0,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(3);
+      expect(lines.map((line) => JSON.parse(line).source.externalConversationId)).toEqual([
+        "YouTube",
+        "Search",
+        "Maps",
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
