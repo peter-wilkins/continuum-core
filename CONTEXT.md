@@ -24,6 +24,14 @@ _Avoid_: certainty, score without bounds, priority
 The append-only record of **Entries** that acts as the source of truth for captured context. Derived material must not be treated as source truth.
 _Avoid_: memory, archive, database
 
+**Canonical Event**:
+An immutable normalized event in Continuum's unified event model. A Canonical Event may come from live capture or from an imported external source record.
+_Avoid_: vendor record, raw message, source-specific event
+
+**Source Graph Reference**:
+A source-system relationship identifier preserved during import, such as a ChatGPT parent message id. A Source Graph Reference is not the same thing as a canonical parent event id until both source records have been normalized and linked.
+_Avoid_: canonical parent, internal graph edge
+
 **Memory Layer**:
 Derived retrieval material built from the **Source Log**, such as summaries, embeddings, salience, temporal weighting, and Continuation associations. The **Memory Layer** must be rebuildable from the Source Log except where Entries have been forgotten.
 _Avoid_: source memory, transcript store
@@ -73,6 +81,7 @@ _Avoid_: client, consumer, frontend
 - **Stream** is avoided because it is overloaded in software. Use **Continuation** for an ongoing resumable context.
 - **Metadata** is avoided because it hides whether context is required. Use **Capture Context** for the required envelope and **Context Clue** for individual evidence.
 - **Continuation state** is avoided because it blurs the infinite Continuation with the materialized view. Use **Resume Brief** for the materialized view.
+- **Source parent id** is avoided for canonical relationships because external graph ids and internal event ids have different stability and meaning. Use **Source Graph Reference** until the canonical relationship is known.
 
 ## Example Dialogue
 
