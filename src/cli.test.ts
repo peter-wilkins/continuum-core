@@ -842,6 +842,59 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("quarantines a Google Takeout zip record with an invalid time", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const bookmarks = await readFile(chromeBookmarksFixturePath, "utf8");
+      const invalidBookmark =
+        '<DT><A HREF="https://example.com/bad-date" ADD_DATE="not-a-date">Bad date</A>';
+      const zipped = zipSync({
+        "Takeout/Chrome/Bookmarks.html": strToU8(
+          bookmarks.replace("</DL><p>", `${invalidBookmark}\n</DL><p>`),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsSeen).toBe(2);
+      expect(result.batch.stats.eventsCreated).toBe(1);
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Chrome/Bookmarks.html",
+          source: "google-chrome-bookmarks",
+          status: "invalid",
+          eventsCreated: 1,
+          quarantineRecords: 1,
+        },
+      ]);
+      expect(preview.quarantine[0]).toMatchObject({
+        sourcePath: "Takeout/Chrome/Bookmarks.html",
+        recordIndex: 1,
+        errorCode: "source_normalization_failed",
+        recoverable: true,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("inspects and imports a Google Takeout zip idempotently", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
     const zipPath = join(dir, "takeout.zip");

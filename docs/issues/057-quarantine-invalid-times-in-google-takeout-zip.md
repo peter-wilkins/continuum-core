@@ -1,6 +1,6 @@
 # 057: Quarantine Invalid Times In Google Takeout Zip
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -18,12 +18,12 @@ The importer should quarantine the bad record or file and continue inspecting/im
 
 ## Acceptance Criteria
 
-- [ ] Add a focused fixture or generated test record with an invalid timestamp in a routed Google source.
-- [ ] Dry-run of a Google Takeout zip does not throw `Invalid time value`.
-- [ ] Bad timestamp input produces a recoverable quarantine record.
-- [ ] Source-file preview marks the affected file as `invalid` or reports quarantine records.
-- [ ] Valid records in the same zip still import or preview normally.
-- [ ] The fix applies to the source adapter boundary, not only one CLI command path.
+- [x] Add a focused fixture or generated test record with an invalid timestamp in a routed Google source.
+- [x] Dry-run of a Google Takeout zip does not throw `Invalid time value`.
+- [x] Bad timestamp input produces a recoverable quarantine record.
+- [x] Source-file preview marks the affected file as `invalid` or reports quarantine records.
+- [x] Valid records in the same zip still import or preview normally.
+- [x] The fix applies to the source adapter boundary, not only one CLI command path.
 
 ## Blocked by
 

@@ -6,10 +6,10 @@ import {
   type ImportErrorRecord,
   normalizeChatGptConversations,
   normalizeClaudeConversations,
-  normalizeGoogleChromeBookmarksExport,
-  normalizeGoogleChromeHistoryExport,
-  normalizeGoogleChromeReadingListExport,
-  normalizeGoogleMyActivityExport,
+  normalizeGoogleChromeBookmarkRecord,
+  normalizeGoogleChromeHistoryRecord,
+  normalizeGoogleChromeReadingListRecord,
+  normalizeGoogleMyActivityRecord,
   normalizeGitCommit,
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
@@ -92,6 +92,46 @@ function validationErrorsToQuarantine(
   }));
 }
 
+function normalizationErrorToQuarantine(
+  source: ImportCommand,
+  recordIndex: number,
+  error: unknown,
+): ImportErrorRecord {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return {
+    sourcePath: "",
+    recordIndex,
+    errorCode: "source_normalization_failed",
+    message: `${source}:${recordIndex}: ${message}`,
+    recoverable: true,
+  };
+}
+
+function normalizeRecordsWithQuarantine<T>(
+  source: ImportCommand,
+  records: T[],
+  normalize: (record: T) => CanonicalEvent,
+): NormalizedSourceInput {
+  const incomingEvents: CanonicalEvent[] = [];
+  const quarantine: ImportErrorRecord[] = [];
+
+  records.forEach((record, recordIndex) => {
+    try {
+      incomingEvents.push(normalize(record));
+    } catch (error: unknown) {
+      quarantine.push(normalizationErrorToQuarantine(source, recordIndex, error));
+    }
+  });
+
+  return {
+    incomingEvents,
+    quarantine,
+    sourceFiles: [],
+    warnings: 0,
+  };
+}
+
 const sourceAdapters: SourceAdapter[] = [
   {
     source: "chatgpt",
@@ -142,7 +182,11 @@ const sourceAdapters: SourceAdapter[] = [
         };
       }
 
-      return emptyNormalizedInput(normalizeGoogleChromeHistoryExport(result.value));
+      return normalizeRecordsWithQuarantine(
+        "google-chrome-history",
+        result.value["Browser History"],
+        (history) => normalizeGoogleChromeHistoryRecord({ history }),
+      );
     },
   },
   {
@@ -169,7 +213,11 @@ const sourceAdapters: SourceAdapter[] = [
         };
       }
 
-      return emptyNormalizedInput(normalizeGoogleChromeBookmarksExport(result.value));
+      return normalizeRecordsWithQuarantine(
+        "google-chrome-bookmarks",
+        result.value.bookmarks,
+        (bookmark) => normalizeGoogleChromeBookmarkRecord({ bookmark }),
+      );
     },
   },
   {
@@ -196,8 +244,10 @@ const sourceAdapters: SourceAdapter[] = [
         };
       }
 
-      return emptyNormalizedInput(
-        normalizeGoogleChromeReadingListExport(result.value),
+      return normalizeRecordsWithQuarantine(
+        "google-chrome-reading-list",
+        result.value.entries,
+        (bookmark) => normalizeGoogleChromeReadingListRecord({ bookmark }),
       );
     },
   },
@@ -229,7 +279,11 @@ const sourceAdapters: SourceAdapter[] = [
         };
       }
 
-      return emptyNormalizedInput(normalizeGoogleMyActivityExport(result.value));
+      return normalizeRecordsWithQuarantine(
+        "google-my-activity",
+        result.value,
+        (activity) => normalizeGoogleMyActivityRecord({ activity }),
+      );
     },
   },
   {
