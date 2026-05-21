@@ -48,6 +48,7 @@ export type ImportPreview = {
   batch: ImportBatch;
   report: ImportReport;
   quarantine: ImportErrorRecord[];
+  sourceFiles: SourceFilePreview[];
   events: Array<{
     id: string;
     platform: string;
@@ -55,6 +56,14 @@ export type ImportPreview = {
     createdAt: string;
     subject: string | null;
   }>;
+};
+
+export type SourceFilePreview = {
+  path: string;
+  source: ImportCommand | null;
+  status: "matched" | "skipped" | "invalid";
+  eventsCreated: number;
+  quarantineRecords: number;
 };
 
 export type ImportWriteCliResult = {
@@ -253,6 +262,12 @@ type TakeoutFolderFile = {
   hash: string;
 };
 
+type NormalizedSourceInput = {
+  incomingEvents: CanonicalEvent[];
+  quarantine: ImportErrorRecord[];
+  sourceFiles: SourceFilePreview[];
+};
+
 async function readSourceInput(
   source: ImportCommand,
   inputPath: string,
@@ -361,9 +376,11 @@ function unsupportedTakeoutFile(file: TakeoutFolderFile): ImportErrorRecord {
 function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
+  sourceFiles: SourceFilePreview[];
 } {
   const incomingEvents: CanonicalEvent[] = [];
   const quarantine: ImportErrorRecord[] = [];
+  const sourceFiles: SourceFilePreview[] = [];
 
   for (const file of files) {
     const lowerPath = file.relativePath.toLowerCase();
@@ -382,33 +399,43 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
 
     if (source === null) {
       quarantine.push(unsupportedTakeoutFile(file));
+      sourceFiles.push({
+        path: file.relativePath,
+        source: null,
+        status: "skipped",
+        eventsCreated: 0,
+        quarantineRecords: 1,
+      });
       continue;
     }
 
     const parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
     const result = normalizeSourceInput(source, parsed);
+    const fileQuarantine = result.quarantine.map((record) => ({
+      ...record,
+      sourcePath: record.sourcePath
+        ? `${file.relativePath}:${record.sourcePath}`
+        : file.relativePath,
+    }));
 
     incomingEvents.push(...result.incomingEvents);
-    quarantine.push(
-      ...result.quarantine.map((record) => ({
-        ...record,
-        sourcePath: record.sourcePath
-          ? `${file.relativePath}:${record.sourcePath}`
-          : file.relativePath,
-      })),
-    );
+    quarantine.push(...fileQuarantine);
+    sourceFiles.push({
+      path: file.relativePath,
+      source,
+      status: fileQuarantine.length > 0 ? "invalid" : "matched",
+      eventsCreated: result.incomingEvents.length,
+      quarantineRecords: fileQuarantine.length,
+    });
   }
 
-  return { incomingEvents, quarantine };
+  return { incomingEvents, quarantine, sourceFiles };
 }
 
 function normalizeSourceInput(
   source: ImportCommand,
   parsed: unknown,
-): {
-  incomingEvents: CanonicalEvent[];
-  quarantine: ImportErrorRecord[];
-} {
+): NormalizedSourceInput {
   if (source === "google-takeout-folder") {
     return normalizeTakeoutFolder(parsed as TakeoutFolderFile[]);
   }
@@ -419,6 +446,7 @@ function normalizeSourceInput(
         parsed as ChatGptConversationExport[],
       ),
       quarantine: [],
+      sourceFiles: [],
     };
   }
 
@@ -429,12 +457,14 @@ function normalizeSourceInput(
       return {
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
+        sourceFiles: [],
       };
     }
 
     return {
       incomingEvents: normalizeGoogleChromeHistoryExport(result.value),
       quarantine: [],
+      sourceFiles: [],
     };
   }
 
@@ -445,12 +475,14 @@ function normalizeSourceInput(
       return {
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
+        sourceFiles: [],
       };
     }
 
     return {
       incomingEvents: normalizeGoogleChromeBookmarksExport(result.value),
       quarantine: [],
+      sourceFiles: [],
     };
   }
 
@@ -461,12 +493,14 @@ function normalizeSourceInput(
       return {
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
+        sourceFiles: [],
       };
     }
 
     return {
       incomingEvents: normalizeGoogleChromeReadingListExport(result.value),
       quarantine: [],
+      sourceFiles: [],
     };
   }
 
@@ -477,12 +511,14 @@ function normalizeSourceInput(
       return {
         incomingEvents: [],
         quarantine: validationErrorsToQuarantine(source, result.errors),
+        sourceFiles: [],
       };
     }
 
     return {
       incomingEvents: normalizeGoogleMyActivityExport(result.value),
       quarantine: [],
+      sourceFiles: [],
     };
   }
 
@@ -491,11 +527,12 @@ function normalizeSourceInput(
   return {
     incomingEvents: normalizeClaudeConversations(result.conversations),
     quarantine: result.quarantine,
+    sourceFiles: [],
   };
 }
 
 function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input: SourceInput): InspectCliResult {
-  const { incomingEvents, quarantine } = normalizeSourceInput(
+  const { incomingEvents, quarantine, sourceFiles } = normalizeSourceInput(
     command.source,
     input.parsed,
   );
@@ -520,7 +557,7 @@ async function dryRunImport(
   command: Extract<CliCommand, { kind: "dry-run" }>,
   input: SourceInput,
 ): Promise<DryRunCliResult> {
-  const { incomingEvents, quarantine } = normalizeSourceInput(
+  const { incomingEvents, quarantine, sourceFiles } = normalizeSourceInput(
     command.source,
     input.parsed,
   );
@@ -538,6 +575,15 @@ async function dryRunImport(
     batch,
     report,
     quarantine,
+    sourceFiles:
+      sourceFiles.length > 0
+        ? sourceFiles
+        : sourceFilesForPreview(
+            command.source,
+            command.inputPath,
+            incomingEvents,
+            quarantine,
+          ),
     events: incomingEvents.map((event) => ({
       id: event.id,
       platform: event.source.platform,
@@ -556,6 +602,27 @@ async function dryRunImport(
     report,
     quarantine,
   };
+}
+
+function sourceFilesForPreview(
+  source: ImportCommand,
+  inputPath: string,
+  incomingEvents: CanonicalEvent[],
+  quarantine: ImportErrorRecord[],
+): SourceFilePreview[] {
+  if (source === "google-takeout-folder") {
+    return [];
+  }
+
+  return [
+    {
+      path: basename(inputPath),
+      source,
+      status: quarantine.length > 0 ? "invalid" : "matched",
+      eventsCreated: incomingEvents.length,
+      quarantineRecords: quarantine.length,
+    },
+  ];
 }
 
 function createImportBatch(input: {

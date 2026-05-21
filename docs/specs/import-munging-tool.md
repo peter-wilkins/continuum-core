@@ -373,6 +373,7 @@ Current dry-run preview includes:
 - import batch
 - new/known/changed/uncertain report
 - quarantine records
+- source file summaries
 - event summaries
 
 Later previews should include import profile summaries:

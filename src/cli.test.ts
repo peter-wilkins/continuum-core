@@ -482,6 +482,29 @@ describe("continuum-import CLI", () => {
         "google_activity",
         "google_activity",
       ]);
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Chrome/Bookmarks.html",
+          source: "google-chrome-bookmarks",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+        {
+          path: "Takeout/Chrome/BrowserHistory.json",
+          source: "google-chrome-history",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+        {
+          path: "Takeout/My Activity/YouTube/MyActivity.json",
+          source: "google-my-activity",
+          status: "matched",
+          eventsCreated: 3,
+          quarantineRecords: 0,
+        },
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
