@@ -5,6 +5,7 @@ import {
   createAmbiguousResumeSurface,
   debugRankingProfiles,
   type ImportedEntry,
+  recordRetrievalFeedbackLoop,
   retrieveContinuationCandidates,
 } from "./index";
 
@@ -344,5 +345,115 @@ describe("Continuity Retrieval", () => {
     expect(comparison.profileResults[1]?.candidates[0]).toMatchObject({
       title: "Boiler quote",
     });
+  });
+
+  it("records Feedback Signals for a Retrieval Feedback Loop", () => {
+    const resumeRequest = {
+      text: "resume membranes",
+      requestedAt: "2026-05-21T12:00:00.000Z",
+    };
+    const [candidate] = retrieveContinuationCandidates({
+      resumeRequest,
+      rankingProfile: debugRankingProfiles.balanced,
+      entries: [
+        importedEntry({
+          id: "entry:membranes-1",
+          canonicalEventId: "markdown:membranes-1",
+          occurredAt: "2026-05-21T10:00:00.000Z",
+          subject: "Membranes",
+          text: "Membranes filter data before it leaves the private core.",
+        }),
+      ],
+    });
+
+    expect(candidate).toBeDefined();
+
+    const feedbackLoop = recordRetrievalFeedbackLoop({
+      resumeRequest,
+      continuationCandidate: candidate!,
+      feedbackSignals: [
+        {
+          kind: "explicit_user_correction",
+          recordedAt: "2026-05-21T12:01:00.000Z",
+          correction: "strengthen",
+          rationale: "This was the continuation I meant.",
+        },
+        {
+          kind: "model_assisted_critique",
+          recordedAt: "2026-05-21T12:02:00.000Z",
+          modelName: "debug-rater",
+          verdict: "questions_link",
+          critique: "The link relies mostly on the shared word membranes.",
+        },
+      ],
+    });
+
+    expect(feedbackLoop).toMatchObject({
+      resumeRequest,
+      continuationCandidate: {
+        id: candidate?.id,
+        title: "Membranes",
+      },
+      supportingEntries: [
+        {
+          entryId: "entry:membranes-1",
+        },
+      ],
+      feedbackSignals: [
+        {
+          kind: "explicit_user_correction",
+          authority: "user_correction",
+          correction: "strengthen",
+          rationale: "This was the continuation I meant.",
+          resumeRequest,
+          continuationCandidate: {
+            id: candidate?.id,
+            title: "Membranes",
+          },
+          supportingEntries: [
+            {
+              entryId: "entry:membranes-1",
+            },
+          ],
+          linkAdjustment: {
+            candidateId: candidate?.id,
+            action: "strengthen",
+            confidenceDelta: 0.1,
+            rejected: false,
+            reason: "This was the continuation I meant.",
+          },
+        },
+        {
+          kind: "model_assisted_critique",
+          authority: "inspectable_evidence_only",
+          modelName: "debug-rater",
+          verdict: "questions_link",
+          critique: "The link relies mostly on the shared word membranes.",
+          resumeRequest,
+          continuationCandidate: {
+            id: candidate?.id,
+            title: "Membranes",
+          },
+          supportingEntries: [
+            {
+              entryId: "entry:membranes-1",
+            },
+          ],
+        },
+      ],
+      linkAdjustments: [
+        {
+          candidateId: candidate?.id,
+          action: "strengthen",
+          confidenceDelta: 0.1,
+          rejected: false,
+          reason: "This was the continuation I meant.",
+        },
+      ],
+    });
+    expect(feedbackLoop.feedbackSignals.map((signal) => signal.id)).toEqual([
+      expect.stringMatching(/^feedback-signal:/),
+      expect.stringMatching(/^feedback-signal:/),
+    ]);
   });
 });

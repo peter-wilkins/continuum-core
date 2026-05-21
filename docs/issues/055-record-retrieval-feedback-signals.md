@@ -1,6 +1,6 @@
 # 055: Record Retrieval Feedback Signals
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,12 +20,12 @@ Record **Feedback Signals** for a **Retrieval Feedback Loop**. Explicit user cor
 
 ## Acceptance Criteria
 
-- [ ] Add Feedback Signal records for explicit corrections, behavioural signals, and model-assisted critique.
-- [ ] Preserve the related Resume Request, Continuation Candidate, and supporting Entry references.
-- [ ] Explicit user correction can strengthen/weaken or reject a Continuation Link.
-- [ ] Behavioural and model-assisted signals are recorded without being treated as truth.
-- [ ] Feedback Signals are inspectable for debugging.
-- [ ] Tests cover explicit correction and model-assisted critique as different signal types.
+- [x] Add Feedback Signal records for explicit corrections, behavioural signals, and model-assisted critique.
+- [x] Preserve the related Resume Request, Continuation Candidate, and supporting Entry references.
+- [x] Explicit user correction can strengthen/weaken or reject a Continuation Link.
+- [x] Behavioural and model-assisted signals are recorded without being treated as truth.
+- [x] Feedback Signals are inspectable for debugging.
+- [x] Tests cover explicit correction and model-assisted critique as different signal types.
 
 ## Blocked by
 

@@ -179,6 +179,114 @@ export type RankingProfileComparisonResult = {
   }[];
 };
 
+export type FeedbackSignalKind =
+  | "explicit_user_correction"
+  | "behavioural"
+  | "model_assisted_critique";
+
+export type ExplicitCorrectionAction = "strengthen" | "weaken" | "reject";
+
+export type BehaviouralFeedbackAction = "selected" | "ignored" | "opened_alternate";
+
+export type ModelAssistedCritiqueVerdict =
+  | "supports_link"
+  | "questions_link"
+  | "rejects_link";
+
+export type FeedbackSignalAuthority =
+  | "user_correction"
+  | "inspectable_evidence_only";
+
+export type ContinuationCandidateReference = {
+  id: string;
+  title: string;
+};
+
+export type SupportingEntryReference = {
+  entryId: string;
+};
+
+export type ContinuationLinkAdjustment = {
+  candidateId: string;
+  action: ExplicitCorrectionAction;
+  confidenceDelta: number;
+  rejected: boolean;
+  reason: string;
+};
+
+type FeedbackSignalBase = {
+  id: string;
+  kind: FeedbackSignalKind;
+  recordedAt: string;
+  resumeRequest: ResumeRequest;
+  continuationCandidate: ContinuationCandidateReference;
+  supportingEntries: SupportingEntryReference[];
+  authority: FeedbackSignalAuthority;
+};
+
+export type ExplicitCorrectionFeedbackSignal = FeedbackSignalBase & {
+  kind: "explicit_user_correction";
+  authority: "user_correction";
+  correction: ExplicitCorrectionAction;
+  rationale: string;
+  linkAdjustment: ContinuationLinkAdjustment;
+};
+
+export type BehaviouralFeedbackSignal = FeedbackSignalBase & {
+  kind: "behavioural";
+  authority: "inspectable_evidence_only";
+  behaviour: BehaviouralFeedbackAction;
+  rationale: string;
+};
+
+export type ModelAssistedCritiqueFeedbackSignal = FeedbackSignalBase & {
+  kind: "model_assisted_critique";
+  authority: "inspectable_evidence_only";
+  modelName: string;
+  verdict: ModelAssistedCritiqueVerdict;
+  critique: string;
+};
+
+export type FeedbackSignal =
+  | ExplicitCorrectionFeedbackSignal
+  | BehaviouralFeedbackSignal
+  | ModelAssistedCritiqueFeedbackSignal;
+
+export type FeedbackSignalInput =
+  | {
+      kind: "explicit_user_correction";
+      recordedAt: string;
+      correction: ExplicitCorrectionAction;
+      rationale: string;
+    }
+  | {
+      kind: "behavioural";
+      recordedAt: string;
+      behaviour: BehaviouralFeedbackAction;
+      rationale: string;
+    }
+  | {
+      kind: "model_assisted_critique";
+      recordedAt: string;
+      modelName: string;
+      verdict: ModelAssistedCritiqueVerdict;
+      critique: string;
+    };
+
+export type RetrievalFeedbackLoopInput = {
+  resumeRequest: ResumeRequest;
+  continuationCandidate: ContinuationCandidate;
+  feedbackSignals: FeedbackSignalInput[];
+};
+
+export type RetrievalFeedbackLoop = {
+  resumeRequest: ResumeRequest;
+  continuationCandidate: ContinuationCandidateReference;
+  supportingEntries: SupportingEntryReference[];
+  feedbackSignals: FeedbackSignal[];
+  linkAdjustments: ContinuationLinkAdjustment[];
+};
+
 export type AmbiguousResumeSurface = {
   kind: "ambiguous_resume";
   topCandidate: ContinuationCandidate | null;
@@ -716,6 +824,54 @@ function linkReasonsForEntry(
   }
 
   return reasons;
+}
+
+function candidateReference(
+  candidate: ContinuationCandidate,
+): ContinuationCandidateReference {
+  return {
+    id: candidate.id,
+    title: candidate.title,
+  };
+}
+
+function supportingEntryReferences(
+  candidate: ContinuationCandidate,
+): SupportingEntryReference[] {
+  return candidate.supportingEntryIds.map((entryId) => ({ entryId }));
+}
+
+function feedbackSignalId(input: {
+  kind: FeedbackSignalKind;
+  recordedAt: string;
+  resumeRequest: ResumeRequest;
+  candidateId: string;
+  payload: string;
+}): string {
+  return `feedback-signal:${stableHash(
+    [
+      input.kind,
+      input.recordedAt,
+      input.resumeRequest.requestedAt,
+      input.resumeRequest.text,
+      input.candidateId,
+      input.payload,
+    ].join("\n"),
+  )}`;
+}
+
+function confidenceDeltaForCorrection(
+  correction: ExplicitCorrectionAction,
+): number {
+  if (correction === "strengthen") {
+    return 0.1;
+  }
+
+  if (correction === "weaken") {
+    return -0.1;
+  }
+
+  return -1;
 }
 
 function keyBuffer(keyMaterial: string): Buffer {
@@ -2077,6 +2233,92 @@ export function compareRankingProfiles(
         rankingProfile: profile,
       }),
     })),
+  };
+}
+
+export function recordRetrievalFeedbackLoop(
+  input: RetrievalFeedbackLoopInput,
+): RetrievalFeedbackLoop {
+  const continuationCandidate = candidateReference(input.continuationCandidate);
+  const supportingEntries = supportingEntryReferences(input.continuationCandidate);
+  const feedbackSignals = input.feedbackSignals.map((signal): FeedbackSignal => {
+    if (signal.kind === "explicit_user_correction") {
+      const linkAdjustment: ContinuationLinkAdjustment = {
+        candidateId: continuationCandidate.id,
+        action: signal.correction,
+        confidenceDelta: confidenceDeltaForCorrection(signal.correction),
+        rejected: signal.correction === "reject",
+        reason: signal.rationale,
+      };
+
+      return {
+        id: feedbackSignalId({
+          kind: signal.kind,
+          recordedAt: signal.recordedAt,
+          resumeRequest: input.resumeRequest,
+          candidateId: continuationCandidate.id,
+          payload: `${signal.correction}\n${signal.rationale}`,
+        }),
+        kind: signal.kind,
+        recordedAt: signal.recordedAt,
+        resumeRequest: input.resumeRequest,
+        continuationCandidate,
+        supportingEntries,
+        authority: "user_correction",
+        correction: signal.correction,
+        rationale: signal.rationale,
+        linkAdjustment,
+      };
+    }
+
+    if (signal.kind === "behavioural") {
+      return {
+        id: feedbackSignalId({
+          kind: signal.kind,
+          recordedAt: signal.recordedAt,
+          resumeRequest: input.resumeRequest,
+          candidateId: continuationCandidate.id,
+          payload: `${signal.behaviour}\n${signal.rationale}`,
+        }),
+        kind: signal.kind,
+        recordedAt: signal.recordedAt,
+        resumeRequest: input.resumeRequest,
+        continuationCandidate,
+        supportingEntries,
+        authority: "inspectable_evidence_only",
+        behaviour: signal.behaviour,
+        rationale: signal.rationale,
+      };
+    }
+
+    return {
+      id: feedbackSignalId({
+        kind: signal.kind,
+        recordedAt: signal.recordedAt,
+        resumeRequest: input.resumeRequest,
+        candidateId: continuationCandidate.id,
+        payload: `${signal.modelName}\n${signal.verdict}\n${signal.critique}`,
+      }),
+      kind: signal.kind,
+      recordedAt: signal.recordedAt,
+      resumeRequest: input.resumeRequest,
+      continuationCandidate,
+      supportingEntries,
+      authority: "inspectable_evidence_only",
+      modelName: signal.modelName,
+      verdict: signal.verdict,
+      critique: signal.critique,
+    };
+  });
+
+  return {
+    resumeRequest: input.resumeRequest,
+    continuationCandidate,
+    supportingEntries,
+    feedbackSignals,
+    linkAdjustments: feedbackSignals.flatMap((signal) =>
+      signal.kind === "explicit_user_correction" ? [signal.linkAdjustment] : [],
+    ),
   };
 }
 
