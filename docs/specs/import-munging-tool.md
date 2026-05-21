@@ -426,6 +426,7 @@ Done:
 - CLI dry-run can read Google Takeout zip files with the same source classifier.
 - CLI inspect/import can read Google Takeout zip files idempotently.
 - CLI terminal output prints warning counts and source-file counts.
+- Malformed Google Takeout zip files are quarantined during dry-run instead of crashing.
 
 Next:
 

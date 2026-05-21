@@ -324,15 +324,26 @@ async function readSourceInput(
 
   if (source === "google-takeout-zip") {
     const rawBuffer = await readFile(inputPath);
-    const files = readTakeoutZip(rawBuffer);
 
-    return {
-      raw: "",
-      parsed: files,
-      hash: createHash("sha256").update(rawBuffer).digest("hex"),
-      filesSeen: files.length,
-      parseError: null,
-    };
+    try {
+      const files = readTakeoutZip(rawBuffer);
+
+      return {
+        raw: "",
+        parsed: files,
+        hash: createHash("sha256").update(rawBuffer).digest("hex"),
+        filesSeen: files.length,
+        parseError: null,
+      };
+    } catch (error: unknown) {
+      return {
+        raw: "",
+        parsed: null,
+        hash: createHash("sha256").update(rawBuffer).digest("hex"),
+        filesSeen: 1,
+        parseError: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   const raw = await readFile(inputPath, "utf8");

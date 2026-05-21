@@ -895,6 +895,39 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("quarantines a malformed Google Takeout zip during dry-run", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(zipPath, "not a zip", "utf8");
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.quarantine[0]).toMatchObject({
+        sourcePath: "takeout.zip",
+        errorCode: "source_parse_failed",
+        recoverable: true,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("quarantines malformed JSON inside a Google Takeout folder", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
     const previewPath = join(dir, "preview.json");
