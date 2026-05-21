@@ -51,7 +51,7 @@ export type ChatGptMessageNormalizationInput = {
       id: string;
       create_time: number;
       author: {
-        role: "user" | "assistant";
+        role: "user" | "assistant" | "system";
       };
       content: {
         content_type: "text";

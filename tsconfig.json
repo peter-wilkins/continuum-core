@@ -15,5 +15,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts", "schema-workbench/src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "schema-workbench/src/**/*.ts",
+    "schema-workbench/vite.config.ts"
+  ]
 }

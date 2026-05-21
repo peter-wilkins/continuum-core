@@ -58,6 +58,10 @@ p {
   line-height: 1.5;
 }
 
+.git-hash {
+  margin-bottom: 0;
+}
+
 dl {
   display: flex;
   gap: 12px;

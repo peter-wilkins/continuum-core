@@ -84,4 +84,35 @@ describe("ChatGPT import normalization", () => {
     expect(event.source.externalParentId).toBe("msg_456");
     expect(event.source.canonicalParentEventId).toBeNull();
   });
+
+  it("imports one ChatGPT system event into the canonical event model", () => {
+    const event = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_system",
+        parent: "msg_root",
+        children: [],
+        message: {
+          id: "msg_system",
+          create_time: 1779360060,
+          author: { role: "system" },
+          content: {
+            content_type: "text",
+            parts: ["You are ChatGPT."],
+          },
+        },
+      },
+    });
+
+    expect(event.id).toBe("chatgpt:conv_123:msg_system");
+    expect(event.actor.role).toBe("system");
+    expect(event.content.text).toBe("You are ChatGPT.");
+    expect(event.source.externalParentId).toBe("msg_root");
+    expect(event.source.canonicalParentEventId).toBeNull();
+  });
 });
