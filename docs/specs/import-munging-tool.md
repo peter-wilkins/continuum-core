@@ -283,6 +283,7 @@ continuum-import inspect claude <conversations.json>
 continuum-import dry-run claude <conversations.json> --out <preview.json>
 continuum-import chatgpt <conversations.json> --out <events.jsonl>
 continuum-import claude <conversations.json> --out <events.jsonl>
+continuum-import git-log <git-log.txt> --out <events.jsonl>
 ```
 
 Current output:
@@ -433,6 +434,7 @@ Done:
 - Markdown normalizes one local document snapshot.
 - CLI supports `markdown` files and routes Markdown files inside Takeout folders/zips.
 - Git log parses and imports one commit.
+- CLI supports `git-log` files and routes `.gitlog` files inside folder/zip imports.
 
 Next:
 

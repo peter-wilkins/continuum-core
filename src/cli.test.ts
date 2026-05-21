@@ -31,6 +31,9 @@ const calendarFixturePath = fileURLToPath(
 const markdownFixturePath = fileURLToPath(
   new URL("./fixtures/markdown-one-note.md", import.meta.url),
 );
+const gitFixturePath = fileURLToPath(
+  new URL("./fixtures/git-one-commit.txt", import.meta.url),
+);
 
 describe("continuum-import CLI", () => {
   it("formats inspect output with warnings and source file counts", () => {
@@ -1080,6 +1083,131 @@ describe("continuum-import CLI", () => {
           status: "matched",
           eventsCreated: 1,
           quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports a Git log file through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "git-log",
+        gitFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "git",
+          externalConversationId: "git-one-commit.txt",
+          externalMessageId: "db3c0f9cbbfd5909040b86afff175a2b96732898",
+        },
+        participants: [
+          {
+            role: "author",
+            address: "poppetew@gmail.com",
+          },
+        ],
+        content: {
+          subject: "Pressure test model with Wikimedia",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes Git log files inside a Google Takeout zip", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Git/continuum-core.gitlog": strToU8(
+          await readFile(gitFixturePath, "utf8"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Git/continuum-core.gitlog",
+          source: "git-log",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("quarantines a malformed Git log during dry-run", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const badPath = join(dir, "bad.gitlog");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(badPath, "Author: Peter Wilkins <poppetew@gmail.com>", "utf8");
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "git-log",
+        badPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.quarantine[0]).toMatchObject({
+        sourcePath: "commit.0.hash",
+        errorCode: "source_validation_failed",
+        recoverable: true,
+      });
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "bad.gitlog",
+          source: "git-log",
+          status: "invalid",
+          eventsCreated: 0,
+          quarantineRecords: 1,
         },
       ]);
     } finally {

@@ -14,6 +14,7 @@ import {
   normalizeGoogleChromeHistoryExport,
   normalizeGoogleChromeReadingListExport,
   normalizeGoogleMyActivityExport,
+  normalizeGitCommit,
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
   parseClaudeConversationsWithQuarantine,
@@ -21,6 +22,7 @@ import {
   parseGoogleChromeHistoryExport,
   parseGoogleChromeReadingListExport,
   parseGoogleMyActivityExport,
+  parseGitLog,
   parseICalendarEvents,
   type CanonicalEvent,
   type ChatGptConversationExport,
@@ -131,6 +133,7 @@ type ImportCommand =
   | "google-chrome-bookmarks"
   | "google-chrome-reading-list"
   | "google-my-activity"
+  | "git-log"
   | "icalendar"
   | "markdown"
   | "google-takeout-folder"
@@ -143,6 +146,7 @@ const importCommands = [
   "google-chrome-bookmarks",
   "google-chrome-reading-list",
   "google-my-activity",
+  "git-log",
   "icalendar",
   "markdown",
   "google-takeout-folder",
@@ -311,6 +315,11 @@ type MarkdownCliInput = {
   raw: string;
 };
 
+type GitLogCliInput = {
+  repositoryPath: string;
+  raw: string;
+};
+
 type NormalizedSourceInput = {
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
@@ -379,6 +388,11 @@ async function readSourceInput(
             modifiedAtConfidence: "exact",
             raw,
           } satisfies MarkdownCliInput
+        : source === "git-log"
+          ? {
+              repositoryPath: basename(inputPath),
+              raw,
+            } satisfies GitLogCliInput
       : raw;
   let parseError: string | null = null;
 
@@ -479,6 +493,7 @@ function sourceInputNeedsJson(source: ImportCommand): boolean {
   return ![
     "google-chrome-bookmarks",
     "google-chrome-reading-list",
+    "git-log",
     "icalendar",
     "markdown",
     "google-takeout-folder",
@@ -559,6 +574,12 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
           raw: file.raw,
         } satisfies MarkdownCliInput;
       }
+      if (source === "git-log") {
+        parsed = {
+          repositoryPath: basename(file.relativePath),
+          raw: file.raw,
+        } satisfies GitLogCliInput;
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -629,6 +650,10 @@ function classifyTakeoutFile(file: TakeoutFolderFile): ImportCommand | null {
 
   if (lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown")) {
     return "markdown";
+  }
+
+  if (lowerPath.endsWith(".gitlog") || lowerPath.endsWith(".git-log.txt")) {
+    return "git-log";
   }
 
   if (!lowerPath.endsWith(".json")) {
@@ -793,6 +818,34 @@ function normalizeSourceInput(
           content: input.raw,
         }),
       ],
+      quarantine: [],
+      sourceFiles: [],
+      warnings: 0,
+    };
+  }
+
+  if (source === "git-log") {
+    const input = parsed as GitLogCliInput;
+    const result = parseGitLog(input.raw);
+
+    if (!result.ok) {
+      return {
+        incomingEvents: [],
+        quarantine: validationErrorsToQuarantine(source, result.errors),
+        sourceFiles: [],
+        warnings: 0,
+      };
+    }
+
+    return {
+      incomingEvents: result.value.map((commit) =>
+        normalizeGitCommit({
+          repository: {
+            path: input.repositoryPath,
+          },
+          commit,
+        }),
+      ),
       quarantine: [],
       sourceFiles: [],
       warnings: 0,
