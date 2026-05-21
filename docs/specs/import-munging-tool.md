@@ -349,8 +349,8 @@ type ImportProfile =
 Rules:
 
 - `everything`: include every valid source record.
-- `clean_default`: exclude obvious junk/promotional/bulk records, include ordinary records.
-- `intentional_context`: include records that show deliberate user intent, with source-specific rules.
+- `clean_default`: broad local intake that excludes obvious junk/promotional/bulk records and includes ordinary records, including passive activity.
+- `intentional_context`: high-signal memory intake that includes records showing deliberate user intent, with source-specific rules.
 
 Import profiles must treat account history as evidence, not truth. A vendor account may contain passive activity, autoplay, shared-device use, children using a parent's account, background media, mistakes, curiosity clicks, or other messy human behaviour. Import filtering should therefore avoid assuming every source record represents the account holder's intent.
 
@@ -378,6 +378,8 @@ YouTube `intentional_context` treats watch history as weak evidence:
 
 The reason is that watch history can be polluted by autoplay, shared-account use, background media, or children using the account. Weak evidence should remain inspectable without automatically becoming high-signal memory.
 
+`clean_default` may still import YouTube watch history locally unless it looks like obvious junk; `intentional_context` is where watch history becomes `needs_review` by default.
+
 Google `intentional_context` uses the same principle across products:
 
 - strong intent -> include
@@ -386,6 +388,8 @@ Google `intentional_context` uses the same principle across products:
 - sensitive or high-risk data -> keep local/raw until the relevant membrane and domain model exist
 
 Examples of strong intent include searches, bookmarks, reading-list saves, contacts edited by the user, calendar events, map searches, and requested directions. Examples of passive activity include ordinary Chrome browsing history, YouTube watch history, passive location timeline points, app opens, and background activity.
+
+This keeps "import broadly for inspection" separate from "allow this record to shape memory and retrieval."
 
 This avoids making the user fight Google Takeout selection UI while still keeping junk out of canonical events by default.
 
