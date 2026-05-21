@@ -36,6 +36,8 @@ Active/imported:
 - Email/MBOX: model pressure fixture exists.
 - Google Chrome history: Takeout/Data Portability fixture imports one browser visit.
 - Google Chrome bookmarks: Takeout/Data Portability fixture imports one saved reference.
+- Google Chrome reading list: Takeout/Data Portability fixture imports one saved reference.
+- Google My Activity: fixture imports YouTube, Search, and Maps activity records.
 - Wikimedia/MediaWiki revision: public sample fixture exists.
 
 Catalogue targets:
@@ -45,10 +47,9 @@ Catalogue targets:
 - Calendar/iCalendar.
 - Slack export.
 - Markdown/Obsidian/local docs.
-- Google My Activity/Gemini/Takeout.
-- YouTube history.
 - Google Contacts.
-- Google Maps/location activity.
+- precise Google location timeline/trips.
+- Chrome Autofill, extensions, settings, dictionary, and other non-event exports.
 - Notion export/API pages.
 
 Source ranking and evidence links live in `docs/source-catalogue.md`.
@@ -86,7 +87,7 @@ type CanonicalEvent = {
   id: string;
 
   source: {
-    platform: "chatgpt" | "claude" | "email" | "google_chrome" | "wikimedia";
+    platform: "chatgpt" | "claude" | "email" | "google_activity" | "google_chrome" | "wikimedia";
     key: string;
     fingerprint: string;
     externalConversationId: string;
@@ -408,6 +409,8 @@ Done:
 - email import profiles can include engaged contacts and exclude promotional/unreplied messages.
 - Google Chrome history validates and imports one browser visit as attention evidence.
 - Google Chrome bookmarks parse and import one saved reference.
+- Google Chrome reading list parses and imports one saved reference.
+- Google My Activity validates and imports YouTube, Search, and Maps activity records.
 
 Next:
 
@@ -416,7 +419,8 @@ Next:
 - richer preview model before sync/export.
 - source adapters move out of one large `src/index.ts`.
 - define identity graph before importing Google Contacts.
-- define stricter location membranes before importing Maps/location activity.
+- define stricter location membranes before importing precise Maps/location timeline data.
+- classify Chrome Autofill/settings/extensions/dictionary before importing non-event configuration and secrets-adjacent data.
 
 ## Design Principle
 

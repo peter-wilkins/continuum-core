@@ -23,6 +23,7 @@ export type CanonicalSourcePlatform =
   | "chatgpt"
   | "claude"
   | "email"
+  | "google_activity"
   | "google_chrome"
   | "wikimedia";
 
@@ -213,8 +214,34 @@ export type GoogleChromeBookmarksExport = {
   bookmarks: GoogleChromeBookmarkRecord[];
 };
 
+export type GoogleChromeReadingListExport = {
+  entries: GoogleChromeBookmarkRecord[];
+};
+
 export type GoogleChromeBookmarkNormalizationInput = {
   bookmark: GoogleChromeBookmarkRecord;
+};
+
+export type GoogleMyActivityRecord = {
+  header: string;
+  title: string;
+  titleUrl: string | null;
+  subtitles: string[];
+  description: string | null;
+  time: string;
+  products: string[];
+  details: string[];
+  activityControls: string[];
+  locationInfos: string[];
+  imageFile: string | null;
+  audioFiles: string[];
+  attachedFiles: string[];
+};
+
+export type GoogleMyActivityExport = GoogleMyActivityRecord[];
+
+export type GoogleMyActivityNormalizationInput = {
+  activity: GoogleMyActivityRecord;
 };
 
 export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
@@ -556,6 +583,46 @@ const googleChromeHistoryExportSchema = z
   })
   .passthrough();
 
+const nullableStringFromMissingSchema = z.preprocess(
+  (value) => value ?? null,
+  z.string().nullable(),
+);
+
+const stringArrayFromMissingSchema = z.preprocess(
+  (value) => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      return [value];
+    }
+
+    return [];
+  },
+  z.array(z.string()),
+);
+
+const googleMyActivityRecordSchema = z
+  .object({
+    header: z.string(),
+    title: z.string(),
+    titleUrl: nullableStringFromMissingSchema,
+    subtitles: stringArrayFromMissingSchema,
+    description: nullableStringFromMissingSchema,
+    time: isoDatetimeSchema,
+    products: stringArrayFromMissingSchema,
+    details: stringArrayFromMissingSchema,
+    activityControls: stringArrayFromMissingSchema,
+    locationInfos: stringArrayFromMissingSchema,
+    imageFile: nullableStringFromMissingSchema,
+    audioFiles: stringArrayFromMissingSchema,
+    attachedFiles: stringArrayFromMissingSchema,
+  })
+  .passthrough();
+
+const googleMyActivityExportSchema = z.array(googleMyActivityRecordSchema);
+
 function validationPath(path: PropertyKey[]): string {
   return path.map(String).join(".");
 }
@@ -713,6 +780,44 @@ export function parseGoogleChromeBookmarksExport(
   };
 }
 
+export function parseGoogleChromeReadingListExport(
+  input: string,
+): SourceValidationResult<GoogleChromeReadingListExport> {
+  const parsed = parseGoogleChromeBookmarksExport(input);
+
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  return {
+    ok: true,
+    value: {
+      entries: parsed.value.bookmarks,
+    },
+  };
+}
+
+export function parseGoogleMyActivityExport(
+  input: unknown,
+): SourceValidationResult<GoogleMyActivityExport> {
+  const result = googleMyActivityExportSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
   return `chatgpt:${input.conversation.id}:${input.node.message.id}`;
 }
@@ -822,6 +927,12 @@ function googleChromeBookmarkSourceKey(
   return `google_chrome_bookmark:${googleChromeBookmarkExternalMessageId(input)}`;
 }
 
+function googleChromeReadingListSourceKey(
+  input: GoogleChromeBookmarkNormalizationInput,
+): string {
+  return `google_chrome_reading_list:${googleChromeBookmarkExternalMessageId(input)}`;
+}
+
 function googleChromeBookmarkSourceFingerprint(
   input: GoogleChromeBookmarkNormalizationInput,
 ): string {
@@ -832,6 +943,56 @@ function googleChromeBookmarkSourceFingerprint(
       url: input.bookmark.url,
       addDate: input.bookmark.addDate,
       iconUri: input.bookmark.iconUri,
+    }),
+  );
+}
+
+function googleChromeReadingListSourceFingerprint(
+  input: GoogleChromeBookmarkNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "google_chrome",
+      title: input.bookmark.title,
+      url: input.bookmark.url,
+      addDate: input.bookmark.addDate,
+      iconUri: input.bookmark.iconUri,
+      list: "reading_list",
+    }),
+  );
+}
+
+function googleMyActivityExternalMessageId(
+  input: GoogleMyActivityNormalizationInput,
+): string {
+  return `${input.activity.header}:${input.activity.time}:${input.activity.titleUrl ?? input.activity.title}`;
+}
+
+function googleMyActivitySourceKey(
+  input: GoogleMyActivityNormalizationInput,
+): string {
+  return `google_my_activity:${googleMyActivityExternalMessageId(input)}`;
+}
+
+function googleMyActivitySourceFingerprint(
+  input: GoogleMyActivityNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "google_activity",
+      header: input.activity.header,
+      title: input.activity.title,
+      titleUrl: input.activity.titleUrl,
+      subtitles: input.activity.subtitles,
+      description: input.activity.description,
+      time: input.activity.time,
+      products: input.activity.products,
+      details: input.activity.details,
+      activityControls: input.activity.activityControls,
+      locationInfos: input.activity.locationInfos,
+      imageFile: input.activity.imageFile,
+      audioFiles: input.activity.audioFiles,
+      attachedFiles: input.activity.attachedFiles,
     }),
   );
 }
@@ -1283,6 +1444,106 @@ export function normalizeGoogleChromeBookmarkRecord(
   };
 }
 
+export function normalizeGoogleChromeReadingListRecord(
+  input: GoogleChromeBookmarkNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = googleChromeReadingListSourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "google_chrome",
+      key: sourceKey,
+      fingerprint: googleChromeReadingListSourceFingerprint(input),
+      externalConversationId: "reading_list",
+      externalMessageId: googleChromeBookmarkExternalMessageId(input),
+      artifactId: input.bookmark.url,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "saved_references",
+      sourceName: "google_chrome_reading_list",
+      upstreamSources: ["google_takeout"],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: new Date(Number(input.bookmark.addDate) * 1000).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: input.bookmark.title,
+      text: `Saved to reading list ${input.bookmark.title}\n${input.bookmark.url}`,
+    },
+  };
+}
+
+function googleMyActivityText(input: GoogleMyActivityNormalizationInput): string {
+  return [
+    input.activity.header,
+    input.activity.title,
+    input.activity.titleUrl,
+    ...input.activity.subtitles,
+    input.activity.description,
+    ...input.activity.details,
+    ...input.activity.activityControls,
+    ...input.activity.locationInfos,
+    input.activity.imageFile,
+    ...input.activity.audioFiles,
+    ...input.activity.attachedFiles,
+  ]
+    .filter((value): value is string => value !== null && value.length > 0)
+    .join("\n");
+}
+
+export function normalizeGoogleMyActivityRecord(
+  input: GoogleMyActivityNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = googleMyActivitySourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "google_activity",
+      key: sourceKey,
+      fingerprint: googleMyActivitySourceFingerprint(input),
+      externalConversationId: input.activity.header,
+      externalMessageId: googleMyActivityExternalMessageId(input),
+      artifactId: input.activity.titleUrl,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "activity_log",
+      sourceName: "google_my_activity",
+      upstreamSources: ["google_takeout"],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: new Date(input.activity.time).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: input.activity.title,
+      text: googleMyActivityText(input),
+    },
+  };
+}
+
 export function normalizeMediaWikiRevision(
   input: MediaWikiRevisionNormalizationInput,
 ): CanonicalEvent {
@@ -1366,6 +1627,22 @@ export function normalizeGoogleChromeBookmarksExport(
 ): CanonicalEvent[] {
   return bookmarksExport.bookmarks.map((bookmark) =>
     normalizeGoogleChromeBookmarkRecord({ bookmark }),
+  );
+}
+
+export function normalizeGoogleChromeReadingListExport(
+  readingListExport: GoogleChromeReadingListExport,
+): CanonicalEvent[] {
+  return readingListExport.entries.map((bookmark) =>
+    normalizeGoogleChromeReadingListRecord({ bookmark }),
+  );
+}
+
+export function normalizeGoogleMyActivityExport(
+  activityExport: GoogleMyActivityExport,
+): CanonicalEvent[] {
+  return activityExport.map((activity) =>
+    normalizeGoogleMyActivityRecord({ activity }),
   );
 }
 

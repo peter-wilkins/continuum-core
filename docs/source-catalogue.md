@@ -14,11 +14,12 @@ ChatGPT is postponed until the export arrives. Active ranking starts with source
 | 8 | Markdown / Obsidian / local docs | sample available | high | medium | medium | Markdown file revision snapshot | `README.md` |
 | 9 | Google Chrome history | implemented fixture | high | medium | high | Chrome browser history visit | `src/fixtures/google-chrome-history-one-record.json` |
 | 10 | Google Chrome bookmarks | implemented fixture | high | medium | high | Chrome bookmark snapshot | `src/fixtures/google-chrome-bookmarks-one-record.html` |
-| 11 | Google My Activity / Search / Gemini | needs user export | high | high | high | Google activity record | none yet |
-| 12 | YouTube history | needs user export | high | medium | high | YouTube watch/search activity | none yet |
-| 13 | Google Contacts | needs user export | high | high | high | Contact identity snapshot | none yet |
-| 14 | Google Maps / location activity | needs user export | high | high | high | Maps activity or location visit | none yet |
-| 15 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
+| 11 | Google Chrome reading list | implemented fixture | high | medium | high | Chrome reading list entry | `src/fixtures/google-chrome-reading-list-one-record.html` |
+| 12 | Google My Activity / Search / Gemini | implemented fixture | high | high | high | Google activity record | `src/fixtures/google-my-activity-three-records.json` |
+| 13 | YouTube history | implemented fixture | high | medium | high | YouTube watch/search activity | `src/fixtures/google-my-activity-three-records.json` |
+| 14 | Google Contacts | needs user export | high | high | high | Contact identity snapshot | none yet |
+| 15 | Google Maps / location activity | implemented fixture | high | high | high | Maps activity or location visit | `src/fixtures/google-my-activity-three-records.json` |
+| 16 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
 
 ## Provenance Rules
 
@@ -40,7 +41,7 @@ This means content-hash dedupe is not the main tool. Similar evidence can be phr
 
 | Rank | Source | Reason |
 | --- | --- | --- |
-| 16 | ChatGPT export | Peter is waiting on export delivery. Keep fixture coverage, but do not spend the next real-data cycle here. |
+| 17 | ChatGPT export | Peter is waiting on export delivery. Keep fixture coverage, but do not spend the next real-data cycle here. |
 
 ## Wikimedia Family
 
@@ -58,10 +59,12 @@ Google Takeout is not one schema:
 
 - Chrome history: timestamped attention/activity events pointing at URLs.
 - Chrome bookmarks: saved-reference snapshots pointing at URLs.
+- Chrome reading list: saved-reference snapshots pointing at URLs.
 - My Activity: timestamped product activity across Search, Maps, YouTube, Play, Ads, and related products.
-- YouTube history: watch/search activity, with possible overlap between My Activity and YouTube product exports.
-- Contacts: identity graph snapshots, not ordinary activity events.
-- Maps/location activity: location and route activity requiring stricter privacy membranes.
+- YouTube history: imported through My Activity watch/search records for now; product-specific uploads, comments, subscriptions, and media metadata are not imported yet.
+- Contacts: identity graph snapshots, blocked until the identity model exists.
+- Maps/location activity: Maps My Activity is imported; precise location timeline/trips are blocked until stricter location membranes exist.
+- Chrome Autofill, extensions, settings, dictionary: blocked until non-event configuration and secrets-adjacent data are classified.
 
 ## Evidence Links
 

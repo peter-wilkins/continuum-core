@@ -1,0 +1,47 @@
+[
+  {
+    "header": "YouTube",
+    "title": "Watched TypeScript Tutorial",
+    "titleUrl": "https://www.youtube.com/watch?v=abc123",
+    "subtitles": ["Example Channel"],
+    "description": "Watched a video",
+    "time": "2026-05-21T10:42:03.000Z",
+    "products": ["YouTube"],
+    "details": ["From YouTube watch history"],
+    "activityControls": ["YouTube watch history"],
+    "locationInfos": [],
+    "imageFile": null,
+    "audioFiles": [],
+    "attachedFiles": []
+  },
+  {
+    "header": "Search",
+    "title": "Searched for canonical event schema",
+    "titleUrl": "https://www.google.com/search?q=canonical+event+schema",
+    "subtitles": [],
+    "description": null,
+    "time": "2026-05-21T10:43:03.000Z",
+    "products": ["Search"],
+    "details": [],
+    "activityControls": ["Web & App Activity"],
+    "locationInfos": [],
+    "imageFile": null,
+    "audioFiles": [],
+    "attachedFiles": []
+  },
+  {
+    "header": "Maps",
+    "title": "Searched for coffee near me",
+    "titleUrl": "https://www.google.com/maps/search/coffee",
+    "subtitles": ["Maps"],
+    "description": "Maps activity",
+    "time": "2026-05-21T10:44:03.000Z",
+    "products": ["Maps"],
+    "details": [],
+    "activityControls": ["Web & App Activity"],
+    "locationInfos": ["London"],
+    "imageFile": null,
+    "audioFiles": [],
+    "attachedFiles": []
+  }
+]
