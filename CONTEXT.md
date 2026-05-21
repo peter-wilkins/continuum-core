@@ -80,6 +80,10 @@ _Avoid_: search query, command invocation, open request
 The process of finding likely **Continuations** for a **Resume Request** or current **Working Context**, using **Entries** as evidence. Continuity Retrieval returns candidate Continuations with reasons and Confidence; a **Resume Brief** is assembled after a Continuation is selected or ranked high enough.
 _Avoid_: keyword search, event lookup, direct brief retrieval
 
+**Continuation Candidate**:
+A possible **Continuation** returned by **Continuity Retrieval**, with supporting **Entries**, reasons, and Confidence. The first retrieval result is a ranked set of Continuation Candidates, not a forced single answer.
+_Avoid_: search result, guessed thread, ungrounded match
+
 **Ambiguous Resume**:
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match
