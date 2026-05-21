@@ -14,11 +14,13 @@ import {
   normalizeGoogleChromeHistoryExport,
   normalizeGoogleChromeReadingListExport,
   normalizeGoogleMyActivityExport,
+  normalizeICalendarEvent,
   parseClaudeConversationsWithQuarantine,
   parseGoogleChromeBookmarksExport,
   parseGoogleChromeHistoryExport,
   parseGoogleChromeReadingListExport,
   parseGoogleMyActivityExport,
+  parseICalendarEvents,
   type CanonicalEvent,
   type ChatGptConversationExport,
   type ImportReport,
@@ -128,6 +130,7 @@ type ImportCommand =
   | "google-chrome-bookmarks"
   | "google-chrome-reading-list"
   | "google-my-activity"
+  | "icalendar"
   | "google-takeout-folder"
   | "google-takeout-zip";
 
@@ -138,6 +141,7 @@ const importCommands = [
   "google-chrome-bookmarks",
   "google-chrome-reading-list",
   "google-my-activity",
+  "icalendar",
   "google-takeout-folder",
   "google-takeout-zip",
 ] as const satisfies ImportCommand[];
@@ -447,6 +451,7 @@ function sourceInputNeedsJson(source: ImportCommand): boolean {
   return ![
     "google-chrome-bookmarks",
     "google-chrome-reading-list",
+    "icalendar",
     "google-takeout-folder",
     "google-takeout-zip",
   ].includes(source);
@@ -575,6 +580,10 @@ function classifyTakeoutFile(file: TakeoutFolderFile): ImportCommand | null {
     return "google-my-activity";
   }
 
+  if (lowerPath.endsWith(".ics")) {
+    return "icalendar";
+  }
+
   if (!lowerPath.endsWith(".json")) {
     return null;
   }
@@ -689,6 +698,33 @@ function normalizeSourceInput(
 
     return {
       incomingEvents: normalizeGoogleMyActivityExport(result.value),
+      quarantine: [],
+      sourceFiles: [],
+      warnings: 0,
+    };
+  }
+
+  if (source === "icalendar") {
+    const result = parseICalendarEvents(String(parsed));
+
+    if (!result.ok) {
+      return {
+        incomingEvents: [],
+        quarantine: validationErrorsToQuarantine(source, result.errors),
+        sourceFiles: [],
+        warnings: 0,
+      };
+    }
+
+    return {
+      incomingEvents: result.value.map((event) =>
+        normalizeICalendarEvent({
+          calendar: {
+            path: "calendar.ics",
+          },
+          event,
+        }),
+      ),
       quarantine: [],
       sourceFiles: [],
       warnings: 0,

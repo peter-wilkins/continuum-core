@@ -25,6 +25,9 @@ const chromeReadingListFixturePath = fileURLToPath(
 const googleMyActivityFixturePath = fileURLToPath(
   new URL("./fixtures/google-my-activity-three-records.json", import.meta.url),
 );
+const calendarFixturePath = fileURLToPath(
+  new URL("./fixtures/calendar-one-event.ics", import.meta.url),
+);
 
 describe("continuum-import CLI", () => {
   it("formats inspect output with warnings and source file counts", () => {
@@ -923,6 +926,82 @@ describe("continuum-import CLI", () => {
         errorCode: "source_parse_failed",
         recoverable: true,
       });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports an iCalendar file through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "icalendar",
+        calendarFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "icalendar",
+          externalMessageId: "boiler-quote@example.com",
+        },
+        content: {
+          subject: "Boiler quote call",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes iCalendar files inside a Google Takeout zip", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Calendar/basic-event.ics": strToU8(
+          await readFile(calendarFixturePath, "utf8"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Calendar/basic-event.ics",
+          source: "icalendar",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
