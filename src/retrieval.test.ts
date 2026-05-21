@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createAmbiguousResumeSurface,
   type ImportedEntry,
   retrieveContinuationCandidates,
 } from "./index";
@@ -170,5 +171,106 @@ describe("Continuity Retrieval", () => {
         },
       ],
     });
+  });
+
+  it("returns top Continuation Candidate with alternates when Candidate Spread is narrow", () => {
+    const surface = createAmbiguousResumeSurface({
+      resumeRequest: {
+        text: "resume membranes",
+        requestedAt: "2026-05-21T12:00:00.000Z",
+      },
+      narrowSpreadThreshold: 0.1,
+      entries: [
+        importedEntry({
+          id: "entry:privacy-1",
+          canonicalEventId: "markdown:privacy-1",
+          occurredAt: "2026-05-21T10:00:00.000Z",
+          subject: "Privacy membranes",
+          text: "Membranes filter data before it leaves the private core.",
+        }),
+        importedEntry({
+          id: "entry:gdpr-1",
+          canonicalEventId: "markdown:gdpr-1",
+          occurredAt: "2026-05-21T10:00:00.000Z",
+          subject: "GDPR membranes",
+          text: "Membranes and erasure need a safety layer.",
+        }),
+        importedEntry({
+          id: "entry:boiler-1",
+          canonicalEventId: "markdown:boiler-1",
+          occurredAt: "2026-05-01T10:00:00.000Z",
+          subject: "Boiler quote",
+          text: "Ask Bob whether the boiler is combi or system.",
+        }),
+      ],
+    });
+
+    expect(surface).toMatchObject({
+      kind: "ambiguous_resume",
+      isAmbiguous: true,
+      topCandidate: {
+        title: "GDPR membranes",
+      },
+      alternateCandidates: [
+        {
+          title: "Privacy membranes",
+        },
+        {
+          title: "Boiler quote",
+        },
+      ],
+      candidates: [
+        {
+          title: "GDPR membranes",
+        },
+        {
+          title: "Privacy membranes",
+        },
+        {
+          title: "Boiler quote",
+        },
+      ],
+    });
+    expect(surface.candidateSpread).not.toBeNull();
+    expect(surface.candidateSpread ?? 1).toBeLessThanOrEqual(0.1);
+  });
+
+  it("marks clear winner retrieval as unambiguous", () => {
+    const surface = createAmbiguousResumeSurface({
+      resumeRequest: {
+        text: "resume membranes",
+        requestedAt: "2026-05-21T12:00:00.000Z",
+      },
+      narrowSpreadThreshold: 0.05,
+      entries: [
+        importedEntry({
+          id: "entry:membranes-1",
+          canonicalEventId: "markdown:membranes-1",
+          occurredAt: "2026-05-21T10:00:00.000Z",
+          subject: "Membranes",
+          text: "Membranes filter data before it leaves the private core.",
+        }),
+        importedEntry({
+          id: "entry:membranes-2",
+          canonicalEventId: "markdown:membranes-2",
+          occurredAt: "2026-05-21T11:00:00.000Z",
+          subject: "Membranes",
+          text: "Disclosure membranes and erasure need a safety layer.",
+        }),
+        importedEntry({
+          id: "entry:boiler-1",
+          canonicalEventId: "markdown:boiler-1",
+          occurredAt: "2026-05-01T10:00:00.000Z",
+          subject: "Boiler quote",
+          text: "Ask Bob whether the boiler is combi or system.",
+        }),
+      ],
+    });
+
+    expect(surface.topCandidate?.title).toBe("Membranes");
+    expect(surface.alternateCandidates.map((candidate) => candidate.title)).toEqual([
+      "Boiler quote",
+    ]);
+    expect(surface.isAmbiguous).toBe(false);
   });
 });

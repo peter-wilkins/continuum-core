@@ -151,6 +151,19 @@ export type ContinuityRetrievalInput = {
   entries: ImportedEntry[];
 };
 
+export type AmbiguousResumeSurface = {
+  kind: "ambiguous_resume";
+  topCandidate: ContinuationCandidate | null;
+  alternateCandidates: ContinuationCandidate[];
+  candidates: ContinuationCandidate[];
+  candidateSpread: number | null;
+  isAmbiguous: boolean;
+};
+
+export type AmbiguousResumeSurfaceInput = ContinuityRetrievalInput & {
+  narrowSpreadThreshold: number;
+};
+
 export type ChatGptMessageNormalizationInput = {
   conversation: {
     id: string;
@@ -1967,6 +1980,28 @@ export function retrieveContinuationCandidates(
 
       return left.title.localeCompare(right.title);
     });
+}
+
+export function createAmbiguousResumeSurface(
+  input: AmbiguousResumeSurfaceInput,
+): AmbiguousResumeSurface {
+  const candidates = retrieveContinuationCandidates(input);
+  const topCandidate = candidates[0] ?? null;
+  const secondCandidate = candidates[1] ?? null;
+  const candidateSpread =
+    topCandidate === null || secondCandidate === null
+      ? null
+      : clampConfidence(topCandidate.confidence - secondCandidate.confidence);
+
+  return {
+    kind: "ambiguous_resume",
+    topCandidate,
+    alternateCandidates: candidates.slice(1),
+    candidates,
+    candidateSpread,
+    isAmbiguous:
+      candidateSpread !== null && candidateSpread <= input.narrowSpreadThreshold,
+  };
 }
 
 type CanonicalEventBuildInput = {

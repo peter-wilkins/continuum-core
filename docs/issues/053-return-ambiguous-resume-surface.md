@@ -1,6 +1,6 @@
 # 053: Return Ambiguous Resume Surface
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,12 +20,12 @@ When **Candidate Spread** is narrow, return an **Ambiguous Resume Surface** that
 
 ## Acceptance Criteria
 
-- [ ] Detect a narrow Candidate Spread between ranked candidates.
-- [ ] Return the strongest candidate first.
-- [ ] Include alternate candidates rather than hiding them.
-- [ ] Preserve many candidates in debug output.
-- [ ] Do not force a single Continuation when evidence is close.
-- [ ] Tests cover both narrow spread and clear winner cases.
+- [x] Detect a narrow Candidate Spread between ranked candidates.
+- [x] Return the strongest candidate first.
+- [x] Include alternate candidates rather than hiding them.
+- [x] Preserve many candidates in debug output.
+- [x] Do not force a single Continuation when evidence is close.
+- [x] Tests cover both narrow spread and clear winner cases.
 
 ## Blocked by
 
