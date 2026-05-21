@@ -35,7 +35,7 @@ export const canonicalEventSchema = {
       fields: [
         {
           name: "platform",
-          type: '"chatgpt" | "claude" | "email"',
+          type: '"chatgpt" | "claude" | "email" | "wikimedia"',
           required: true,
           description: "Source platform for the importer adapter.",
         },
@@ -57,13 +57,21 @@ export const canonicalEventSchema = {
           name: "externalConversationId",
           type: "string",
           required: true,
-          description: "Source conversation or thread id.",
+          description:
+            "Source grouping id: chat conversation, email thread, wiki page, or equivalent.",
         },
         {
           name: "externalMessageId",
           type: "string",
           required: true,
-          description: "Source message or record id.",
+          description: "Source event/record id such as message id or revision id.",
+        },
+        {
+          name: "artifactId",
+          type: "string | null",
+          required: true,
+          description:
+            "Stable source artifact id when the event changes a durable artifact such as a wiki page.",
         },
         {
           name: "externalParentId",

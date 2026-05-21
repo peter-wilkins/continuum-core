@@ -12,7 +12,7 @@ export function describeContinuumCorePackage(): ContinuumCorePackage {
 
 export type CanonicalActorRole = "user" | "assistant" | "system" | "tool" | "other";
 
-export type CanonicalSourcePlatform = "chatgpt" | "claude" | "email";
+export type CanonicalSourcePlatform = "chatgpt" | "claude" | "email" | "wikimedia";
 
 export type CanonicalParticipantRole = "sender" | "recipient" | "cc" | "bcc" | "reply_to";
 
@@ -32,6 +32,7 @@ export type CanonicalEvent = {
     fingerprint: string;
     externalConversationId: string;
     externalMessageId: string;
+    artifactId: string | null;
     externalParentId: string | null;
     canonicalParentEventId: string | null;
   };
@@ -130,6 +131,32 @@ export type EmailMessageNormalizationInput = {
   };
 };
 
+export type MediaWikiRevisionNormalizationInput = {
+  project: string;
+  page: {
+    pageid: number;
+    ns: number;
+    title: string;
+  };
+  revision: {
+    revid: number;
+    parentid: number;
+    timestamp: string;
+    user: string;
+    userid: number | null;
+    comment: string;
+    sha1: string;
+    size: number;
+    slots: {
+      main: {
+        contentmodel: string;
+        contentformat: string;
+        contentSha1: string;
+      };
+    };
+  };
+};
+
 export type ImportReport = {
   new: number;
   known: number;
@@ -224,6 +251,37 @@ function emailSourceFingerprint(input: EmailMessageNormalizationInput): string {
   );
 }
 
+function mediaWikiArtifactId(input: MediaWikiRevisionNormalizationInput): string {
+  return `${input.project}:page:${input.page.pageid}`;
+}
+
+function mediaWikiSourceKey(input: MediaWikiRevisionNormalizationInput): string {
+  return `${input.project}:revision:${input.revision.revid}`;
+}
+
+function mediaWikiSourceFingerprint(
+  input: MediaWikiRevisionNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "wikimedia",
+      project: input.project,
+      pageid: input.page.pageid,
+      ns: input.page.ns,
+      title: input.page.title,
+      revid: input.revision.revid,
+      parentid: input.revision.parentid,
+      timestamp: input.revision.timestamp,
+      user: input.revision.user,
+      userid: input.revision.userid,
+      comment: input.revision.comment,
+      sha1: input.revision.sha1,
+      size: input.revision.size,
+      slots: input.revision.slots,
+    }),
+  );
+}
+
 function normalizeClaudeSender(
   sender: ClaudeMessageNormalizationInput["message"]["sender"],
 ): CanonicalActorRole {
@@ -269,6 +327,7 @@ export function normalizeChatGptMessage(
       fingerprint: chatGptSourceFingerprint(input),
       externalConversationId: input.conversation.id,
       externalMessageId: input.node.message.id,
+      artifactId: null,
       externalParentId: input.node.parent,
       canonicalParentEventId: null,
     },
@@ -301,6 +360,7 @@ export function normalizeClaudeMessage(
       fingerprint: claudeSourceFingerprint(input),
       externalConversationId: input.conversation.uuid,
       externalMessageId: input.message.uuid,
+      artifactId: null,
       externalParentId: null,
       canonicalParentEventId: null,
     },
@@ -333,6 +393,7 @@ export function normalizeEmailMessage(
       fingerprint: emailSourceFingerprint(input),
       externalConversationId: emailThreadId(input),
       externalMessageId: input.message.messageId,
+      artifactId: null,
       externalParentId: input.message.inReplyTo[0] ?? null,
       canonicalParentEventId: null,
     },
@@ -348,6 +409,40 @@ export function normalizeEmailMessage(
       kind: "text",
       subject: input.message.subject,
       text: input.message.textBody,
+    },
+  };
+}
+
+export function normalizeMediaWikiRevision(
+  input: MediaWikiRevisionNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = mediaWikiSourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "wikimedia",
+      key: sourceKey,
+      fingerprint: mediaWikiSourceFingerprint(input),
+      externalConversationId: mediaWikiArtifactId(input),
+      externalMessageId: String(input.revision.revid),
+      artifactId: mediaWikiArtifactId(input),
+      externalParentId:
+        input.revision.parentid === 0 ? null : String(input.revision.parentid),
+      canonicalParentEventId: null,
+    },
+    time: {
+      createdAt: new Date(input.revision.timestamp).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: input.page.title,
+      text: input.revision.comment,
     },
   };
 }

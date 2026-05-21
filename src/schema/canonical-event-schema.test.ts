@@ -14,6 +14,7 @@ describe("canonical event schema descriptor", () => {
       "source.fingerprint",
       "source.externalConversationId",
       "source.externalMessageId",
+      "source.artifactId",
       "source.externalParentId",
       "source.canonicalParentEventId",
       "time.createdAt",

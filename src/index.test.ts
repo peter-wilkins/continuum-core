@@ -5,16 +5,21 @@ import claudeFixture from "./fixtures/claude-one-conversation.json" with {
 import emailFixture from "./fixtures/email-one-message.json" with {
   type: "json",
 };
+import mediaWikiFixture from "./fixtures/mediawiki-one-revision.json" with {
+  type: "json",
+};
 
 import {
   type ClaudeConversationExport,
   type EmailMessageNormalizationInput,
+  type MediaWikiRevisionNormalizationInput,
   mergeCanonicalEvents,
   continuumCorePackageName,
   describeContinuumCorePackage,
   normalizeClaudeConversations,
   normalizeChatGptMessage,
   normalizeEmailMessage,
+  normalizeMediaWikiRevision,
 } from "./index";
 
 describe("continuum core package scaffold", () => {
@@ -294,6 +299,41 @@ describe("Email import normalization", () => {
         kind: "text",
         subject: "Boiler quote",
         text: "Need to quote Bob for the boiler.",
+      },
+    });
+    expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
+  });
+});
+
+describe("Wikimedia import normalization", () => {
+  it("imports one MediaWiki page revision into the canonical event model", () => {
+    const event = normalizeMediaWikiRevision(
+      mediaWikiFixture as MediaWikiRevisionNormalizationInput,
+    );
+
+    expect(event).toMatchObject({
+      id: "en.wikipedia.org:revision:67890",
+      source: {
+        platform: "wikimedia",
+        key: "en.wikipedia.org:revision:67890",
+        externalConversationId: "en.wikipedia.org:page:12345",
+        externalMessageId: "67890",
+        artifactId: "en.wikipedia.org:page:12345",
+        externalParentId: "67889",
+        canonicalParentEventId: null,
+      },
+      time: {
+        createdAt: "2026-05-21T10:42:03.000Z",
+        createdAtConfidence: "exact",
+      },
+      actor: {
+        role: "other",
+      },
+      participants: [],
+      content: {
+        kind: "text",
+        subject: "Boiler",
+        text: "Add maintenance note",
       },
     });
     expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);

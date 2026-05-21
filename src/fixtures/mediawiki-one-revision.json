@@ -1,0 +1,25 @@
+{
+  "project": "en.wikipedia.org",
+  "page": {
+    "pageid": 12345,
+    "ns": 0,
+    "title": "Boiler"
+  },
+  "revision": {
+    "revid": 67890,
+    "parentid": 67889,
+    "timestamp": "2026-05-21T10:42:03Z",
+    "user": "ExampleEditor",
+    "userid": 42,
+    "comment": "Add maintenance note",
+    "sha1": "b4f3f0d8a1d3e2c1b0a9876543210fedcba98765",
+    "size": 123456,
+    "slots": {
+      "main": {
+        "contentmodel": "wikitext",
+        "contentformat": "text/x-wiki",
+        "contentSha1": "b4f3f0d8a1d3e2c1b0a9876543210fedcba98765"
+      }
+    }
+  }
+}
