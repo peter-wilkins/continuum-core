@@ -51,4 +51,37 @@ describe("ChatGPT import normalization", () => {
     expect(event.time.createdAt).toBe("2026-05-21T10:42:03.000Z");
     expect(event.time.createdAtConfidence).toBe("exact");
   });
+
+  it("imports one ChatGPT assistant response into the canonical event model", () => {
+    const event = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_789",
+        parent: "msg_456",
+        children: [],
+        message: {
+          id: "msg_789",
+          create_time: 1779360180,
+          author: { role: "assistant" },
+          content: {
+            content_type: "text",
+            parts: ["You should ask Bob whether the boiler is combi or system."],
+          },
+        },
+      },
+    });
+
+    expect(event.id).toBe("chatgpt:conv_123:msg_789");
+    expect(event.actor.role).toBe("assistant");
+    expect(event.content.text).toBe(
+      "You should ask Bob whether the boiler is combi or system.",
+    );
+    expect(event.source.externalParentId).toBe("msg_456");
+    expect(event.source.canonicalParentEventId).toBeNull();
+  });
 });
