@@ -40,7 +40,7 @@ Design rule:
 ## Later Work
 
 - Store key material outside event records.
-- Purge derived search indexes, embeddings, caches, and previews on erasure.
+- Purge derived search indexes, embeddings, Local Source Cache rows, caches, and previews on erasure.
 - Replay erasure ledger after backup restore.
 - Add classification at import time.
 - Add prompt-specific disclosure policies.

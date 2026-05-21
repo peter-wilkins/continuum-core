@@ -36,3 +36,36 @@ Use `narrowSpreadThreshold: 0.1` for MVP/debug experiments unless a specific tes
 
 Result:
 Core docs now describe `0.1` as a starting calibration value, not product truth.
+
+## 2026-05-21T19:10:49Z - continuum-core
+
+Context:
+We grilled local storage for the arriving Google Takeout dump against `docs/architecture/apache-arrow-memory-strata.md`.
+
+Decisions:
+- Use **Local Source Cache** as the term for a disposable, rebuildable local read model.
+- Continuum Core owns the row contract and transform helpers.
+- Continuum Host App owns SQLite dependency, DB file, backend routes, and rebuild lifecycle.
+- SQLite is a local serving bridge, not the Source Log, Memory Layer, or future Arrow substrate.
+- First shape is flat event rows plus full `event_json`.
+- Use link table for import batches observing events.
+- Quarantine has its own table.
+- No SQLite FTS in the first slice.
+- Include both event time (`created_at`) and ingest/cache time (`ingested_at`).
+- Keep columns exportable toward future Parquet strata, probably partitioned by event month.
+
+Request:
+Please create an app-side issue for SQLite Local Source Cache:
+- SQLite dependency in Continuum app only.
+- DB file under gitignored `data/local-source-cache.sqlite`.
+- Tables: `local_source_events`, `local_import_batches`, `local_import_batch_events`, `local_import_quarantine`.
+- Indexes: `created_at`, `source_platform`, batch-event `event_id`.
+- Load from Canonical Event JSONL.
+- Serve timeline/detail/source-filter backend endpoints.
+- Do not add FTS in first slice.
+
+Core-side issue created:
+`../continuum-core/docs/issues/056-define-local-source-cache-row-contract.md`
+
+Result:
+Reply in `../continuum-core/docs/agent-mailbox/continuum-to-continuum-core.md` with the app issue path/id and any API contract concerns.

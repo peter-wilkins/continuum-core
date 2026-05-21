@@ -176,6 +176,121 @@ Future behavior:
 - same key + changed content should create explicit revision records
 - import command should persist/import batch records through a storage adapter
 
+## Local Source Cache
+
+The first local serving store should be a **Local Source Cache** owned by the Host App, not by Continuum Core.
+
+Continuum Core owns the contract and transformation helpers. The Host App owns the concrete SQLite dependency, database file, backend routes, and rebuild lifecycle.
+
+The first cache shape should be flat event rows plus full JSON:
+
+```sql
+local_source_events(
+  id text primary key,
+  source_platform text not null,
+  source_name text not null,
+  source_key text not null,
+  external_conversation_id text not null,
+  external_message_id text not null,
+  created_at text not null,
+  created_at_confidence text not null,
+  ingested_at text not null,
+  actor_role text not null,
+  subject text,
+  text text not null,
+  event_json text not null
+)
+```
+
+This is enough for early timelines, source filters, search probes, and event detail views while preserving the full Canonical Event. It is deliberately not an identity graph, conversation model, entity store, or Memory Layer.
+
+The `text` column is intentionally duplicated from `event_json` so the Host App can serve timelines, simple search, and later SQLite FTS without reparsing every event. Because it is readable payload data, the Local Source Cache must be purged or rebuilt after Forget Requests and erasure operations.
+
+`created_at` is event time: when the source event happened. `ingested_at` is ingest/cache time: when Continuum learned about it or rebuilt the local row. Both are required because imported history often arrives long after it happened.
+
+SQLite FTS is not part of the first Local Source Cache slice. Add it after the basic timeline, source filtering, and event detail path is working, and test that erasure purges both base rows and FTS rows.
+
+Import batch provenance should use a link table rather than an `import_batch_id` column on events. A Canonical Event can be observed by multiple imports over time, especially during reimport, so batches observe events; they do not own them.
+
+```sql
+local_import_batches(
+  id text primary key,
+  source_platform text not null,
+  source_name text not null,
+  original_filename text not null,
+  original_file_hash text not null,
+  created_at text not null,
+  stats_json text not null,
+  batch_json text not null
+)
+
+local_import_batch_events(
+  batch_id text not null,
+  event_id text not null,
+  import_status text not null check (
+    import_status in ('new', 'known', 'changed', 'uncertain')
+  ),
+  primary key (batch_id, event_id)
+)
+
+local_import_quarantine(
+  id text primary key,
+  batch_id text not null,
+  source_path text not null,
+  record_index integer,
+  error_code text not null,
+  message text not null,
+  quarantine_json text not null
+)
+```
+
+Quarantine records live separately because malformed records may not produce Canonical Event ids. Do not make `event_id` nullable to mix successful event observations with failed records.
+
+First slice indexes should stay operational:
+
+```sql
+create index local_source_events_created_at_idx
+  on local_source_events(created_at);
+
+create index local_source_events_source_platform_idx
+  on local_source_events(source_platform);
+
+create index local_import_batch_events_event_id_idx
+  on local_import_batch_events(event_id);
+```
+
+Do not add semantic, vector, or FTS indexes in the first Local Source Cache slice.
+
+The Host App should store the SQLite file under gitignored local data, for example:
+
+```text
+continuum/data/local-source-cache.sqlite
+```
+
+Continuum Core experiments may use:
+
+```text
+continuum-core/data/run-current/local-source-cache.sqlite
+```
+
+The database is disposable and rebuildable from import artifacts. Do not commit it.
+
+The Local Source Cache should remain a bridge toward Parquet/Arrow memory strata. Keep first-class columns stable and exportable; avoid app-only shapes that cannot become columnar.
+
+First likely future stratum partition:
+
+```text
+event_month = created_at YYYY-MM
+```
+
+Future path:
+
+```text
+local_source_events
+  -> parquet/source-events/event_month=2026-05/*.parquet
+  -> Arrow working set for interpreters
+```
+
 ## Provenance And Consensus
 
 Every event has provenance at ingestion time.

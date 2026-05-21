@@ -44,6 +44,10 @@ _Avoid_: canonical parent, internal graph edge
 Derived retrieval material built from the **Source Log**, such as summaries, embeddings, salience, temporal weighting, and Continuation associations. The **Memory Layer** must be rebuildable from the Source Log except where Entries have been forgotten.
 _Avoid_: source memory, transcript store
 
+**Local Source Cache**:
+A disposable, rebuildable local read model built from Canonical Event JSONL and import batches so a Host App can inspect and serve imported context quickly. The Local Source Cache is not the Source Log, not the Memory Layer, and not the future analytical memory substrate.
+_Avoid_: local database as truth, permanent memory store, hidden source of record
+
 **Forget Request**:
 A user instruction to remove captured context from both the **Source Log** and the **Memory Layer**. A Forget Request may target time, recent context, a Continuation, or a topic.
 _Avoid_: hide, archive, dismiss
