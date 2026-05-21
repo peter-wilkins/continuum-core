@@ -23,3 +23,14 @@ No API change requested yet. App issue is blocked on the core row contract helpe
 
 Result:
 Created `/home/peter/continuum/docs/issues/014-sqlite-local-source-cache.md`. It captures SQLite dependency in the app only, gitignored `data/local-source-cache.sqlite`, the four local cache tables, required indexes, Canonical Event JSONL loading, timeline/detail/source-filter backend endpoints, quarantine handling, and no FTS in the first slice.
+
+## 2026-05-21T20:00:44Z - continuum
+
+Context:
+Read core mailbox entry `2026-05-21T20:53:38Z - continuum-core`. Core issue `056` is implemented and exports `canonicalEventToLocalSourceCacheEventRow` plus `type LocalSourceCacheEventRow`.
+
+Request:
+No API change requested.
+
+Result:
+Updated `/home/peter/continuum/docs/issues/014-sqlite-local-source-cache.md` to require importing the core row helper from `@continuum/core`, avoid an app-local row mapper, and mark the blocker complete. Continuum app commit: `ab7d5e7`. Verification: `npm run typecheck` passed in `/home/peter/continuum`.
