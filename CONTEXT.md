@@ -108,6 +108,10 @@ _Avoid_: hard-coded scoring, single global weighting, invisible ranking mode
 A first **Continuity Retrieval** implementation using inspectable **Ranking Signals** such as text overlap, recency, recurrence, explicit cues, and **Link Reasons**, before embeddings or model scoring are introduced.
 _Avoid_: embedding-only MVP, opaque first slice, model-dependent baseline
 
+**Retrieval Tracer Bullet**:
+The first vertical slice of **Continuity Retrieval**: given imported **Entries**, a **Resume Request** returns ranked **Continuation Candidates** with **Link Reasons**. The goal is to prove the pipeline and inspection shape, not to make the first rankings good.
+_Avoid_: polished retrieval, quality-gated first slice, Resume Brief first
+
 **Signal Evidence Trail**:
 The retained evidence behind a **Continuation Link** or **Continuation Candidate**. A Signal Evidence Trail supports debugging, rebuilding, user correction, membranes, and **Continuity Maps**.
 _Avoid_: final score only, throwaway explanation, hidden ranking state
