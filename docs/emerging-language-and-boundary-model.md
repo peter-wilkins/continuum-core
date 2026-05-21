@@ -1,5 +1,7 @@
 # Emerging Language and Boundary Model
 
+This document captures the emerging Continuum domain language. It is intentionally a living glossary rather than a final ontology.
+
 ## Core Cognitive Terms
 
 ### Continuum
@@ -21,6 +23,8 @@ Persistence of rationale, thought lineage, and organizational memory across time
 
 ### Psychological Safety
 The ability to think provisionally, speculate, disagree, and explore without social or organizational threat.
+
+This is not a soft extra. It is a technical requirement for high-quality cognition. If people feel watched, punished, or permanently exposed, they self-censor and the system fills with performative sludge.
 
 ### Negotiated Boundaries
 Sharing and trust boundaries that evolve through observed behavior and approval.
@@ -45,6 +49,62 @@ Simple human-facing term for where information may flow.
 
 ### Membrane
 A selectively permeable cognitive boundary between continuums.
+
+A membrane is more than a privacy filter. It can:
+
+- protect
+- filter
+- compress
+- transform
+- translate
+- regulate
+- summarize
+- preserve provenance
+- maintain separation between cognition layers
+
+Membranes make Continuum safer, but they also make Continuum scalable. Raw local cognition is noisy and high-bandwidth. As cognition passes outward or upward, membranes can reduce entropy and produce more compact forms: discussion becomes synthesis, synthesis becomes consensus, consensus becomes narrative, narrative becomes strategy.
+
+### Membrane Type
+Different membranes may optimize for different outcomes.
+
+Examples:
+
+- Safety membrane: protects privacy and removes toxins before sharing.
+- Consensus membrane: extracts agreement and unresolved disagreement.
+- Narrative membrane: turns discussion into coherent explanation.
+- Strategic membrane: compresses local detail into higher-level signal.
+- Public membrane: prepares information for public release.
+- Learning membrane: extracts reusable concepts and lessons.
+- Compression membrane: increases signal density.
+- Translation membrane: adapts meaning between domains, teams, or audiences.
+
+### Toxin
+Content that should not cross a membrane in its current form because it may cause harm, leak private information, damage trust, or expose inappropriate detail.
+
+A toxin is contextual. The same fact may be safe in one continuum and unsafe in another.
+
+### Detoxification
+The process of removing, redacting, summarizing, or transforming sensitive material so that a safer version can cross a membrane.
+
+### Compression
+The transformation of detailed cognition into a smaller, higher-signal representation.
+
+Compression is not neutral. It decides what survives, what is omitted, and what becomes canonical.
+
+### Abstraction Layer
+A level of cognition produced by membrane compression.
+
+Local teams may work in fast, messy, detailed continuums. Higher organizational layers may consume slower, more stable, more abstract continuums.
+
+### Traceable Abstraction
+An abstraction that preserves enough provenance to drill down into its sources.
+
+Continuum should avoid untraceable summaries that become false organizational truth.
+
+### Minority Report
+A preserved dissenting view or unresolved alternative that should survive compression.
+
+Consensus should not erase meaningful disagreement.
 
 ### Sandbox
 An initial low-trust protected state for sharing and experimentation.
@@ -81,6 +141,26 @@ Memory that survives transitions between chat, calls, documents, meetings, and v
 ### Selective Organizational Cognition
 Small groups think deeply while others access continuity only when relevant.
 
+### Cognition Scaling Infrastructure
+The membrane-based ability to let detailed local cognition become compact, safe, higher-level organizational cognition.
+
+Without compression and abstraction, organizations drown in raw conversation.
+
+### Consensus Flow
+The movement from local discussion toward shared understanding at wider levels.
+
+A team may debate in detail, then export a compact consensus to a wider group, which may then export an even more compact strategic version.
+
+### Dynamic Permeability
+Membrane permeability that changes depending on context.
+
+Examples:
+
+- crisis mode may allow faster and wider flow
+- confidential projects may restrict flow
+- onboarding mode may increase explanatory flow
+- research mode may preserve more uncertainty and alternatives
+
 ## Structural and Systems Terms
 
 ### Federated Continuums
@@ -98,6 +178,28 @@ Reintegration of explored branches into shared continuity.
 ### Cognitive Access Control
 Permissions based on cognitive context rather than only files or systems.
 
+### Abuse-Resistant Cognition Architecture
+An architecture that makes misuse structurally harder even if impossible to eliminate entirely.
+
+Principles:
+
+- never centralize raw cognition unnecessarily
+- keep personal and organizational data physically/logically separated
+- treat vectors and embeddings as sensitive
+- avoid advertising or targeting interfaces
+- make boundary crossings explicit and auditable
+- make private thinking cheap and safe
+- make outward sharing deliberate and visible
+
+### Outbound-Only Membrane
+A membrane where data leaves a continuum only through explicit promotion/export events rather than invisible synchronization.
+
+### Personal Vault
+A private storage and inference domain for personal cognition.
+
+### No Advertising Interface
+A deliberate product and architecture constraint: do not expose audience segments, targeting tools, lookalike APIs, or behavioural manipulation hooks.
+
 ## Human and Philosophical Terms
 
 ### Continuity of Thought
@@ -111,6 +213,14 @@ The principle that some thoughts should decay naturally.
 
 ### Safe Continuity
 Continuity of thought bounded safely and sustainably.
+
+### Entropy Reduction
+The membrane-driven process of turning noisy, repetitive, emotional, contradictory cognition into more compact, stable, useful forms.
+
+### Homeostasis
+A biological metaphor for maintaining healthy separation and exchange between continuums.
+
+A good membrane allows enough exchange to keep the whole system alive, but not so much that one context floods or poisons another.
 
 ## Identity Terms
 
