@@ -119,12 +119,31 @@ export type RankingSignal = {
   weight: number;
 };
 
+export type LinkReason = {
+  text: string;
+  rankingSignalKind: RankingSignalKind;
+};
+
+export type SignalEvidence = {
+  rankingSignalKind: RankingSignalKind;
+  value: number;
+  weight: number;
+  reason: string;
+};
+
+export type CandidateEntrySupport = {
+  entryId: string;
+  linkReasons: LinkReason[];
+};
+
 export type ContinuationCandidate = {
   id: string;
   title: string;
   confidence: number;
   supportingEntryIds: string[];
+  supportingEntries: CandidateEntrySupport[];
   rankingSignals: RankingSignal[];
+  signalEvidenceTrail: SignalEvidence[];
 };
 
 export type ContinuityRetrievalInput = {
@@ -539,6 +558,13 @@ function textOverlapScore(left: string, right: string): number {
   return overlap / leftTokens.size;
 }
 
+function overlappingTokens(left: string, right: string): string[] {
+  const leftTokens = tokenSet(left);
+  const rightTokens = tokenSet(right);
+
+  return [...leftTokens].filter((token) => rightTokens.has(token)).sort();
+}
+
 function recencyScore(entry: ImportedEntry, requestedAt: string): number {
   const requested = new Date(requestedAt).getTime();
   const occurred = new Date(entry.time.occurredAt).getTime();
@@ -567,6 +593,35 @@ function continuationTitle(entry: ImportedEntry): string {
     .split(" ")
     .slice(0, 6)
     .join(" ");
+}
+
+function linkReasonsForEntry(
+  entry: ImportedEntry,
+  request: ResumeRequest,
+): LinkReason[] {
+  const reasons: LinkReason[] = [];
+  const overlaps = overlappingTokens(request.text, entryRetrievalText(entry));
+
+  if (overlaps.length > 0) {
+    reasons.push({
+      rankingSignalKind: "text_overlap",
+      text: `Matched request terms: ${overlaps.join(", ")}`,
+    });
+  }
+
+  reasons.push({
+    rankingSignalKind: "recency",
+    text: `Entry occurred at ${entry.time.occurredAt}`,
+  });
+
+  if (hasExplicitResumeCue(request)) {
+    reasons.push({
+      rankingSignalKind: "explicit_resume_cue",
+      text: `Resume Request starts with an explicit retrieval cue.`,
+    });
+  }
+
+  return reasons;
 }
 
 function keyBuffer(keyMaterial: string): Buffer {
@@ -1858,13 +1913,50 @@ export function retrieveContinuationCandidates(
           0,
         ),
       );
+      const signalEvidenceTrail: SignalEvidence[] = [
+        {
+          rankingSignalKind: "text_overlap",
+          value: clampConfidence(candidate.textOverlap),
+          weight: 0.5,
+          reason:
+            candidate.textOverlap > 0
+              ? "Candidate has request terms in supporting Entries."
+              : "Candidate has no request term overlap.",
+        },
+        {
+          rankingSignalKind: "recency",
+          value: clampConfidence(candidate.recency),
+          weight: 0.2,
+          reason: "Candidate uses the most recent supporting Entry.",
+        },
+        {
+          rankingSignalKind: "recurrence",
+          value: clampConfidence(recurrence),
+          weight: 0.2,
+          reason: `Candidate has ${candidate.entries.length} supporting Entries.`,
+        },
+        {
+          rankingSignalKind: "explicit_resume_cue",
+          value: explicitCue,
+          weight: 0.1,
+          reason:
+            explicitCue > 0
+              ? "Resume Request contains an explicit retrieval cue."
+              : "Resume Request does not contain an explicit retrieval cue.",
+        },
+      ];
 
       return {
         id: `continuation-candidate:${stableHash(candidate.title.toLowerCase())}`,
         title: candidate.title,
         confidence,
         supportingEntryIds: candidate.entries.map((entry) => entry.id),
+        supportingEntries: candidate.entries.map((entry) => ({
+          entryId: entry.id,
+          linkReasons: linkReasonsForEntry(entry, input.resumeRequest),
+        })),
         rankingSignals,
+        signalEvidenceTrail,
       };
     })
     .filter((candidate) => candidate.confidence > 0)

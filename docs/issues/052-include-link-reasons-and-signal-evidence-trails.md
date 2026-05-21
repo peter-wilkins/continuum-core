@@ -1,6 +1,6 @@
 # 052: Include Link Reasons And Signal Evidence Trails
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,12 +20,12 @@ Make each **Continuation Candidate** explainable by attaching supporting Entries
 
 ## Acceptance Criteria
 
-- [ ] Each Continuation Candidate includes supporting Entries.
-- [ ] Each supporting Entry includes at least one Link Reason.
-- [ ] Each candidate exposes the Ranking Signals that contributed to Retrieval Confidence.
-- [ ] Signal Evidence Trail is retained in the result, not thrown away after scoring.
-- [ ] Reasons are human-readable enough for debugging.
-- [ ] Tests assert reason text for deterministic cases.
+- [x] Each Continuation Candidate includes supporting Entries.
+- [x] Each supporting Entry includes at least one Link Reason.
+- [x] Each candidate exposes the Ranking Signals that contributed to Retrieval Confidence.
+- [x] Signal Evidence Trail is retained in the result, not thrown away after scoring.
+- [x] Reasons are human-readable enough for debugging.
+- [x] Tests assert reason text for deterministic cases.
 
 ## Blocked by
 
