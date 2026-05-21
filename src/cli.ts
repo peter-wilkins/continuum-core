@@ -8,26 +8,20 @@ import { strFromU8, unzipSync } from "fflate";
 import {
   type ImportErrorRecord,
   mergeCanonicalEvents,
-  normalizeClaudeConversations,
-  normalizeChatGptConversations,
-  normalizeGoogleChromeBookmarksExport,
-  normalizeGoogleChromeHistoryExport,
-  normalizeGoogleChromeReadingListExport,
-  normalizeGoogleMyActivityExport,
-  normalizeGitCommit,
-  normalizeICalendarEvent,
-  normalizeMarkdownDocument,
-  parseClaudeConversationsWithQuarantine,
-  parseGoogleChromeBookmarksExport,
-  parseGoogleChromeHistoryExport,
-  parseGoogleChromeReadingListExport,
-  parseGoogleMyActivityExport,
-  parseGitLog,
-  parseICalendarEvents,
   type CanonicalEvent,
-  type ChatGptConversationExport,
   type ImportReport,
 } from "./index";
+import {
+  classifySourceFile,
+  importCommands,
+  isArchiveImportCommand,
+  isImportCommand,
+  isSourceImportCommand,
+  normalizeSourceInput,
+  prepareSourceInput,
+  sourceInputNeedsJson,
+  type ImportCommand,
+} from "./import-source-adapters";
 
 export type ImportBatch = {
   id: string;
@@ -126,37 +120,7 @@ type CliCommand =
       previewPath: string;
     };
 
-type ImportCommand =
-  | "chatgpt"
-  | "claude"
-  | "google-chrome-history"
-  | "google-chrome-bookmarks"
-  | "google-chrome-reading-list"
-  | "google-my-activity"
-  | "git-log"
-  | "icalendar"
-  | "markdown"
-  | "google-takeout-folder"
-  | "google-takeout-zip";
-
-const importCommands = [
-  "chatgpt",
-  "claude",
-  "google-chrome-history",
-  "google-chrome-bookmarks",
-  "google-chrome-reading-list",
-  "google-my-activity",
-  "git-log",
-  "icalendar",
-  "markdown",
-  "google-takeout-folder",
-  "google-takeout-zip",
-] as const satisfies ImportCommand[];
 const importCommandUsage = importCommands.join("|");
-
-function isImportCommand(source: string | undefined): source is ImportCommand {
-  return importCommands.some((command) => command === source);
-}
 
 function parseCliCommand(args: string[]): CliCommand {
   const [command, inputPath, outFlag, outputPath] = args;
@@ -285,6 +249,14 @@ function normalizeCommandInput(
     };
   }
 
+  if (isArchiveImportCommand(source)) {
+    return normalizeTakeoutFolder(input.parsed as TakeoutFolderFile[]);
+  }
+
+  if (!isSourceImportCommand(source)) {
+    throw new Error(`Unsupported source command: ${source}`);
+  }
+
   return normalizeSourceInput(source, input.parsed);
 }
 
@@ -301,23 +273,6 @@ type TakeoutFolderFile = {
   relativePath: string;
   raw: string;
   hash: string;
-};
-
-type ICalendarCliInput = {
-  calendarPath: string;
-  raw: string;
-};
-
-type MarkdownCliInput = {
-  filePath: string;
-  modifiedAt: string;
-  modifiedAtConfidence: "exact" | "unknown";
-  raw: string;
-};
-
-type GitLogCliInput = {
-  repositoryPath: string;
-  raw: string;
 };
 
 type NormalizedSourceInput = {
@@ -375,26 +330,13 @@ async function readSourceInput(
   }
 
   const raw = await readFile(inputPath, "utf8");
-  let parsed: unknown =
-    source === "icalendar"
-      ? {
-          calendarPath: basename(inputPath),
-          raw,
-        } satisfies ICalendarCliInput
-      : source === "markdown"
-        ? {
-            filePath: basename(inputPath),
-            modifiedAt: (await stat(inputPath)).mtime.toISOString(),
-            modifiedAtConfidence: "exact",
-            raw,
-          } satisfies MarkdownCliInput
-        : source === "git-log"
-          ? {
-              repositoryPath: basename(inputPath),
-              raw,
-            } satisfies GitLogCliInput
-      : raw;
+  const modifiedAt = (await stat(inputPath)).mtime.toISOString();
+  let parsed: unknown = raw;
   let parseError: string | null = null;
+
+  if (isArchiveImportCommand(source)) {
+    throw new Error(`Archive source should have been handled before direct read: ${source}`);
+  }
 
   if (sourceInputNeedsJson(source)) {
     try {
@@ -403,6 +345,15 @@ async function readSourceInput(
       parseError = error instanceof Error ? error.message : String(error);
       parsed = null;
     }
+  }
+
+  if (parseError === null) {
+    parsed = prepareSourceInput(source, parsed, {
+      inputPath,
+      relativePath: basename(inputPath),
+      modifiedAt,
+      modifiedAtConfidence: "exact",
+    });
   }
 
   return {
@@ -489,31 +440,6 @@ async function readTakeoutFolder(
   );
 }
 
-function sourceInputNeedsJson(source: ImportCommand): boolean {
-  return ![
-    "google-chrome-bookmarks",
-    "google-chrome-reading-list",
-    "git-log",
-    "icalendar",
-    "markdown",
-    "google-takeout-folder",
-    "google-takeout-zip",
-  ].includes(source);
-}
-
-function validationErrorsToQuarantine(
-  source: ImportCommand,
-  errors: Array<{ path: string; message: string }>,
-): ImportErrorRecord[] {
-  return errors.map((error) => ({
-    sourcePath: error.path,
-    recordIndex: null,
-    errorCode: "source_validation_failed",
-    message: `${source}:${error.path}: ${error.message}`,
-    recoverable: true,
-  }));
-}
-
 function parseErrorToQuarantine(
   source: ImportCommand,
   inputPath: string,
@@ -542,7 +468,7 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
   let warnings = 0;
 
   for (const file of files) {
-    const source = classifyTakeoutFile(file);
+    const source = classifySourceFile(file);
 
     if (source === null) {
       warnings += 1;
@@ -560,26 +486,12 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
 
     try {
       parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
-      if (source === "icalendar") {
-        parsed = {
-          calendarPath: file.relativePath,
-          raw: file.raw,
-        } satisfies ICalendarCliInput;
-      }
-      if (source === "markdown") {
-        parsed = {
-          filePath: file.relativePath,
-          modifiedAt: "1970-01-01T00:00:00.000Z",
-          modifiedAtConfidence: "unknown",
-          raw: file.raw,
-        } satisfies MarkdownCliInput;
-      }
-      if (source === "git-log") {
-        parsed = {
-          repositoryPath: basename(file.relativePath),
-          raw: file.raw,
-        } satisfies GitLogCliInput;
-      }
+      parsed = prepareSourceInput(source, parsed, {
+        inputPath: file.path,
+        relativePath: file.relativePath,
+        modifiedAt: "1970-01-01T00:00:00.000Z",
+        modifiedAtConfidence: "unknown",
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -620,246 +532,6 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
   }
 
   return { incomingEvents, quarantine, sourceFiles, warnings };
-}
-
-function classifyTakeoutFile(file: TakeoutFolderFile): ImportCommand | null {
-  const lowerPath = file.relativePath.toLowerCase();
-
-  if (lowerPath.endsWith(".html") && lowerPath.includes("reading")) {
-    return "google-chrome-reading-list";
-  }
-
-  if (lowerPath.endsWith(".html") && lowerPath.includes("bookmark")) {
-    return "google-chrome-bookmarks";
-  }
-
-  if (lowerPath.endsWith(".json") && lowerPath.includes("history")) {
-    return "google-chrome-history";
-  }
-
-  if (
-    lowerPath.endsWith(".json") &&
-    (lowerPath.includes("myactivity") || lowerPath.includes("my activity"))
-  ) {
-    return "google-my-activity";
-  }
-
-  if (lowerPath.endsWith(".ics")) {
-    return "icalendar";
-  }
-
-  if (lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown")) {
-    return "markdown";
-  }
-
-  if (lowerPath.endsWith(".gitlog") || lowerPath.endsWith(".git-log.txt")) {
-    return "git-log";
-  }
-
-  if (!lowerPath.endsWith(".json")) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(file.raw) as unknown;
-
-    if (parseGoogleChromeHistoryExport(parsed).ok) {
-      return "google-chrome-history";
-    }
-
-    if (parseGoogleMyActivityExport(parsed).ok) {
-      return "google-my-activity";
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function normalizeSourceInput(
-  source: ImportCommand,
-  parsed: unknown,
-): NormalizedSourceInput {
-  if (source === "google-takeout-folder" || source === "google-takeout-zip") {
-    return normalizeTakeoutFolder(parsed as TakeoutFolderFile[]);
-  }
-
-  if (source === "chatgpt") {
-    return {
-      incomingEvents: normalizeChatGptConversations(
-        parsed as ChatGptConversationExport[],
-      ),
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  if (source === "google-chrome-history") {
-    const result = parseGoogleChromeHistoryExport(parsed);
-
-    if (!result.ok) {
-      return {
-        incomingEvents: [],
-        quarantine: validationErrorsToQuarantine(source, result.errors),
-        sourceFiles: [],
-        warnings: 0,
-      };
-    }
-
-    return {
-      incomingEvents: normalizeGoogleChromeHistoryExport(result.value),
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  if (source === "google-chrome-bookmarks") {
-    const result = parseGoogleChromeBookmarksExport(String(parsed));
-
-    if (!result.ok) {
-      return {
-        incomingEvents: [],
-        quarantine: validationErrorsToQuarantine(source, result.errors),
-        sourceFiles: [],
-        warnings: 0,
-      };
-    }
-
-    return {
-      incomingEvents: normalizeGoogleChromeBookmarksExport(result.value),
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  if (source === "google-chrome-reading-list") {
-    const result = parseGoogleChromeReadingListExport(String(parsed));
-
-    if (!result.ok) {
-      return {
-        incomingEvents: [],
-        quarantine: validationErrorsToQuarantine(source, result.errors),
-        sourceFiles: [],
-        warnings: 0,
-      };
-    }
-
-    return {
-      incomingEvents: normalizeGoogleChromeReadingListExport(result.value),
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  if (source === "google-my-activity") {
-    const result = parseGoogleMyActivityExport(parsed);
-
-    if (!result.ok) {
-      return {
-        incomingEvents: [],
-        quarantine: validationErrorsToQuarantine(source, result.errors),
-        sourceFiles: [],
-        warnings: 0,
-      };
-    }
-
-    return {
-      incomingEvents: normalizeGoogleMyActivityExport(result.value),
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  if (source === "icalendar") {
-    const input = parsed as ICalendarCliInput;
-    const result = parseICalendarEvents(input.raw);
-
-    if (!result.ok) {
-      return {
-        incomingEvents: [],
-        quarantine: validationErrorsToQuarantine(source, result.errors),
-        sourceFiles: [],
-        warnings: 0,
-      };
-    }
-
-    return {
-      incomingEvents: result.value.map((event) =>
-        normalizeICalendarEvent({
-          calendar: {
-            path: input.calendarPath,
-          },
-          event,
-        }),
-      ),
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  if (source === "markdown") {
-    const input = parsed as MarkdownCliInput;
-
-    return {
-      incomingEvents: [
-        normalizeMarkdownDocument({
-          file: {
-            path: input.filePath,
-            modifiedAt: input.modifiedAt,
-            modifiedAtConfidence: input.modifiedAtConfidence,
-          },
-          content: input.raw,
-        }),
-      ],
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  if (source === "git-log") {
-    const input = parsed as GitLogCliInput;
-    const result = parseGitLog(input.raw);
-
-    if (!result.ok) {
-      return {
-        incomingEvents: [],
-        quarantine: validationErrorsToQuarantine(source, result.errors),
-        sourceFiles: [],
-        warnings: 0,
-      };
-    }
-
-    return {
-      incomingEvents: result.value.map((commit) =>
-        normalizeGitCommit({
-          repository: {
-            path: input.repositoryPath,
-          },
-          commit,
-        }),
-      ),
-      quarantine: [],
-      sourceFiles: [],
-      warnings: 0,
-    };
-  }
-
-  const result = parseClaudeConversationsWithQuarantine(parsed);
-
-  return {
-    incomingEvents: normalizeClaudeConversations(result.conversations),
-    quarantine: result.quarantine,
-    sourceFiles: [],
-    warnings: 0,
-  };
 }
 
 function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input: SourceInput): InspectCliResult {
@@ -943,7 +615,7 @@ function sourceFilesForPreview(
   incomingEvents: CanonicalEvent[],
   quarantine: ImportErrorRecord[],
 ): SourceFilePreview[] {
-  if (source === "google-takeout-folder") {
+  if (isArchiveImportCommand(source)) {
     return [];
   }
 
