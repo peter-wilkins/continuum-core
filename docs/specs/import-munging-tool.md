@@ -560,6 +560,74 @@ type DedupeDecision =
 
 ---
 
+## Development tooling decision
+
+Use TypeScript as the primary implementation language for the import tool. Rust and WebAssembly are explicitly deferred as premature performance optimization unless benchmarks prove a specific hot path needs it.
+
+The schema/storage layer should stay boring: once a canonical event shape is defined, persistence is primarily an append-only event log plus source-reference and import-batch metadata.
+
+Use two levels of schema tooling:
+
+```text
+quicktype
+  Development aid for reverse-engineering unknown or changing source export formats.
+
+Zod
+  Production validation/parsing boundary inside the import tool.
+```
+
+### quicktype role
+
+Use quicktype during adapter development to quickly inspect real-world sample exports and generate provisional TypeScript definitions.
+
+Expected use:
+
+```bash
+quicktype conversations.json -o generated/chatgpt-export.types.ts
+```
+
+Rules:
+
+- Generated quicktype output is exploratory scaffolding.
+- Do not treat quicktype-generated types as the canonical Continuum model.
+- Regenerate when sample exports change.
+- Keep generated source-schema types close to the adapter that uses them.
+- Prefer committing small representative fixtures over committing huge personal exports.
+
+### Zod role
+
+Use Zod at import boundaries for runtime validation, coercion, safe parsing, and graceful degradation.
+
+Expected pattern:
+
+```ts
+const parsed = ChatGptExportSchema.safeParse(raw);
+
+if (!parsed.success) {
+  // quarantine malformed records, do not crash whole import
+}
+```
+
+Rules:
+
+- Use `safeParse`, not blind trust.
+- Validate source records before normalization.
+- Quarantine bad records instead of failing entire imports.
+- Keep source schemas separate from canonical Continuum event schemas.
+- Treat vendor export formats as unstable and vendor-controlled.
+
+Architectural distinction:
+
+```text
+source export schema
+  unstable, external, adapter-local
+
+canonical Continuum event schema
+  stable, internal, product-shaped
+```
+
+---
+
 ## Preview UI requirements
 
 Before sync, show:
@@ -694,6 +762,10 @@ packages/continuum-import
       dedupe.ts
       batch.ts
       preview.ts
+    generated/
+      chatgpt-export.types.ts
+      claude-export.types.ts
+      google-takeout.types.ts
     cli.ts
 ```
 
@@ -737,6 +809,9 @@ newer ChatGPT export imports only new messages
 Claude export normalizes into the same ContinuumEvent shape
 Google Takeout records import even with partial metadata
 Markdown folder import works as a generic escape hatch
+quicktype can generate exploratory source types from fixtures
+Zod validates source records before canonical event normalization
+malformed source records are quarantined rather than fatal
 user can preview before sync
 raw export remains local by default
 event provenance is preserved
