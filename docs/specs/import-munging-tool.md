@@ -34,6 +34,7 @@ Active/imported:
 - Claude export: real local sample validates and imports.
 - ChatGPT export: fixture/import path exists, but real export is postponed.
 - Email/MBOX: model pressure fixture exists.
+- Calendar/iCalendar: fixture imports one calendar event.
 - Google Chrome history: Takeout/Data Portability fixture imports one browser visit.
 - Google Chrome bookmarks: Takeout/Data Portability fixture imports one saved reference.
 - Google Chrome reading list: Takeout/Data Portability fixture imports one saved reference.
@@ -44,7 +45,6 @@ Catalogue targets:
 
 - Git commits.
 - GitHub issues, PRs, reviews, commits, discussions.
-- Calendar/iCalendar.
 - Slack export.
 - Markdown/Obsidian/local docs.
 - Google Contacts.
@@ -87,7 +87,7 @@ type CanonicalEvent = {
   id: string;
 
   source: {
-    platform: "chatgpt" | "claude" | "email" | "google_activity" | "google_chrome" | "wikimedia";
+    platform: "chatgpt" | "claude" | "email" | "google_activity" | "google_chrome" | "icalendar" | "wikimedia";
     key: string;
     fingerprint: string;
     externalConversationId: string;
@@ -427,6 +427,7 @@ Done:
 - CLI inspect/import can read Google Takeout zip files idempotently.
 - CLI terminal output prints warning counts and source-file counts.
 - Malformed Google Takeout zip files are quarantined during dry-run instead of crashing.
+- iCalendar parses and imports one calendar event.
 
 Next:
 

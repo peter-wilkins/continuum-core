@@ -25,9 +25,16 @@ export type CanonicalSourcePlatform =
   | "email"
   | "google_activity"
   | "google_chrome"
+  | "icalendar"
   | "wikimedia";
 
-export type CanonicalParticipantRole = "sender" | "recipient" | "cc" | "bcc" | "reply_to";
+export type CanonicalParticipantRole =
+  | "sender"
+  | "recipient"
+  | "cc"
+  | "bcc"
+  | "reply_to"
+  | "attendee";
 
 export type CanonicalParticipant = {
   role: CanonicalParticipantRole;
@@ -242,6 +249,24 @@ export type GoogleMyActivityExport = GoogleMyActivityRecord[];
 
 export type GoogleMyActivityNormalizationInput = {
   activity: GoogleMyActivityRecord;
+};
+
+export type ICalendarEventRecord = {
+  uid: string;
+  dtstamp: string | null;
+  dtstart: string;
+  dtend: string | null;
+  summary: string;
+  description: string | null;
+  location: string | null;
+  attendees: EmailAddress[];
+};
+
+export type ICalendarEventNormalizationInput = {
+  calendar: {
+    path: string;
+  };
+  event: ICalendarEventRecord;
 };
 
 export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
@@ -818,6 +843,154 @@ export function parseGoogleMyActivityExport(
   };
 }
 
+function unfoldICalendarLines(input: string): string[] {
+  const lines: string[] = [];
+
+  for (const rawLine of input.replaceAll("\r\n", "\n").split("\n")) {
+    if (rawLine.startsWith(" ") || rawLine.startsWith("\t")) {
+      const previous = lines.at(-1) ?? "";
+      lines[lines.length - 1] = `${previous}${rawLine.slice(1)}`;
+      continue;
+    }
+
+    if (rawLine.length > 0) {
+      lines.push(rawLine);
+    }
+  }
+
+  return lines;
+}
+
+function iCalendarPropertyName(line: string): string {
+  return (line.split(":", 1)[0] ?? "").split(";", 1)[0]?.toUpperCase() ?? "";
+}
+
+function iCalendarPropertyValue(line: string): string {
+  const separatorIndex = line.indexOf(":");
+
+  if (separatorIndex === -1) {
+    return "";
+  }
+
+  return line.slice(separatorIndex + 1)
+    .replaceAll("\\n", "\n")
+    .replaceAll("\\,", ",")
+    .replaceAll("\\;", ";")
+    .replaceAll("\\\\", "\\");
+}
+
+function iCalendarParameter(line: string, parameterName: string): string | null {
+  const property = line.split(":", 1)[0] ?? "";
+  const pattern = new RegExp(`(?:^|;)${parameterName}=([^;:]+)`, "i");
+  const match = property.match(pattern);
+
+  return match?.[1] ?? null;
+}
+
+function parseICalendarAttendee(line: string): EmailAddress {
+  const rawAddress = iCalendarPropertyValue(line);
+  const address = rawAddress.toLowerCase().startsWith("mailto:")
+    ? rawAddress.slice("mailto:".length)
+    : rawAddress;
+
+  return {
+    name: iCalendarParameter(line, "CN"),
+    address,
+  };
+}
+
+function requireICalendarField(
+  fields: Map<string, string[]>,
+  fieldName: string,
+  eventIndex: number,
+  errors: SourceValidationError[],
+): string {
+  const value = fields.get(fieldName)?.[0];
+
+  if (!value) {
+    errors.push({
+      path: `VEVENT.${eventIndex}.${fieldName}`,
+      message: "Required",
+    });
+    return "";
+  }
+
+  return value;
+}
+
+export function parseICalendarEvents(
+  input: string,
+): SourceValidationResult<ICalendarEventRecord[]> {
+  const lines = unfoldICalendarLines(input);
+  const events: ICalendarEventRecord[] = [];
+  const errors: SourceValidationError[] = [];
+  let currentEventLines: string[] | null = null;
+
+  for (const line of lines) {
+    if (line.toUpperCase() === "BEGIN:VEVENT") {
+      currentEventLines = [];
+      continue;
+    }
+
+    if (line.toUpperCase() === "END:VEVENT") {
+      if (currentEventLines === null) {
+        continue;
+      }
+
+      const fields = new Map<string, string[]>();
+      const attendees: EmailAddress[] = [];
+      const eventIndex = events.length;
+
+      for (const eventLine of currentEventLines) {
+        const propertyName = iCalendarPropertyName(eventLine);
+
+        if (propertyName === "ATTENDEE") {
+          attendees.push(parseICalendarAttendee(eventLine));
+          continue;
+        }
+
+        const values = fields.get(propertyName) ?? [];
+        values.push(iCalendarPropertyValue(eventLine));
+        fields.set(propertyName, values);
+      }
+
+      const uid = requireICalendarField(fields, "UID", eventIndex, errors);
+      const dtstart = requireICalendarField(fields, "DTSTART", eventIndex, errors);
+      const summary = requireICalendarField(fields, "SUMMARY", eventIndex, errors);
+
+      if (uid && dtstart && summary) {
+        events.push({
+          uid,
+          dtstamp: fields.get("DTSTAMP")?.[0] ?? null,
+          dtstart,
+          dtend: fields.get("DTEND")?.[0] ?? null,
+          summary,
+          description: fields.get("DESCRIPTION")?.[0] ?? null,
+          location: fields.get("LOCATION")?.[0] ?? null,
+          attendees,
+        });
+      }
+
+      currentEventLines = null;
+      continue;
+    }
+
+    currentEventLines?.push(line);
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errors,
+    };
+  }
+
+  return {
+    ok: true,
+    value: events,
+  };
+}
+
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
   return `chatgpt:${input.conversation.id}:${input.node.message.id}`;
 }
@@ -993,6 +1166,45 @@ function googleMyActivitySourceFingerprint(
       imageFile: input.activity.imageFile,
       audioFiles: input.activity.audioFiles,
       attachedFiles: input.activity.attachedFiles,
+    }),
+  );
+}
+
+function iCalendarDateToIso(value: string): string {
+  const match = value.match(
+    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,
+  );
+
+  if (!match) {
+    return new Date(value).toISOString();
+  }
+
+  const [, year, month, day, hour, minute, second] = match;
+
+  return new Date(
+    `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`,
+  ).toISOString();
+}
+
+function iCalendarSourceKey(input: ICalendarEventNormalizationInput): string {
+  return `icalendar:${input.event.uid}`;
+}
+
+function iCalendarSourceFingerprint(
+  input: ICalendarEventNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "icalendar",
+      calendarPath: input.calendar.path,
+      uid: input.event.uid,
+      dtstamp: input.event.dtstamp,
+      dtstart: input.event.dtstart,
+      dtend: input.event.dtend,
+      summary: input.event.summary,
+      description: input.event.description,
+      location: input.event.location,
+      attendees: input.event.attendees,
     }),
   );
 }
@@ -1540,6 +1752,60 @@ export function normalizeGoogleMyActivityRecord(
       kind: "text",
       subject: input.activity.title,
       text: googleMyActivityText(input),
+    },
+  };
+}
+
+export function normalizeICalendarEvent(
+  input: ICalendarEventNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = iCalendarSourceKey(input);
+  const textParts = [
+    input.event.summary,
+    input.event.description,
+    input.event.location === null ? null : `Location: ${input.event.location}`,
+    input.event.dtend === null
+      ? null
+      : `Ends: ${iCalendarDateToIso(input.event.dtend)}`,
+  ];
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "icalendar",
+      key: sourceKey,
+      fingerprint: iCalendarSourceFingerprint(input),
+      externalConversationId: input.calendar.path,
+      externalMessageId: input.event.uid,
+      artifactId: input.event.uid,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "personal_schedule",
+      sourceName: "icalendar",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: iCalendarDateToIso(input.event.dtstart),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: input.event.attendees.map((attendee) => ({
+      role: "attendee",
+      ...attendee,
+    })),
+    content: {
+      kind: "text",
+      subject: input.event.summary,
+      text: textParts
+        .filter((value): value is string => value !== null && value.length > 0)
+        .join("\n"),
     },
   };
 }

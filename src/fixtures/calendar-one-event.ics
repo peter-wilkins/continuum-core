@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Continuum Core//Example Calendar//EN
+BEGIN:VEVENT
+UID:boiler-quote@example.com
+DTSTAMP:20260521T104203Z
+DTSTART:20260522T090000Z
+DTEND:20260522T093000Z
+SUMMARY:Boiler quote call
+DESCRIPTION:Ask Bob whether the boiler is combi or system.
+LOCATION:Phone
+ATTENDEE;CN=Peter Wilkins:mailto:peter@example.com
+ATTENDEE;CN=Bob:mailto:bob@example.com
+END:VEVENT
+END:VCALENDAR

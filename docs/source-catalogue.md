@@ -9,7 +9,7 @@ ChatGPT is postponed until the export arrives. Active ranking starts with source
 | 3 | Git commits | sample available | high | high | medium | Git commit | `data/git/continuum-core-log.txt` |
 | 4 | GitHub issues, PRs, reviews, commits, discussions | sample available | high | high | medium | GitHub issue comment | `data/github/octocat-hello-world-issue-comments.json` |
 | 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | MediaWiki page revision | `data/wikimedia/boiler-revisions.json` |
-| 6 | Calendar / iCalendar | sample available | high | medium | high | Calendar event | `data/calendar/basic-event.ics` |
+| 6 | Calendar / iCalendar | implemented fixture | high | medium | high | Calendar event | `src/fixtures/calendar-one-event.ics` |
 | 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |
 | 8 | Markdown / Obsidian / local docs | sample available | high | medium | medium | Markdown file revision snapshot | `README.md` |
 | 9 | Google Chrome history | implemented fixture | high | medium | high | Chrome browser history visit | `src/fixtures/google-chrome-history-one-record.json` |
