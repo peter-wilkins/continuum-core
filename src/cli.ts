@@ -235,9 +235,10 @@ export async function runContinuumImportCli(
     return dryRunImport(command, sourceInput);
   }
 
-  const { incomingEvents, quarantine, warnings } = normalizeSourceInput(
+  const { incomingEvents, quarantine, warnings } = normalizeCommandInput(
     command.source,
-    sourceInput.parsed,
+    command.inputPath,
+    sourceInput,
   );
   const existingEvents = await readExistingEvents(command.outputPath);
   const { events, report } = mergeCanonicalEvents(existingEvents, incomingEvents);
@@ -255,11 +256,29 @@ export async function runContinuumImportCli(
   };
 }
 
+function normalizeCommandInput(
+  source: ImportCommand,
+  inputPath: string,
+  input: SourceInput,
+): NormalizedSourceInput {
+  if (input.parseError !== null) {
+    return {
+      incomingEvents: [],
+      quarantine: parseErrorToQuarantine(source, inputPath, input.parseError),
+      sourceFiles: [],
+      warnings: 0,
+    };
+  }
+
+  return normalizeSourceInput(source, input.parsed);
+}
+
 type SourceInput = {
   raw: string;
   parsed: unknown;
   hash: string;
   filesSeen: number;
+  parseError: string | null;
 };
 
 type TakeoutFolderFile = {
@@ -295,16 +314,29 @@ async function readSourceInput(
       parsed: files,
       hash: hash.digest("hex"),
       filesSeen: files.length,
+      parseError: null,
     };
   }
 
   const raw = await readFile(inputPath, "utf8");
+  let parsed: unknown = raw;
+  let parseError: string | null = null;
+
+  if (sourceInputNeedsJson(source)) {
+    try {
+      parsed = JSON.parse(raw) as unknown;
+    } catch (error: unknown) {
+      parseError = error instanceof Error ? error.message : String(error);
+      parsed = null;
+    }
+  }
 
   return {
     raw,
-    parsed: sourceInputNeedsJson(source) ? JSON.parse(raw) as unknown : raw,
+    parsed,
     hash: createHash("sha256").update(raw).digest("hex"),
     filesSeen: 1,
+    parseError,
   };
 }
 
@@ -378,6 +410,22 @@ function validationErrorsToQuarantine(
     message: `${source}:${error.path}: ${error.message}`,
     recoverable: true,
   }));
+}
+
+function parseErrorToQuarantine(
+  source: ImportCommand,
+  inputPath: string,
+  message: string,
+): ImportErrorRecord[] {
+  return [
+    {
+      sourcePath: basename(inputPath),
+      recordIndex: null,
+      errorCode: "source_parse_failed",
+      message: `${source}:${basename(inputPath)}: ${message}`,
+      recoverable: true,
+    },
+  ];
 }
 
 function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
@@ -574,9 +622,10 @@ function normalizeSourceInput(
 }
 
 function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input: SourceInput): InspectCliResult {
-  const { incomingEvents, quarantine, warnings } = normalizeSourceInput(
+  const { incomingEvents, quarantine, warnings } = normalizeCommandInput(
     command.source,
-    input.parsed,
+    command.inputPath,
+    input,
   );
   const conversationsSeen =
     command.source !== "google-takeout-folder" && Array.isArray(input.parsed)
@@ -600,10 +649,8 @@ async function dryRunImport(
   command: Extract<CliCommand, { kind: "dry-run" }>,
   input: SourceInput,
 ): Promise<DryRunCliResult> {
-  const { incomingEvents, quarantine, sourceFiles, warnings } = normalizeSourceInput(
-    command.source,
-    input.parsed,
-  );
+  const { incomingEvents, quarantine, sourceFiles, warnings } =
+    normalizeCommandInput(command.source, command.inputPath, input);
   const { report } = mergeCanonicalEvents([], incomingEvents);
   const batch = createImportBatch({
     source: command.source,

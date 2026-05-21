@@ -662,4 +662,46 @@ describe("continuum-import CLI", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("quarantines a malformed single JSON source during dry-run", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const badPath = join(dir, "BrowserHistory.json");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(badPath, "{", "utf8");
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-chrome-history",
+        badPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.quarantine[0]).toMatchObject({
+        sourcePath: "BrowserHistory.json",
+        errorCode: "source_parse_failed",
+        recoverable: true,
+      });
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "BrowserHistory.json",
+          source: "google-chrome-history",
+          status: "invalid",
+          eventsCreated: 0,
+          quarantineRecords: 1,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });
