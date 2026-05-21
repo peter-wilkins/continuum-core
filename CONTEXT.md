@@ -64,6 +64,10 @@ _Avoid_: resume pack, continuation state, snapshot
 A user's request to continue an ongoing context, usually expressed in natural language such as `Resume boiler quote` or `Re kitchen redesign`. A Resume Request produces a **Resume Brief**.
 _Avoid_: search query, command invocation, open request
 
+**Continuity Retrieval**:
+The process of finding likely **Continuations** for a **Resume Request** or current **Working Context**, using **Entries** as evidence. Continuity Retrieval returns candidate Continuations with reasons and Confidence; a **Resume Brief** is assembled after a Continuation is selected or ranked high enough.
+_Avoid_: keyword search, event lookup, direct brief retrieval
+
 **Ambiguous Resume**:
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match
