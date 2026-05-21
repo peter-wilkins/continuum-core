@@ -96,6 +96,14 @@ _Avoid_: opaque score, hidden embedding match, magic relevance
 Any evidence used to create, update, strengthen, weaken, split, or reject a **Continuation Link**. Signal Evidence can include semantic inference, recurrence, time, explicit **Resume Requests**, **Subject Boundary Cues**, user corrections, or future signals not yet imagined.
 _Avoid_: closed signal list, embedding-only evidence, user-action-only evidence
 
+**Signal Evidence Trail**:
+The retained evidence behind a **Continuation Link** or **Continuation Candidate**. A Signal Evidence Trail supports debugging, rebuilding, user correction, membranes, and **Continuity Maps**.
+_Avoid_: final score only, throwaway explanation, hidden ranking state
+
+**Retrieval Feedback Loop**:
+A loop that compares **Continuity Retrieval** results with later evidence, user behaviour, explicit corrections, and debugging observations to improve ranking and **Link Reasons**. A Retrieval Feedback Loop teaches the system from outcomes without treating feedback as unquestionable truth.
+_Avoid_: self-training black box, static scoring, uninspected optimisation
+
 **Ambiguous Resume**:
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match
