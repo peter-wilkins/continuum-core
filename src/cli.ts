@@ -440,19 +440,7 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
   let warnings = 0;
 
   for (const file of files) {
-    const lowerPath = file.relativePath.toLowerCase();
-    const source =
-      lowerPath.endsWith(".html") && lowerPath.includes("reading")
-        ? "google-chrome-reading-list"
-        : lowerPath.endsWith(".html") && lowerPath.includes("bookmark")
-          ? "google-chrome-bookmarks"
-          : lowerPath.endsWith(".json") && lowerPath.includes("history")
-            ? "google-chrome-history"
-            : lowerPath.endsWith(".json") &&
-                (lowerPath.includes("myactivity") ||
-                  lowerPath.includes("my activity"))
-              ? "google-my-activity"
-              : null;
+    const source = classifyTakeoutFile(file);
 
     if (source === null) {
       warnings += 1;
@@ -510,6 +498,49 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
   }
 
   return { incomingEvents, quarantine, sourceFiles, warnings };
+}
+
+function classifyTakeoutFile(file: TakeoutFolderFile): ImportCommand | null {
+  const lowerPath = file.relativePath.toLowerCase();
+
+  if (lowerPath.endsWith(".html") && lowerPath.includes("reading")) {
+    return "google-chrome-reading-list";
+  }
+
+  if (lowerPath.endsWith(".html") && lowerPath.includes("bookmark")) {
+    return "google-chrome-bookmarks";
+  }
+
+  if (lowerPath.endsWith(".json") && lowerPath.includes("history")) {
+    return "google-chrome-history";
+  }
+
+  if (
+    lowerPath.endsWith(".json") &&
+    (lowerPath.includes("myactivity") || lowerPath.includes("my activity"))
+  ) {
+    return "google-my-activity";
+  }
+
+  if (!lowerPath.endsWith(".json")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(file.raw) as unknown;
+
+    if (parseGoogleChromeHistoryExport(parsed).ok) {
+      return "google-chrome-history";
+    }
+
+    if (parseGoogleMyActivityExport(parsed).ok) {
+      return "google-my-activity";
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function normalizeSourceInput(

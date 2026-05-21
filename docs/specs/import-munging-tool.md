@@ -421,6 +421,7 @@ Done:
 - Unsupported files inside a Google Takeout folder are skipped as warnings, not validation errors.
 - Import results report warning counts and ignore their own output file during folder reimport.
 - Malformed single JSON source files are quarantined during dry-run instead of throwing before preview.
+- Google Takeout folder JSON files can be classified by schema when filenames are generic.
 
 Next:
 

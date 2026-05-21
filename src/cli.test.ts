@@ -619,6 +619,45 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("classifies known Google JSON files by schema when filenames are generic", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+
+    try {
+      const googleDir = join(dir, "Takeout", "Google");
+      await mkdir(googleDir, { recursive: true });
+
+      const chromeHistoryFixture = JSON.parse(
+        await readFile(chromeHistoryFixturePath, "utf8"),
+      );
+      await writeFile(
+        join(googleDir, "Records.json"),
+        JSON.stringify({ "Browser History": [chromeHistoryFixture.history] }),
+        "utf8",
+      );
+      await writeFile(
+        join(googleDir, "Activity.json"),
+        await readFile(googleMyActivityFixturePath, "utf8"),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "inspect",
+        "google-takeout-folder",
+        dir,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "inspect",
+        recordsSeen: 4,
+        validationErrors: 0,
+        importableEvents: 4,
+        warnings: 0,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("quarantines malformed JSON inside a Google Takeout folder", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
     const previewPath = join(dir, "preview.json");
