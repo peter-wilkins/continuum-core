@@ -6,7 +6,7 @@ ChatGPT is postponed until the export arrives. Active ranking starts with source
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Claude export | implemented fixture | high | medium | high | Claude chat message | `src/fixtures/claude-one-conversation.json` |
 | 2 | Email / MBOX | implemented fixture | high | high | high | RFC 5322 email message | `data/email/rfc-style-example.mbox` |
-| 3 | Git commits | sample available | high | high | medium | Git commit | `data/git/continuum-core-log.txt` |
+| 3 | Git commits | implemented fixture | high | high | medium | Git commit | `src/fixtures/git-one-commit.txt` |
 | 4 | GitHub issues, PRs, reviews, commits, discussions | sample available | high | high | medium | GitHub issue comment | `data/github/octocat-hello-world-issue-comments.json` |
 | 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | MediaWiki page revision | `data/wikimedia/boiler-revisions.json` |
 | 6 | Calendar / iCalendar | implemented fixture | high | medium | high | Calendar event | `src/fixtures/calendar-one-event.ics` |

@@ -35,7 +35,7 @@ export const canonicalEventSchema = {
       fields: [
         {
           name: "platform",
-          type: '"chatgpt" | "claude" | "email" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "wikimedia"',
+          type: '"chatgpt" | "claude" | "email" | "git" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "wikimedia"',
           required: true,
           description: "Source platform for the importer adapter.",
         },
@@ -173,7 +173,7 @@ export const canonicalEventSchema = {
       fields: [
         {
           name: "role",
-          type: '"sender" | "recipient" | "cc" | "bcc" | "reply_to" | "attendee"',
+          type: '"sender" | "recipient" | "cc" | "bcc" | "reply_to" | "attendee" | "author"',
           required: true,
           description: "Participant's role in the source event.",
         },

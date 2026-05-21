@@ -23,6 +23,7 @@ export type CanonicalSourcePlatform =
   | "chatgpt"
   | "claude"
   | "email"
+  | "git"
   | "google_activity"
   | "google_chrome"
   | "icalendar"
@@ -35,7 +36,8 @@ export type CanonicalParticipantRole =
   | "cc"
   | "bcc"
   | "reply_to"
-  | "attendee";
+  | "attendee"
+  | "author";
 
 export type CanonicalParticipant = {
   role: CanonicalParticipantRole;
@@ -277,6 +279,24 @@ export type MarkdownDocumentNormalizationInput = {
     modifiedAtConfidence: TimeConfidence;
   };
   content: string;
+};
+
+export type GitCommitRecord = {
+  hash: string;
+  authorName: string;
+  authorEmail: string;
+  date: string;
+  subject: string;
+  body: string;
+  filesChanged: string[];
+  statsSummary: string | null;
+};
+
+export type GitCommitNormalizationInput = {
+  repository: {
+    path: string;
+  };
+  commit: GitCommitRecord;
 };
 
 export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
@@ -1001,6 +1021,122 @@ export function parseICalendarEvents(
   };
 }
 
+function parseGitCommitBlock(block: string, index: number): {
+  commit: GitCommitRecord | null;
+  errors: SourceValidationError[];
+} {
+  const lines = block.split("\n");
+  const hash = lines[0]?.match(/^commit\s+([0-9a-f]{7,40})$/)?.[1] ?? "";
+  const authorLine = lines.find((line) => line.startsWith("Author: ")) ?? "";
+  const authorMatch = authorLine.match(/^Author:\s+(.+?)\s+<([^>]+)>$/);
+  const date = lines.find((line) => line.startsWith("Date: "))?.replace(/^Date:\s+/, "").trim() ?? "";
+  const messageLines: string[] = [];
+  const filesChanged: string[] = [];
+  let statsSummary: string | null = null;
+  let inMessage = false;
+
+  for (const line of lines.slice(1)) {
+    if (line.startsWith("    ")) {
+      inMessage = true;
+      messageLines.push(line.slice(4));
+      continue;
+    }
+
+    if (inMessage && line.trim() === "") {
+      continue;
+    }
+
+    if (line.includes("|")) {
+      filesChanged.push((line.split("|")[0] ?? "").trim());
+      continue;
+    }
+
+    if (line.match(/files? changed/)) {
+      statsSummary = line.trim();
+    }
+  }
+
+  const subject = messageLines[0] ?? "";
+  const body = messageLines.slice(1).join("\n").trim();
+  const errors: SourceValidationError[] = [];
+
+  for (const [field, value] of [
+    ["hash", hash],
+    ["author", authorMatch ? "ok" : ""],
+    ["date", date],
+    ["subject", subject],
+  ] as const) {
+    if (!value) {
+      errors.push({
+        path: `commit.${index}.${field}`,
+        message: "Required",
+      });
+    }
+  }
+
+  if (errors.length > 0 || !authorMatch) {
+    return { commit: null, errors };
+  }
+
+  return {
+    commit: {
+      hash,
+      authorName: authorMatch[1] ?? "",
+      authorEmail: authorMatch[2] ?? "",
+      date,
+      subject,
+      body,
+      filesChanged,
+      statsSummary,
+    },
+    errors: [],
+  };
+}
+
+export function parseGitLog(
+  input: string,
+): SourceValidationResult<GitCommitRecord[]> {
+  const trimmed = input.trim();
+
+  if (!trimmed.startsWith("commit ")) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "commit.0.hash",
+          message: "Required",
+        },
+      ],
+    };
+  }
+
+  const blocks = trimmed.split(/\n(?=commit\s+[0-9a-f]{7,40}\n)/);
+  const commits: GitCommitRecord[] = [];
+  const errors: SourceValidationError[] = [];
+
+  blocks.forEach((block, index) => {
+    const parsed = parseGitCommitBlock(block, index);
+
+    if (parsed.commit) {
+      commits.push(parsed.commit);
+    }
+
+    errors.push(...parsed.errors);
+  });
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errors,
+    };
+  }
+
+  return {
+    ok: true,
+    value: commits,
+  };
+}
+
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
   return `chatgpt:${input.conversation.id}:${input.node.message.id}`;
 }
@@ -1247,6 +1383,39 @@ function markdownSubject(content: string, path: string): string {
 
 function basenameFromPath(path: string): string {
   return path.split(/[\\/]/).at(-1) ?? path;
+}
+
+function gitSourceKey(input: GitCommitNormalizationInput): string {
+  return `git:${input.repository.path}:${input.commit.hash}`;
+}
+
+function gitSourceFingerprint(input: GitCommitNormalizationInput): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "git",
+      repositoryPath: input.repository.path,
+      hash: input.commit.hash,
+      authorName: input.commit.authorName,
+      authorEmail: input.commit.authorEmail,
+      date: input.commit.date,
+      subject: input.commit.subject,
+      body: input.commit.body,
+      filesChanged: input.commit.filesChanged,
+      statsSummary: input.commit.statsSummary,
+    }),
+  );
+}
+
+function gitCommitText(input: GitCommitNormalizationInput): string {
+  return [
+    input.commit.subject,
+    input.commit.body,
+    input.commit.filesChanged.length > 0 ? "Files:" : null,
+    ...input.commit.filesChanged,
+    input.commit.statsSummary,
+  ]
+    .filter((value): value is string => value !== null && value.length > 0)
+    .join("\n");
 }
 
 function mediaWikiArtifactId(input: MediaWikiRevisionNormalizationInput): string {
@@ -1887,6 +2056,53 @@ export function normalizeMarkdownDocument(
       kind: "text",
       subject: markdownSubject(input.content, input.file.path),
       text: input.content.trim(),
+    },
+  };
+}
+
+export function normalizeGitCommit(
+  input: GitCommitNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = gitSourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "git",
+      key: sourceKey,
+      fingerprint: gitSourceFingerprint(input),
+      externalConversationId: input.repository.path,
+      externalMessageId: input.commit.hash,
+      artifactId: input.repository.path,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "software_development",
+      sourceName: "git",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: new Date(input.commit.date).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [
+      {
+        role: "author",
+        name: input.commit.authorName,
+        address: input.commit.authorEmail,
+      },
+    ],
+    content: {
+      kind: "text",
+      subject: input.commit.subject,
+      text: gitCommitText(input),
     },
   };
 }

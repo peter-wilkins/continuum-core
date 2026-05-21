@@ -34,6 +34,7 @@ Active/imported:
 - Claude export: real local sample validates and imports.
 - ChatGPT export: fixture/import path exists, but real export is postponed.
 - Email/MBOX: model pressure fixture exists.
+- Git commits: fixture parses and imports one commit.
 - Calendar/iCalendar: fixture imports one calendar event.
 - Markdown/local docs: fixture imports one document snapshot.
 - Google Chrome history: Takeout/Data Portability fixture imports one browser visit.
@@ -44,7 +45,6 @@ Active/imported:
 
 Catalogue targets:
 
-- Git commits.
 - GitHub issues, PRs, reviews, commits, discussions.
 - Slack export.
 - Google Contacts.
@@ -87,7 +87,7 @@ type CanonicalEvent = {
   id: string;
 
   source: {
-    platform: "chatgpt" | "claude" | "email" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "wikimedia";
+    platform: "chatgpt" | "claude" | "email" | "git" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "wikimedia";
     key: string;
     fingerprint: string;
     externalConversationId: string;
@@ -116,7 +116,7 @@ type CanonicalEvent = {
   };
 
   participants: Array<{
-    role: "sender" | "recipient" | "cc" | "bcc" | "reply_to";
+    role: "sender" | "recipient" | "cc" | "bcc" | "reply_to" | "attendee" | "author";
     name: string | null;
     address: string;
   }>;
@@ -432,6 +432,7 @@ Done:
 - CLI iCalendar imports preserve the source file path as the source grouping id.
 - Markdown normalizes one local document snapshot.
 - CLI supports `markdown` files and routes Markdown files inside Takeout folders/zips.
+- Git log parses and imports one commit.
 
 Next:
 
