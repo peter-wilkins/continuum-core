@@ -35,6 +35,7 @@ Active/imported:
 - ChatGPT export: fixture/import path exists, but real export is postponed.
 - Email/MBOX: model pressure fixture exists.
 - Google Chrome history: Takeout/Data Portability fixture imports one browser visit.
+- Google Chrome bookmarks: Takeout/Data Portability fixture imports one saved reference.
 - Wikimedia/MediaWiki revision: public sample fixture exists.
 
 Catalogue targets:
@@ -45,7 +46,6 @@ Catalogue targets:
 - Slack export.
 - Markdown/Obsidian/local docs.
 - Google My Activity/Gemini/Takeout.
-- Google Chrome bookmarks.
 - YouTube history.
 - Google Contacts.
 - Google Maps/location activity.
@@ -407,6 +407,7 @@ Done:
 - Claude dry-run writes a local preview JSON.
 - email import profiles can include engaged contacts and exclude promotional/unreplied messages.
 - Google Chrome history validates and imports one browser visit as attention evidence.
+- Google Chrome bookmarks parse and import one saved reference.
 
 Next:
 
@@ -414,7 +415,6 @@ Next:
 - inspect/dry-run support for archives and later sources.
 - richer preview model before sync/export.
 - source adapters move out of one large `src/index.ts`.
-- import Chrome bookmarks as saved-reference evidence.
 - define identity graph before importing Google Contacts.
 - define stricter location membranes before importing Maps/location activity.
 

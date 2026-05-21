@@ -13,7 +13,7 @@ ChatGPT is postponed until the export arrives. Active ranking starts with source
 | 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |
 | 8 | Markdown / Obsidian / local docs | sample available | high | medium | medium | Markdown file revision snapshot | `README.md` |
 | 9 | Google Chrome history | implemented fixture | high | medium | high | Chrome browser history visit | `src/fixtures/google-chrome-history-one-record.json` |
-| 10 | Google Chrome bookmarks | needs user export | high | medium | high | Chrome bookmark snapshot | none yet |
+| 10 | Google Chrome bookmarks | implemented fixture | high | medium | high | Chrome bookmark snapshot | `src/fixtures/google-chrome-bookmarks-one-record.html` |
 | 11 | Google My Activity / Search / Gemini | needs user export | high | high | high | Google activity record | none yet |
 | 12 | YouTube history | needs user export | high | medium | high | YouTube watch/search activity | none yet |
 | 13 | Google Contacts | needs user export | high | high | high | Contact identity snapshot | none yet |

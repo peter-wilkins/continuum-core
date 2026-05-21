@@ -202,6 +202,21 @@ export type GoogleChromeHistoryNormalizationInput = {
   history: GoogleChromeHistoryRecord;
 };
 
+export type GoogleChromeBookmarkRecord = {
+  title: string;
+  url: string;
+  addDate: string;
+  iconUri: string | null;
+};
+
+export type GoogleChromeBookmarksExport = {
+  bookmarks: GoogleChromeBookmarkRecord[];
+};
+
+export type GoogleChromeBookmarkNormalizationInput = {
+  bookmark: GoogleChromeBookmarkRecord;
+};
+
 export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
 
 export type ImportFilterAction = "include" | "exclude" | "needs_review";
@@ -630,6 +645,74 @@ export function parseGoogleChromeHistoryExport(
   };
 }
 
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", "\"")
+    .replaceAll("&#39;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">");
+}
+
+function parseHtmlAttributes(rawAttributes: string): Record<string, string> {
+  const attributes: Record<string, string> = {};
+  const attributePattern = /([A-Za-z_:-]+)="([^"]*)"/g;
+
+  for (const match of rawAttributes.matchAll(attributePattern)) {
+    const [, key, value] = match;
+
+    if (key && value !== undefined) {
+      attributes[key.toUpperCase()] = decodeHtmlEntities(value);
+    }
+  }
+
+  return attributes;
+}
+
+export function parseGoogleChromeBookmarksExport(
+  input: string,
+): SourceValidationResult<GoogleChromeBookmarksExport> {
+  const bookmarks: GoogleChromeBookmarkRecord[] = [];
+  const bookmarkPattern = /<A\s+([^>]*)>(.*?)<\/A>/gis;
+
+  for (const match of input.matchAll(bookmarkPattern)) {
+    const [, rawAttributes, rawTitle] = match;
+    const attributes = parseHtmlAttributes(rawAttributes ?? "");
+    const url = attributes.HREF;
+    const addDate = attributes.ADD_DATE;
+
+    if (!url || !addDate) {
+      continue;
+    }
+
+    bookmarks.push({
+      title: decodeHtmlEntities((rawTitle ?? "").trim()),
+      url,
+      addDate,
+      iconUri: attributes.ICON_URI ?? null,
+    });
+  }
+
+  if (bookmarks.length === 0) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "bookmarks",
+          message: "No bookmark links found",
+        },
+      ],
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      bookmarks,
+    },
+  };
+}
+
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
   return `chatgpt:${input.conversation.id}:${input.node.message.id}`;
 }
@@ -723,6 +806,32 @@ function googleChromeHistorySourceFingerprint(
       time_usec: input.history.time_usec,
       client_id: input.history.client_id,
       favicon_url: input.history.favicon_url,
+    }),
+  );
+}
+
+function googleChromeBookmarkExternalMessageId(
+  input: GoogleChromeBookmarkNormalizationInput,
+): string {
+  return `${input.bookmark.addDate}:${input.bookmark.url}`;
+}
+
+function googleChromeBookmarkSourceKey(
+  input: GoogleChromeBookmarkNormalizationInput,
+): string {
+  return `google_chrome_bookmark:${googleChromeBookmarkExternalMessageId(input)}`;
+}
+
+function googleChromeBookmarkSourceFingerprint(
+  input: GoogleChromeBookmarkNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "google_chrome",
+      title: input.bookmark.title,
+      url: input.bookmark.url,
+      addDate: input.bookmark.addDate,
+      iconUri: input.bookmark.iconUri,
     }),
   );
 }
@@ -1133,6 +1242,47 @@ export function normalizeGoogleChromeHistoryRecord(
   };
 }
 
+export function normalizeGoogleChromeBookmarkRecord(
+  input: GoogleChromeBookmarkNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = googleChromeBookmarkSourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "google_chrome",
+      key: sourceKey,
+      fingerprint: googleChromeBookmarkSourceFingerprint(input),
+      externalConversationId: "bookmarks",
+      externalMessageId: googleChromeBookmarkExternalMessageId(input),
+      artifactId: input.bookmark.url,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "saved_references",
+      sourceName: "google_chrome_bookmarks",
+      upstreamSources: ["google_takeout"],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: new Date(Number(input.bookmark.addDate) * 1000).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: input.bookmark.title,
+      text: `Bookmarked ${input.bookmark.title}\n${input.bookmark.url}`,
+    },
+  };
+}
+
 export function normalizeMediaWikiRevision(
   input: MediaWikiRevisionNormalizationInput,
 ): CanonicalEvent {
@@ -1208,6 +1358,14 @@ export function normalizeGoogleChromeHistoryExport(
 ): CanonicalEvent[] {
   return historyExport["Browser History"].map((history) =>
     normalizeGoogleChromeHistoryRecord({ history }),
+  );
+}
+
+export function normalizeGoogleChromeBookmarksExport(
+  bookmarksExport: GoogleChromeBookmarksExport,
+): CanonicalEvent[] {
+  return bookmarksExport.bookmarks.map((bookmark) =>
+    normalizeGoogleChromeBookmarkRecord({ bookmark }),
   );
 }
 
