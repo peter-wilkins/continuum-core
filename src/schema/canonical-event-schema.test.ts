@@ -10,6 +10,8 @@ describe("canonical event schema descriptor", () => {
 
     expect(fieldNames).toEqual([
       "source.platform",
+      "source.key",
+      "source.fingerprint",
       "source.externalConversationId",
       "source.externalMessageId",
       "source.externalParentId",

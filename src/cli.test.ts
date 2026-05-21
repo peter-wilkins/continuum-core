@@ -26,6 +26,12 @@ describe("continuum-import CLI", () => {
       expect(result).toEqual({
         eventsWritten: 2,
         outputPath,
+        report: {
+          new: 2,
+          known: 0,
+          changed: 0,
+          uncertain: 0,
+        },
       });
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
@@ -53,6 +59,43 @@ describe("continuum-import CLI", () => {
           },
         },
       ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports the same ChatGPT fixture twice without duplicating canonical events", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      await runContinuumImportCli([
+        "chatgpt",
+        fixturePath,
+        "--out",
+        outputPath,
+      ]);
+      const secondResult = await runContinuumImportCli([
+        "chatgpt",
+        fixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(secondResult).toEqual({
+        eventsWritten: 0,
+        outputPath,
+        report: {
+          new: 0,
+          known: 2,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+
+      expect(lines).toHaveLength(2);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

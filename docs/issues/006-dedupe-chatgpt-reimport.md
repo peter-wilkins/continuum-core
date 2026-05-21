@@ -18,11 +18,11 @@ Running the same fixture import twice produces one event set and a second-run re
 
 ## Acceptance Criteria
 
-- [ ] Import computes a stable source key or fingerprint for each ChatGPT message.
-- [ ] Reimport recognizes identical source records.
-- [ ] Reimport report distinguishes new, known, changed, and uncertain records.
-- [ ] No canonical event is silently overwritten.
-- [ ] Test proves two runs do not duplicate events.
+- [x] Import computes a stable source key or fingerprint for each ChatGPT message.
+- [x] Reimport recognizes identical source records.
+- [x] Reimport report distinguishes new, known, changed, and uncertain records.
+- [x] No canonical event is silently overwritten.
+- [x] Test proves two runs do not duplicate events.
 
 ## TDD Notes
 

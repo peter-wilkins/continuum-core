@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  mergeCanonicalEvents,
   continuumCorePackageName,
   describeContinuumCorePackage,
   normalizeChatGptMessage,
@@ -44,6 +45,8 @@ describe("ChatGPT import normalization", () => {
     expect(event.actor.role).toBe("user");
     expect(event.content.text).toBe("Need to quote Bob for the boiler.");
     expect(event.source.platform).toBe("chatgpt");
+    expect(event.source.key).toBe("chatgpt:conv_123:msg_456");
+    expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
     expect(event.source.externalConversationId).toBe("conv_123");
     expect(event.source.externalMessageId).toBe("msg_456");
     expect(event.source.externalParentId).toBe("msg_parent");
@@ -145,5 +148,97 @@ describe("ChatGPT import normalization", () => {
     expect(event.content.text).toBe("{\"query\":\"boiler types\"}");
     expect(event.source.externalParentId).toBe("msg_789");
     expect(event.source.canonicalParentEventId).toBeNull();
+  });
+
+  it("reports known ChatGPT events instead of importing duplicates", () => {
+    const event = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_456",
+        parent: "msg_parent",
+        children: [],
+        message: {
+          id: "msg_456",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Need to quote Bob for the boiler."],
+          },
+        },
+      },
+    });
+
+    const result = mergeCanonicalEvents([event], [event]);
+
+    expect(result.events).toEqual([event]);
+    expect(result.report).toEqual({
+      new: 0,
+      known: 1,
+      changed: 0,
+      uncertain: 0,
+    });
+  });
+
+  it("reports changed ChatGPT source records without overwriting existing events", () => {
+    const existing = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_456",
+        parent: "msg_parent",
+        children: [],
+        message: {
+          id: "msg_456",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Need to quote Bob for the boiler."],
+          },
+        },
+      },
+    });
+    const changed = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_456",
+        parent: "msg_parent",
+        children: [],
+        message: {
+          id: "msg_456",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Need to quote Bob for the boiler. Edited text."],
+          },
+        },
+      },
+    });
+
+    const result = mergeCanonicalEvents([existing], [changed]);
+
+    expect(result.events).toEqual([existing]);
+    expect(result.report).toEqual({
+      new: 0,
+      known: 0,
+      changed: 1,
+      uncertain: 0,
+    });
   });
 });

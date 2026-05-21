@@ -40,6 +40,20 @@ export const canonicalEventSchema = {
           description: "Source platform for this first importer slice.",
         },
         {
+          name: "key",
+          type: "string",
+          required: true,
+          description:
+            "Stable source identity used to recognize the same imported record.",
+        },
+        {
+          name: "fingerprint",
+          type: "string",
+          required: true,
+          description:
+            "Stable source content fingerprint used to detect known versus changed records.",
+        },
+        {
           name: "externalConversationId",
           type: "string",
           required: true,
@@ -116,6 +130,11 @@ export const canonicalEventSchema = {
     },
   ],
   relations: [
+    {
+      from: "source.key",
+      to: "source.fingerprint",
+      label: "same key plus same fingerprint means known on reimport",
+    },
     {
       from: "source.externalParentId",
       to: "source.canonicalParentEventId",

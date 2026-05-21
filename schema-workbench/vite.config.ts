@@ -17,6 +17,15 @@ export default defineConfig({
   plugins: [
     {
       name: "continuum-git-hash",
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          if (request.url?.includes("virtual:continuum-git-hash")) {
+            response.setHeader("Cache-Control", "no-store");
+          }
+
+          next();
+        });
+      },
       resolveId(id) {
         if (id === "virtual:continuum-git-hash") {
           return "\0virtual:continuum-git-hash";
