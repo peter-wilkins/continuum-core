@@ -486,4 +486,74 @@ describe("continuum-import CLI", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("imports a Google Takeout folder idempotently", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const chromeDir = join(dir, "Takeout", "Chrome");
+      const activityDir = join(dir, "Takeout", "My Activity", "Search");
+      await mkdir(chromeDir, { recursive: true });
+      await mkdir(activityDir, { recursive: true });
+
+      const chromeHistoryFixture = JSON.parse(
+        await readFile(chromeHistoryFixturePath, "utf8"),
+      );
+      await writeFile(
+        join(chromeDir, "BrowserHistory.json"),
+        JSON.stringify({ "Browser History": [chromeHistoryFixture.history] }),
+        "utf8",
+      );
+      await writeFile(
+        join(chromeDir, "Bookmarks.html"),
+        await readFile(chromeBookmarksFixturePath, "utf8"),
+        "utf8",
+      );
+      await writeFile(
+        join(activityDir, "MyActivity.json"),
+        await readFile(googleMyActivityFixturePath, "utf8"),
+        "utf8",
+      );
+
+      const first = await runContinuumImportCli([
+        "google-takeout-folder",
+        dir,
+        "--out",
+        outputPath,
+      ]);
+      const second = await runContinuumImportCli([
+        "google-takeout-folder",
+        dir,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(first).toMatchObject({
+        command: "import",
+        eventsWritten: 5,
+        report: {
+          new: 5,
+          known: 0,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+      expect(second).toMatchObject({
+        command: "import",
+        eventsWritten: 0,
+        report: {
+          new: 0,
+          known: 5,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(5);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

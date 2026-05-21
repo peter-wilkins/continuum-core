@@ -414,11 +414,12 @@ Done:
 - CLI supports Google Chrome history, bookmarks, reading list, and My Activity files.
 - CLI inspect can walk a Google Takeout folder and route known files.
 - CLI dry-run can preview a Google Takeout folder across known files.
+- CLI import can write a Google Takeout folder idempotently.
 
 Next:
 
 - persist import batches through a storage adapter.
-- import support for Takeout folders and archives.
+- zip archive support for Takeout exports.
 - inspect/dry-run support for remaining later sources.
 - richer preview model before sync/export.
 - source adapters move out of one large `src/index.ts`.
