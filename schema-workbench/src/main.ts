@@ -1,11 +1,6 @@
 import { canonicalEventSchema, type EventSchema } from "../../src/schema/canonical-event-schema";
 import "./styles.css";
-
-declare global {
-  interface Window {
-    __CONTINUUM_GIT_HASH__: string;
-  }
-}
+import { gitHash } from "virtual:continuum-git-hash";
 
 function fieldCount(schema: EventSchema): number {
   return schema.sections.reduce(
@@ -104,7 +99,7 @@ function renderApp(schema: EventSchema): string {
         <p class="eyebrow">Continuum schema workbench</p>
         <h1>${schema.name}</h1>
         <p>${schema.purpose}</p>
-        <p class="git-hash">Git <code>${window.__CONTINUUM_GIT_HASH__}</code></p>
+        <p class="git-hash">Git <code>${gitHash}</code></p>
       </div>
       <dl>
         <div>

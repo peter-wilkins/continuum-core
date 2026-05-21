@@ -17,8 +17,19 @@ export default defineConfig({
   plugins: [
     {
       name: "continuum-git-hash",
-      transformIndexHtml(html) {
-        return html.replace("%CONTINUUM_GIT_HASH%", currentGitHash());
+      resolveId(id) {
+        if (id === "virtual:continuum-git-hash") {
+          return "\0virtual:continuum-git-hash";
+        }
+
+        return null;
+      },
+      load(id) {
+        if (id === "\0virtual:continuum-git-hash") {
+          return `export const gitHash = ${JSON.stringify(currentGitHash())};`;
+        }
+
+        return null;
       },
     },
   ],
