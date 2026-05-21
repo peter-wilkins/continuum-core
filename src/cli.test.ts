@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
 import { runContinuumImportCli } from "./cli";
@@ -692,6 +693,73 @@ describe("continuum-import CLI", () => {
         importableEvents: 4,
         warnings: 0,
       });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs a Google Takeout zip through the same source classifier", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const chromeHistoryFixture = JSON.parse(
+        await readFile(chromeHistoryFixturePath, "utf8"),
+      );
+      const zipped = zipSync({
+        "Takeout/Chrome/BrowserHistory.json": strToU8(
+          JSON.stringify({ "Browser History": [chromeHistoryFixture.history] }),
+        ),
+        "Takeout/Chrome/Bookmarks.html": strToU8(
+          await readFile(chromeBookmarksFixturePath, "utf8"),
+        ),
+        "Takeout/notes.txt": strToU8("skip me"),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.sourcePlatform).toBe("google-takeout-zip");
+      expect(result.batch.stats.filesSeen).toBe(3);
+      expect(result.batch.stats.recordsSeen).toBe(2);
+      expect(result.batch.stats.eventsCreated).toBe(2);
+      expect(result.batch.stats.warnings).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Chrome/Bookmarks.html",
+          source: "google-chrome-bookmarks",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+        {
+          path: "Takeout/Chrome/BrowserHistory.json",
+          source: "google-chrome-history",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+        {
+          path: "Takeout/notes.txt",
+          source: null,
+          status: "skipped",
+          eventsCreated: 0,
+          quarantineRecords: 0,
+        },
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

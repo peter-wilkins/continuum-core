@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, resolve, join } from "node:path";
+import { strFromU8, unzipSync } from "fflate";
 
 import {
   type ImportErrorRecord,
@@ -127,7 +128,8 @@ type ImportCommand =
   | "google-chrome-bookmarks"
   | "google-chrome-reading-list"
   | "google-my-activity"
-  | "google-takeout-folder";
+  | "google-takeout-folder"
+  | "google-takeout-zip";
 
 const importCommands = [
   "chatgpt",
@@ -137,6 +139,7 @@ const importCommands = [
   "google-chrome-reading-list",
   "google-my-activity",
   "google-takeout-folder",
+  "google-takeout-zip",
 ] as const satisfies ImportCommand[];
 const importCommandUsage = importCommands.join("|");
 
@@ -319,6 +322,19 @@ async function readSourceInput(
     };
   }
 
+  if (source === "google-takeout-zip") {
+    const rawBuffer = await readFile(inputPath);
+    const files = readTakeoutZip(rawBuffer);
+
+    return {
+      raw: "",
+      parsed: files,
+      hash: createHash("sha256").update(rawBuffer).digest("hex"),
+      filesSeen: files.length,
+      parseError: null,
+    };
+  }
+
   const raw = await readFile(inputPath, "utf8");
   let parsed: unknown = raw;
   let parseError: string | null = null;
@@ -339,6 +355,30 @@ async function readSourceInput(
     filesSeen: 1,
     parseError,
   };
+}
+
+function readTakeoutZip(raw: Uint8Array): TakeoutFolderFile[] {
+  const files: TakeoutFolderFile[] = [];
+  const unzipped = unzipSync(raw);
+
+  for (const [relativePath, content] of Object.entries(unzipped)) {
+    if (relativePath.endsWith("/")) {
+      continue;
+    }
+
+    const decoded = strFromU8(content);
+
+    files.push({
+      path: relativePath,
+      relativePath,
+      raw: decoded,
+      hash: createHash("sha256").update(decoded).digest("hex"),
+    });
+  }
+
+  return files.sort((left, right) =>
+    left.relativePath.localeCompare(right.relativePath),
+  );
 }
 
 async function readTakeoutFolder(
@@ -397,6 +437,7 @@ function sourceInputNeedsJson(source: ImportCommand): boolean {
     "google-chrome-bookmarks",
     "google-chrome-reading-list",
     "google-takeout-folder",
+    "google-takeout-zip",
   ].includes(source);
 }
 
@@ -548,7 +589,7 @@ function normalizeSourceInput(
   source: ImportCommand,
   parsed: unknown,
 ): NormalizedSourceInput {
-  if (source === "google-takeout-folder") {
+  if (source === "google-takeout-folder" || source === "google-takeout-zip") {
     return normalizeTakeoutFolder(parsed as TakeoutFolderFile[]);
   }
 
