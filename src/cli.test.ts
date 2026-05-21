@@ -27,6 +27,7 @@ describe("continuum-import CLI", () => {
       ]);
 
       expect(result).toEqual({
+        command: "import",
         eventsWritten: 2,
         outputPath,
         report: {
@@ -35,6 +36,7 @@ describe("continuum-import CLI", () => {
           changed: 0,
           uncertain: 0,
         },
+        quarantine: [],
       });
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
@@ -86,6 +88,7 @@ describe("continuum-import CLI", () => {
       ]);
 
       expect(secondResult).toEqual({
+        command: "import",
         eventsWritten: 0,
         outputPath,
         report: {
@@ -94,6 +97,7 @@ describe("continuum-import CLI", () => {
           changed: 0,
           uncertain: 0,
         },
+        quarantine: [],
       });
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
@@ -117,6 +121,7 @@ describe("continuum-import CLI", () => {
       ]);
 
       expect(result).toEqual({
+        command: "import",
         eventsWritten: 2,
         outputPath,
         report: {
@@ -125,6 +130,7 @@ describe("continuum-import CLI", () => {
           changed: 0,
           uncertain: 0,
         },
+        quarantine: [],
       });
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
@@ -153,6 +159,63 @@ describe("continuum-import CLI", () => {
           actor: { role: "assistant" },
         },
       ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("inspects one Claude export without writing events", async () => {
+    const result = await runContinuumImportCli([
+      "inspect",
+      "claude",
+      claudeFixturePath,
+    ]);
+
+    expect(result).toEqual({
+      command: "inspect",
+      sourcePlatform: "claude",
+      sourceName: "claude",
+      inputPath: claudeFixturePath,
+      conversationsSeen: 1,
+      recordsSeen: 2,
+      validationErrors: 0,
+      importableEvents: 2,
+    });
+  });
+
+  it("dry-runs one Claude export into an import batch preview", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "claude",
+        claudeFixturePath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.previewPath).toBe(previewPath);
+      expect(result.batch.sourcePlatform).toBe("claude");
+      expect(result.batch.stats.recordsSeen).toBe(2);
+      expect(result.batch.stats.eventsCreated).toBe(2);
+      expect(result.batch.stats.recordsQuarantined).toBe(0);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+
+      expect(preview.report).toEqual({
+        new: 2,
+        known: 0,
+        changed: 0,
+        uncertain: 0,
+      });
+      expect(preview.events).toHaveLength(2);
+      expect(preview.quarantine).toEqual([]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

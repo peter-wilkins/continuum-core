@@ -1,30 +1,108 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import { basename } from "node:path";
 
 import {
+  type ImportErrorRecord,
   mergeCanonicalEvents,
   normalizeClaudeConversations,
   normalizeChatGptConversations,
-  parseClaudeConversations,
+  parseClaudeConversationsWithQuarantine,
   type CanonicalEvent,
   type ChatGptConversationExport,
   type ImportReport,
 } from "./index";
 
-export type ContinuumImportCliResult = {
+export type ImportBatch = {
+  id: string;
+  sourcePlatform: ImportCommand;
+  sourceName: string;
+  originalFilename: string;
+  originalFileHash: string;
+  createdAt: string;
+  completedAt: string | null;
+  status: "parsed" | "normalized" | "previewed" | "approved" | "failed";
+  stats: {
+    filesSeen: number;
+    recordsSeen: number;
+    eventsCreated: number;
+    eventsKnown: number;
+    eventsChanged: number;
+    eventsUncertain: number;
+    recordsQuarantined: number;
+    warnings: number;
+  };
+};
+
+export type ImportPreview = {
+  batch: ImportBatch;
+  report: ImportReport;
+  quarantine: ImportErrorRecord[];
+  events: Array<{
+    id: string;
+    platform: string;
+    role: string;
+    createdAt: string;
+    subject: string | null;
+  }>;
+};
+
+export type ImportWriteCliResult = {
+  command: "import";
   eventsWritten: number;
   outputPath: string;
   report: ImportReport;
+  quarantine: ImportErrorRecord[];
 };
+
+export type InspectCliResult = {
+  command: "inspect";
+  sourcePlatform: ImportCommand;
+  sourceName: string;
+  inputPath: string;
+  conversationsSeen: number;
+  recordsSeen: number;
+  validationErrors: number;
+  importableEvents: number;
+};
+
+export type DryRunCliResult = {
+  command: "dry-run";
+  previewPath: string;
+  batch: ImportBatch;
+  report: ImportReport;
+  quarantine: ImportErrorRecord[];
+};
+
+export type ContinuumImportCliResult =
+  | ImportWriteCliResult
+  | InspectCliResult
+  | DryRunCliResult;
+
+type CliCommand =
+  | {
+      kind: "import";
+      source: ImportCommand;
+      inputPath: string;
+      outputPath: string;
+    }
+  | {
+      kind: "inspect";
+      source: ImportCommand;
+      inputPath: string;
+    }
+  | {
+      kind: "dry-run";
+      source: ImportCommand;
+      inputPath: string;
+      previewPath: string;
+    };
 
 type ImportCommand = "chatgpt" | "claude";
 
-function parseImportCommand(args: string[]): {
-  command: ImportCommand;
-  inputPath: string;
-  outputPath: string;
-} {
+function parseCliCommand(args: string[]): CliCommand {
   const [command, inputPath, outFlag, outputPath] = args;
 
   if (
@@ -38,7 +116,46 @@ function parseImportCommand(args: string[]): {
     );
   }
 
-  return { command, inputPath, outputPath };
+  return { kind: "import", source: command, inputPath, outputPath };
+}
+
+function parseInspectCommand(args: string[]): CliCommand {
+  const [, source, inputPath] = args;
+
+  if ((source !== "chatgpt" && source !== "claude") || !inputPath) {
+    throw new Error("Usage: continuum-import inspect <chatgpt|claude> <conversations.json>");
+  }
+
+  return { kind: "inspect", source, inputPath };
+}
+
+function parseDryRunCommand(args: string[]): CliCommand {
+  const [, source, inputPath, outFlag, previewPath] = args;
+
+  if (
+    (source !== "chatgpt" && source !== "claude") ||
+    !inputPath ||
+    outFlag !== "--out" ||
+    !previewPath
+  ) {
+    throw new Error(
+      "Usage: continuum-import dry-run <chatgpt|claude> <conversations.json> --out <preview.json>",
+    );
+  }
+
+  return { kind: "dry-run", source, inputPath, previewPath };
+}
+
+function parseCommand(args: string[]): CliCommand {
+  if (args[0] === "inspect") {
+    return parseInspectCommand(args);
+  }
+
+  if (args[0] === "dry-run") {
+    return parseDryRunCommand(args);
+  }
+
+  return parseCliCommand(args);
 }
 
 async function readExistingEvents(outputPath: string): Promise<CanonicalEvent[]> {
@@ -62,48 +179,194 @@ async function readExistingEvents(outputPath: string): Promise<CanonicalEvent[]>
 export async function runContinuumImportCli(
   args: string[],
 ): Promise<ContinuumImportCliResult> {
-  const { command, inputPath, outputPath } = parseImportCommand(args);
-  const raw = await readFile(inputPath, "utf8");
-  const parsed = JSON.parse(raw) as unknown;
-  const incomingEvents =
-    command === "chatgpt"
-      ? normalizeChatGptConversations(parsed as ChatGptConversationExport[])
-      : normalizeClaudeConversations(parseClaudeConversationsOrThrow(parsed));
-  const existingEvents = await readExistingEvents(outputPath);
+  const command = parseCommand(args);
+  const sourceInput = await readSourceInput(command.source, command.inputPath);
+
+  if (command.kind === "inspect") {
+    return inspectSource(command, sourceInput);
+  }
+
+  if (command.kind === "dry-run") {
+    return dryRunImport(command, sourceInput);
+  }
+
+  const { incomingEvents, quarantine } = normalizeSourceInput(
+    command.source,
+    sourceInput.parsed,
+  );
+  const existingEvents = await readExistingEvents(command.outputPath);
   const { events, report } = mergeCanonicalEvents(existingEvents, incomingEvents);
   const jsonl = events.map((event) => JSON.stringify(event)).join("\n");
 
-  await writeFile(outputPath, `${jsonl}\n`, "utf8");
+  await writeFile(command.outputPath, `${jsonl}\n`, "utf8");
 
   return {
+    command: "import",
     eventsWritten: report.new,
-    outputPath,
+    outputPath: command.outputPath,
     report,
+    quarantine,
   };
 }
 
-function parseClaudeConversationsOrThrow(parsed: unknown) {
-  const result = parseClaudeConversations(parsed);
+type SourceInput = {
+  raw: string;
+  parsed: unknown;
+  hash: string;
+};
 
-  if (result.ok) {
-    return result.value;
+async function readSourceInput(
+  source: ImportCommand,
+  inputPath: string,
+): Promise<SourceInput> {
+  if (source !== "claude" && source !== "chatgpt") {
+    throw new Error(`Unsupported source ${source}`);
   }
 
-  throw new Error(
-    `Claude export validation failed: ${result.errors
-      .map((error) => `${error.path}: ${error.message}`)
-      .join("; ")}`,
+  const raw = await readFile(inputPath, "utf8");
+
+  return {
+    raw,
+    parsed: JSON.parse(raw) as unknown,
+    hash: createHash("sha256").update(raw).digest("hex"),
+  };
+}
+
+function normalizeSourceInput(
+  source: ImportCommand,
+  parsed: unknown,
+): {
+  incomingEvents: CanonicalEvent[];
+  quarantine: ImportErrorRecord[];
+} {
+  if (source === "chatgpt") {
+    return {
+      incomingEvents: normalizeChatGptConversations(
+        parsed as ChatGptConversationExport[],
+      ),
+      quarantine: [],
+    };
+  }
+
+  const result = parseClaudeConversationsWithQuarantine(parsed);
+
+  return {
+    incomingEvents: normalizeClaudeConversations(result.conversations),
+    quarantine: result.quarantine,
+  };
+}
+
+function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input: SourceInput): InspectCliResult {
+  const { incomingEvents, quarantine } = normalizeSourceInput(
+    command.source,
+    input.parsed,
   );
+  const conversationsSeen = Array.isArray(input.parsed) ? input.parsed.length : 0;
+
+  return {
+    command: "inspect",
+    sourcePlatform: command.source,
+    sourceName: command.source,
+    inputPath: command.inputPath,
+    conversationsSeen,
+    recordsSeen: incomingEvents.length,
+    validationErrors: quarantine.length,
+    importableEvents: incomingEvents.length,
+  };
+}
+
+async function dryRunImport(
+  command: Extract<CliCommand, { kind: "dry-run" }>,
+  input: SourceInput,
+): Promise<DryRunCliResult> {
+  const { incomingEvents, quarantine } = normalizeSourceInput(
+    command.source,
+    input.parsed,
+  );
+  const { report } = mergeCanonicalEvents([], incomingEvents);
+  const batch = createImportBatch({
+    source: command.source,
+    inputPath: command.inputPath,
+    inputHash: input.hash,
+    recordsSeen: incomingEvents.length + quarantine.length,
+    report,
+    quarantine,
+  });
+  const preview: ImportPreview = {
+    batch,
+    report,
+    quarantine,
+    events: incomingEvents.map((event) => ({
+      id: event.id,
+      platform: event.source.platform,
+      role: event.actor.role,
+      createdAt: event.time.createdAt,
+      subject: event.content.subject,
+    })),
+  };
+
+  await writeFile(command.previewPath, `${JSON.stringify(preview, null, 2)}\n`, "utf8");
+
+  return {
+    command: "dry-run",
+    previewPath: command.previewPath,
+    batch,
+    report,
+    quarantine,
+  };
+}
+
+function createImportBatch(input: {
+  source: ImportCommand;
+  inputPath: string;
+  inputHash: string;
+  recordsSeen: number;
+  report: ImportReport;
+  quarantine: ImportErrorRecord[];
+}): ImportBatch {
+  return {
+    id: `batch:${input.inputHash.slice(0, 16)}`,
+    sourcePlatform: input.source,
+    sourceName: input.source,
+    originalFilename: basename(input.inputPath),
+    originalFileHash: input.inputHash,
+    createdAt: "unknown",
+    completedAt: null,
+    status: "previewed",
+    stats: {
+      filesSeen: 1,
+      recordsSeen: input.recordsSeen,
+      eventsCreated: input.report.new,
+      eventsKnown: input.report.known,
+      eventsChanged: input.report.changed,
+      eventsUncertain: input.report.uncertain,
+      recordsQuarantined: input.quarantine.length,
+      warnings: 0,
+    },
+  };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   runContinuumImportCli(process.argv.slice(2))
     .then((result) => {
+      if (result.command === "inspect") {
+        process.stdout.write(
+          `Detected ${result.sourcePlatform} conversations=${result.conversationsSeen} records=${result.recordsSeen} importable=${result.importableEvents} validationErrors=${result.validationErrors}\n`,
+        );
+        return;
+      }
+
+      if (result.command === "dry-run") {
+        process.stdout.write(`Preview written to ${result.previewPath}\n`);
+        process.stdout.write(
+          `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length}\n`,
+        );
+        return;
+      }
+
+      process.stdout.write(`Wrote ${result.eventsWritten} new events to ${result.outputPath}\n`);
       process.stdout.write(
-        `Wrote ${result.eventsWritten} new events to ${result.outputPath}\n`,
-      );
-      process.stdout.write(
-        `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain}\n`,
+        `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length}\n`,
       );
     })
     .catch((error: unknown) => {

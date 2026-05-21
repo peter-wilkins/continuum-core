@@ -167,7 +167,7 @@ Current behavior:
 Future behavior:
 
 - same key + changed content should create explicit revision records
-- malformed records should be quarantined and counted, not fatal
+- import command should persist/import batch records through a storage adapter
 
 ## Provenance And Consensus
 
@@ -220,24 +220,26 @@ Rules:
 - use `safeParse`
 - return path/message validation errors
 - do not let malformed source records reach normalizers
-- next step: quarantine bad records instead of failing whole CLI command
+- quarantine bad records instead of failing whole CLI command
 
 Implemented:
 
 - Claude conversation export validation.
+- Claude conversation quarantine.
 
 Pending:
 
 - ChatGPT validation when real export arrives.
 - Email/MBOX parsed record validation.
 - Wikimedia response validation.
-- Quarantine model.
 
 ## CLI
 
 Current MVP:
 
 ```bash
+continuum-import inspect claude <conversations.json>
+continuum-import dry-run claude <conversations.json> --out <preview.json>
 continuum-import chatgpt <conversations.json> --out <events.jsonl>
 continuum-import claude <conversations.json> --out <events.jsonl>
 ```
@@ -252,15 +254,13 @@ Report new=N known=N changed=N uncertain=N
 Planned commands:
 
 ```bash
-continuum-import inspect <file-or-archive>
-continuum-import dry-run <file-or-archive> --store <local-store>
 continuum-import approve <batch-id>
 continuum-import sync <batch-id> --target <target>
 ```
 
 ## Import Batch Model
 
-Not implemented yet.
+Implemented first for Claude dry-run previews.
 
 Needed because reimport with timestamped files should report at both levels:
 
@@ -297,7 +297,7 @@ type ImportBatch = {
 
 ## Quarantine Model
 
-Not implemented yet.
+Implemented first for Claude conversation records.
 
 Bad records should not kill an import.
 
@@ -327,6 +327,13 @@ Before anything leaves local core, show:
 - erased/excluded items
 - membrane decisions
 
+Current dry-run preview includes:
+
+- import batch
+- new/known/changed/uncertain report
+- quarantine records
+- event summaries
+
 User actions:
 
 - approve all visible
@@ -348,13 +355,15 @@ Done:
 - privacy membrane can block erased payloads.
 - raw exports remain local by default.
 - dedupe report is understandable.
+- Claude malformed conversations are quarantined.
+- Claude inspect command reports importable counts.
+- Claude dry-run writes a local preview JSON.
 
 Next:
 
-- malformed records are quarantined, not fatal.
-- import batches record file/archive identity.
-- inspect/dry-run commands exist.
-- preview model exists before sync/export.
+- persist import batches through a storage adapter.
+- inspect/dry-run support for archives and later sources.
+- richer preview model before sync/export.
 - source adapters move out of one large `src/index.ts`.
 
 ## Design Principle

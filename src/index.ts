@@ -132,6 +132,14 @@ export type SourceValidationError = {
   message: string;
 };
 
+export type ImportErrorRecord = {
+  sourcePath: string;
+  recordIndex: number | null;
+  errorCode: string;
+  message: string;
+  recoverable: boolean;
+};
+
 export type SourceValidationResult<T> =
   | {
       ok: true;
@@ -141,6 +149,11 @@ export type SourceValidationResult<T> =
       ok: false;
       errors: SourceValidationError[];
     };
+
+export type SourceQuarantineResult<T> = {
+  conversations: T;
+  quarantine: ImportErrorRecord[];
+};
 
 export type EmailAddress = {
   name: string | null;
@@ -482,6 +495,49 @@ export function parseClaudeConversations(
       message: issue.message,
     })),
   };
+}
+
+export function parseClaudeConversationsWithQuarantine(
+  input: unknown,
+): SourceQuarantineResult<ClaudeConversationExport[]> {
+  if (!Array.isArray(input)) {
+    return {
+      conversations: [],
+      quarantine: [
+        {
+          sourcePath: "",
+          recordIndex: null,
+          errorCode: "source_validation_failed",
+          message: "root: Invalid input: expected array",
+          recoverable: false,
+        },
+      ],
+    };
+  }
+
+  const conversations: ClaudeConversationExport[] = [];
+  const quarantine: ImportErrorRecord[] = [];
+
+  input.forEach((record, index) => {
+    const parsed = claudeConversationSchema.safeParse(record);
+
+    if (parsed.success) {
+      conversations.push(parsed.data);
+      return;
+    }
+
+    quarantine.push({
+      sourcePath: String(index),
+      recordIndex: index,
+      errorCode: "source_validation_failed",
+      message: parsed.error.issues
+        .map((issue) => `${index}.${validationPath(issue.path)}: ${issue.message}`)
+        .join("; "),
+      recoverable: true,
+    });
+  });
+
+  return { conversations, quarantine };
 }
 
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
