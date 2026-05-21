@@ -531,7 +531,7 @@ export type GitCommitNormalizationInput = {
   commit: GitCommitRecord;
 };
 
-export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
+export type ImportProfile = "everything" | "clean_default" | "intentional_context";
 
 export type ImportFilterAction = "include" | "exclude" | "needs_review";
 
@@ -2138,7 +2138,7 @@ export function evaluateEmailImportProfile(input: {
   return {
     action: "exclude",
     reason: "no_prior_engagement",
-    confidence: input.profile === "engaged_contacts" ? 0.8 : 0.6,
+    confidence: input.profile === "intentional_context" ? 0.8 : 0.6,
   };
 }
 

@@ -343,16 +343,18 @@ Profiles:
 type ImportProfile =
   | "everything"
   | "clean_default"
-  | "engaged_contacts";
+  | "intentional_context";
 ```
 
 Rules:
 
 - `everything`: include every valid source record.
 - `clean_default`: exclude obvious junk/promotional/bulk records, include ordinary records.
-- `engaged_contacts`: include records involving people/threads the user engaged with.
+- `intentional_context`: include records that show deliberate user intent, with source-specific rules.
 
-Email `engaged_contacts` is two-pass:
+Import profiles must treat account history as evidence, not truth. A vendor account may contain passive activity, autoplay, shared-device use, children using a parent's account, background media, mistakes, curiosity clicks, or other messy human behaviour. Import filtering should therefore avoid assuming every source record represents the account holder's intent.
+
+Email `intentional_context` uses an engaged contacts rule and is two-pass:
 
 1. Scan pass builds an engagement index:
    - user addresses
@@ -364,6 +366,26 @@ Email `engaged_contacts` is two-pass:
    - same thread as sent reply -> include
    - promotional/bulk -> exclude
    - no prior engagement -> exclude
+
+For user-facing email controls, call this `engaged_contacts` because that is clearer than the generic profile name.
+
+YouTube `intentional_context` treats watch history as weak evidence:
+
+- search activity -> include
+- liked, saved, commented, uploaded, or deliberately subscribed activity -> include
+- watch history alone -> `needs_review`
+- watch history with stronger supporting evidence -> include
+
+The reason is that watch history can be polluted by autoplay, shared-account use, background media, or children using the account. Weak evidence should remain inspectable without automatically becoming high-signal memory.
+
+Google `intentional_context` uses the same principle across products:
+
+- strong intent -> include
+- passive activity -> `needs_review`
+- passive activity with stronger supporting evidence -> include
+- sensitive or high-risk data -> keep local/raw until the relevant membrane and domain model exist
+
+Examples of strong intent include searches, bookmarks, reading-list saves, contacts edited by the user, calendar events, map searches, and requested directions. Examples of passive activity include ordinary Chrome browsing history, YouTube watch history, passive location timeline points, app opens, and background activity.
 
 This avoids making the user fight Google Takeout selection UI while still keeping junk out of canonical events by default.
 

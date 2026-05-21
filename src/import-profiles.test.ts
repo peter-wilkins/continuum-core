@@ -79,7 +79,7 @@ describe("import profiles", () => {
     const engagement = buildEmailEngagementIndex(messages, myAddresses);
     const decisions = messages.map((message) =>
       evaluateEmailImportProfile({
-        profile: "engaged_contacts",
+        profile: "intentional_context",
         message,
         engagement,
         myAddresses,
