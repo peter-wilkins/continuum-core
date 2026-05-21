@@ -1,5 +1,9 @@
 # 004: Normalize ChatGPT Assistant and System Messages
 
+## Status
+
+Done.
+
 ## Type
 
 AFK.
@@ -18,11 +22,11 @@ A user message and assistant response from the same conversation normalize into 
 
 ## Acceptance Criteria
 
-- [ ] Assistant messages normalize into canonical events.
-- [ ] System and tool roles are preserved or explicitly mapped.
-- [ ] Source graph references can link message source ids before canonical event ids are known.
-- [ ] Canonical event actor model is not user-only.
-- [ ] Tests cover at least user and assistant roles through the same normalization path.
+- [x] Assistant messages normalize into canonical events.
+- [x] System and tool roles are preserved or explicitly mapped.
+- [x] Source graph references can link message source ids before canonical event ids are known.
+- [x] Canonical event actor model is not user-only.
+- [x] Tests cover at least user and assistant roles through the same normalization path.
 
 ## TDD Notes
 

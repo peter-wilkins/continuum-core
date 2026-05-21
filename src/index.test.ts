@@ -115,4 +115,35 @@ describe("ChatGPT import normalization", () => {
     expect(event.source.externalParentId).toBe("msg_root");
     expect(event.source.canonicalParentEventId).toBeNull();
   });
+
+  it("imports one ChatGPT tool event into the canonical event model", () => {
+    const event = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_tool",
+        parent: "msg_789",
+        children: [],
+        message: {
+          id: "msg_tool",
+          create_time: 1779360240,
+          author: { role: "tool" },
+          content: {
+            content_type: "text",
+            parts: ["{\"query\":\"boiler types\"}"],
+          },
+        },
+      },
+    });
+
+    expect(event.id).toBe("chatgpt:conv_123:msg_tool");
+    expect(event.actor.role).toBe("tool");
+    expect(event.content.text).toBe("{\"query\":\"boiler types\"}");
+    expect(event.source.externalParentId).toBe("msg_789");
+    expect(event.source.canonicalParentEventId).toBeNull();
+  });
 });
