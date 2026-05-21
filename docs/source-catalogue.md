@@ -11,7 +11,7 @@ ChatGPT is postponed until the export arrives. Active ranking starts with source
 | 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | MediaWiki page revision | `data/wikimedia/boiler-revisions.json` |
 | 6 | Calendar / iCalendar | implemented fixture | high | medium | high | Calendar event | `src/fixtures/calendar-one-event.ics` |
 | 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |
-| 8 | Markdown / Obsidian / local docs | sample available | high | medium | medium | Markdown file revision snapshot | `README.md` |
+| 8 | Markdown / Obsidian / local docs | implemented fixture | high | medium | medium | Markdown file revision snapshot | `src/fixtures/markdown-one-note.md` |
 | 9 | Google Chrome history | implemented fixture | high | medium | high | Chrome browser history visit | `src/fixtures/google-chrome-history-one-record.json` |
 | 10 | Google Chrome bookmarks | implemented fixture | high | medium | high | Chrome bookmark snapshot | `src/fixtures/google-chrome-bookmarks-one-record.html` |
 | 11 | Google Chrome reading list | implemented fixture | high | medium | high | Chrome reading list entry | `src/fixtures/google-chrome-reading-list-one-record.html` |

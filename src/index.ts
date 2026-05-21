@@ -26,6 +26,7 @@ export type CanonicalSourcePlatform =
   | "google_activity"
   | "google_chrome"
   | "icalendar"
+  | "markdown"
   | "wikimedia";
 
 export type CanonicalParticipantRole =
@@ -267,6 +268,14 @@ export type ICalendarEventNormalizationInput = {
     path: string;
   };
   event: ICalendarEventRecord;
+};
+
+export type MarkdownDocumentNormalizationInput = {
+  file: {
+    path: string;
+    modifiedAt: string;
+  };
+  content: string;
 };
 
 export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
@@ -1209,6 +1218,36 @@ function iCalendarSourceFingerprint(
   );
 }
 
+function markdownSourceKey(input: MarkdownDocumentNormalizationInput): string {
+  return `markdown:${input.file.path}`;
+}
+
+function markdownSourceFingerprint(
+  input: MarkdownDocumentNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "markdown",
+      path: input.file.path,
+      modifiedAt: input.file.modifiedAt,
+      content: input.content,
+    }),
+  );
+}
+
+function markdownSubject(content: string, path: string): string {
+  const heading = content
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.startsWith("# "));
+
+  return heading?.replace(/^#+\s*/, "") || basenameFromPath(path);
+}
+
+function basenameFromPath(path: string): string {
+  return path.split(/[\\/]/).at(-1) ?? path;
+}
+
 function mediaWikiArtifactId(input: MediaWikiRevisionNormalizationInput): string {
   return `${input.project}:page:${input.page.pageid}`;
 }
@@ -1806,6 +1845,47 @@ export function normalizeICalendarEvent(
       text: textParts
         .filter((value): value is string => value !== null && value.length > 0)
         .join("\n"),
+    },
+  };
+}
+
+export function normalizeMarkdownDocument(
+  input: MarkdownDocumentNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = markdownSourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "markdown",
+      key: sourceKey,
+      fingerprint: markdownSourceFingerprint(input),
+      externalConversationId: input.file.path,
+      externalMessageId: input.file.path,
+      artifactId: input.file.path,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "local_documents",
+      sourceName: "markdown",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: new Date(input.file.modifiedAt).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: markdownSubject(input.content, input.file.path),
+      text: input.content.trim(),
     },
   };
 }

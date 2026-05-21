@@ -35,6 +35,7 @@ Active/imported:
 - ChatGPT export: fixture/import path exists, but real export is postponed.
 - Email/MBOX: model pressure fixture exists.
 - Calendar/iCalendar: fixture imports one calendar event.
+- Markdown/local docs: fixture imports one document snapshot.
 - Google Chrome history: Takeout/Data Portability fixture imports one browser visit.
 - Google Chrome bookmarks: Takeout/Data Portability fixture imports one saved reference.
 - Google Chrome reading list: Takeout/Data Portability fixture imports one saved reference.
@@ -46,7 +47,6 @@ Catalogue targets:
 - Git commits.
 - GitHub issues, PRs, reviews, commits, discussions.
 - Slack export.
-- Markdown/Obsidian/local docs.
 - Google Contacts.
 - precise Google location timeline/trips.
 - Chrome Autofill, extensions, settings, dictionary, and other non-event exports.
@@ -87,7 +87,7 @@ type CanonicalEvent = {
   id: string;
 
   source: {
-    platform: "chatgpt" | "claude" | "email" | "google_activity" | "google_chrome" | "icalendar" | "wikimedia";
+    platform: "chatgpt" | "claude" | "email" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "wikimedia";
     key: string;
     fingerprint: string;
     externalConversationId: string;
@@ -430,6 +430,7 @@ Done:
 - iCalendar parses and imports one calendar event.
 - CLI supports `icalendar` files and routes `.ics` files inside Takeout folders/zips.
 - CLI iCalendar imports preserve the source file path as the source grouping id.
+- Markdown normalizes one local document snapshot.
 
 Next:
 
