@@ -69,7 +69,7 @@ A user or interface signal that the current subject may be changing, such as sta
 _Avoid_: hard thread split, conversation boundary, forced new Continuation
 
 **Continuation Link**:
-A relationship between an **Entry** and a **Continuation**, including why the Entry appears relevant and how confident that relationship is. One **Entry** may have many **Continuation Links**.
+A relationship between an **Entry** and a **Continuation**, including why the Entry appears relevant and how confident that relationship is. One **Entry** may have many **Continuation Links**. This is internal/explanatory domain language; user surfaces should phrase it as "this seems connected to..." or show it through a **Continuity Map**.
 _Avoid_: membership, filing, tag
 
 **Resume Brief**:
