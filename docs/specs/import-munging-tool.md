@@ -391,6 +391,12 @@ Examples of strong intent include searches, bookmarks, reading-list saves, conta
 
 This keeps "import broadly for inspection" separate from "allow this record to shape memory and retrieval."
 
+Import filter actions are real states, not only preview labels:
+
+- `include`: import/promote the record so it can become memory and retrieval material.
+- `exclude`: do not import/promote the record under this profile.
+- `needs_review`: retain the record locally for inspection, but do not make it memory-active until the user approves it or stronger evidence promotes it.
+
 This avoids making the user fight Google Takeout selection UI while still keeping junk out of canonical events by default.
 
 ## Zod Boundary
