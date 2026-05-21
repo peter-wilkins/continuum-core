@@ -1660,13 +1660,33 @@ export function summarizeImportFilterDecisions(
   return summary;
 }
 
+type CanonicalEventBuildInput = {
+  source: CanonicalEvent["source"];
+  provenance: CanonicalEvent["provenance"];
+  time: CanonicalEvent["time"];
+  actor: CanonicalEvent["actor"];
+  participants: CanonicalEvent["participants"];
+  content: CanonicalEvent["content"];
+};
+
+function buildCanonicalEvent(input: CanonicalEventBuildInput): CanonicalEvent {
+  return {
+    id: input.source.key,
+    source: input.source,
+    provenance: input.provenance,
+    time: input.time,
+    actor: input.actor,
+    participants: input.participants,
+    content: input.content,
+  };
+}
+
 export function normalizeChatGptMessage(
   input: ChatGptMessageNormalizationInput,
 ): CanonicalEvent {
   const sourceKey = chatGptSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "chatgpt",
       key: sourceKey,
@@ -1698,7 +1718,7 @@ export function normalizeChatGptMessage(
       subject: null,
       text: input.node.message.content.parts.join("\n"),
     },
-  };
+  });
 }
 
 export function normalizeClaudeMessage(
@@ -1706,8 +1726,7 @@ export function normalizeClaudeMessage(
 ): CanonicalEvent {
   const sourceKey = claudeSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "claude",
       key: sourceKey,
@@ -1739,7 +1758,7 @@ export function normalizeClaudeMessage(
       subject: null,
       text: input.message.text,
     },
-  };
+  });
 }
 
 export function normalizeEmailMessage(
@@ -1747,8 +1766,7 @@ export function normalizeEmailMessage(
 ): CanonicalEvent {
   const sourceKey = emailSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "email",
       key: sourceKey,
@@ -1780,7 +1798,7 @@ export function normalizeEmailMessage(
       subject: input.message.subject,
       text: input.message.textBody,
     },
-  };
+  });
 }
 
 export function normalizeGoogleChromeHistoryRecord(
@@ -1788,8 +1806,7 @@ export function normalizeGoogleChromeHistoryRecord(
 ): CanonicalEvent {
   const sourceKey = googleChromeHistorySourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "google_chrome",
       key: sourceKey,
@@ -1821,7 +1838,7 @@ export function normalizeGoogleChromeHistoryRecord(
       subject: input.history.title,
       text: `Visited ${input.history.title}\n${input.history.url}`,
     },
-  };
+  });
 }
 
 export function normalizeGoogleChromeBookmarkRecord(
@@ -1829,8 +1846,7 @@ export function normalizeGoogleChromeBookmarkRecord(
 ): CanonicalEvent {
   const sourceKey = googleChromeBookmarkSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "google_chrome",
       key: sourceKey,
@@ -1862,7 +1878,7 @@ export function normalizeGoogleChromeBookmarkRecord(
       subject: input.bookmark.title,
       text: `Bookmarked ${input.bookmark.title}\n${input.bookmark.url}`,
     },
-  };
+  });
 }
 
 export function normalizeGoogleChromeReadingListRecord(
@@ -1870,8 +1886,7 @@ export function normalizeGoogleChromeReadingListRecord(
 ): CanonicalEvent {
   const sourceKey = googleChromeReadingListSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "google_chrome",
       key: sourceKey,
@@ -1903,7 +1918,7 @@ export function normalizeGoogleChromeReadingListRecord(
       subject: input.bookmark.title,
       text: `Saved to reading list ${input.bookmark.title}\n${input.bookmark.url}`,
     },
-  };
+  });
 }
 
 function googleMyActivityText(input: GoogleMyActivityNormalizationInput): string {
@@ -1929,8 +1944,7 @@ export function normalizeGoogleMyActivityRecord(
 ): CanonicalEvent {
   const sourceKey = googleMyActivitySourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "google_activity",
       key: sourceKey,
@@ -1962,7 +1976,7 @@ export function normalizeGoogleMyActivityRecord(
       subject: input.activity.title,
       text: googleMyActivityText(input),
     },
-  };
+  });
 }
 
 export function normalizeICalendarEvent(
@@ -1978,8 +1992,7 @@ export function normalizeICalendarEvent(
       : `Ends: ${iCalendarDateToIso(input.event.dtend)}`,
   ];
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "icalendar",
       key: sourceKey,
@@ -2016,7 +2029,7 @@ export function normalizeICalendarEvent(
         .filter((value): value is string => value !== null && value.length > 0)
         .join("\n"),
     },
-  };
+  });
 }
 
 export function normalizeMarkdownDocument(
@@ -2024,8 +2037,7 @@ export function normalizeMarkdownDocument(
 ): CanonicalEvent {
   const sourceKey = markdownSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "markdown",
       key: sourceKey,
@@ -2057,7 +2069,7 @@ export function normalizeMarkdownDocument(
       subject: markdownSubject(input.content, input.file.path),
       text: input.content.trim(),
     },
-  };
+  });
 }
 
 export function normalizeGitCommit(
@@ -2065,8 +2077,7 @@ export function normalizeGitCommit(
 ): CanonicalEvent {
   const sourceKey = gitSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "git",
       key: sourceKey,
@@ -2104,7 +2115,7 @@ export function normalizeGitCommit(
       subject: input.commit.subject,
       text: gitCommitText(input),
     },
-  };
+  });
 }
 
 export function normalizeMediaWikiRevision(
@@ -2112,8 +2123,7 @@ export function normalizeMediaWikiRevision(
 ): CanonicalEvent {
   const sourceKey = mediaWikiSourceKey(input);
 
-  return {
-    id: sourceKey,
+  return buildCanonicalEvent({
     source: {
       platform: "wikimedia",
       key: sourceKey,
@@ -2146,7 +2156,7 @@ export function normalizeMediaWikiRevision(
       subject: input.page.title,
       text: input.revision.comment,
     },
-  };
+  });
 }
 
 export function normalizeChatGptConversations(
