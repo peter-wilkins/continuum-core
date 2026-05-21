@@ -16,7 +16,7 @@ describe("continuum core package scaffold", () => {
 });
 
 describe("ChatGPT import normalization", () => {
-  it("normalizes one user message into a canonical event", () => {
+  it("imports one ChatGPT event into the canonical event model", () => {
     const event = normalizeChatGptMessage({
       conversation: {
         id: "conv_123",
