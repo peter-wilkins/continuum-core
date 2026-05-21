@@ -104,6 +104,10 @@ _Avoid_: context clue for all retrieval evidence, raw feature, hidden ranking in
 A named weighting configuration for **Ranking Signals**. Ranking Profiles are debugging, QA, and user-testing tools first; they compare how different evidence mixes affect **Continuation Candidate** ranking without exposing tuning controls to normal users.
 _Avoid_: hard-coded scoring, single global weighting, invisible ranking mode
 
+**Deterministic Retrieval Baseline**:
+A first **Continuity Retrieval** implementation using inspectable **Ranking Signals** such as text overlap, recency, recurrence, explicit cues, and **Link Reasons**, before embeddings or model scoring are introduced.
+_Avoid_: embedding-only MVP, opaque first slice, model-dependent baseline
+
 **Signal Evidence Trail**:
 The retained evidence behind a **Continuation Link** or **Continuation Candidate**. A Signal Evidence Trail supports debugging, rebuilding, user correction, membranes, and **Continuity Maps**.
 _Avoid_: final score only, throwaway explanation, hidden ranking state
