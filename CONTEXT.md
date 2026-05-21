@@ -96,6 +96,14 @@ _Avoid_: opaque score, hidden embedding match, magic relevance
 Any evidence used to create, update, strengthen, weaken, split, or reject a **Continuation Link**. Signal Evidence can include semantic inference, recurrence, time, explicit **Resume Requests**, **Subject Boundary Cues**, user corrections, or future signals not yet imagined.
 _Avoid_: closed signal list, embedding-only evidence, user-action-only evidence
 
+**Ranking Signal**:
+A kind of **Signal Evidence** used by **Continuity Retrieval** to rank **Continuation Candidates**. Ranking Signals may include semantic similarity, recency, recurrence, explicit cues, **Context Clues**, and **Feedback Signals**.
+_Avoid_: context clue for all retrieval evidence, raw feature, hidden ranking input
+
+**Ranking Profile**:
+A named weighting configuration for **Ranking Signals**. Ranking Profiles allow debugging, QA, user testing, and future personalisation to compare how different evidence mixes affect **Continuation Candidate** ranking.
+_Avoid_: hard-coded scoring, single global weighting, invisible ranking mode
+
 **Signal Evidence Trail**:
 The retained evidence behind a **Continuation Link** or **Continuation Candidate**. A Signal Evidence Trail supports debugging, rebuilding, user correction, membranes, and **Continuity Maps**.
 _Avoid_: final score only, throwaway explanation, hidden ranking state
