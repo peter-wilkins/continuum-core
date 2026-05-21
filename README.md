@@ -118,10 +118,29 @@ Supported source names:
 - `google-my-activity`
 - `icalendar`
 - `markdown`
+- `git-log`
 - `google-takeout-folder`
 - `google-takeout-zip`
 
 Raw data, previews, and event JSONL should stay under `data/`, which is gitignored.
+
+## Using From Another TypeScript Project
+
+Until this package is published, install it from a sibling checkout:
+
+```bash
+npm install ../continuum-core
+```
+
+Then import from the package root:
+
+```ts
+import {
+  createImportedEntryFromCanonicalEvent,
+  debugRankingProfiles,
+  retrieveContinuationCandidates,
+} from "@continuum/core";
+```
 
 ## Read next
 
