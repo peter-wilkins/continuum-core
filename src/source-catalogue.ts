@@ -15,6 +15,13 @@ export type SourceCatalogueEntry = {
   nextEventTarget: string;
   exampleDataPath: string | null;
   officialDocs: string[];
+  provenance: {
+    sourceFamily: string;
+    sourceName: string;
+    upstreamSources: string[];
+    derivedFrom: string[];
+    overlapWarning: string;
+  };
 };
 
 export const sourceCatalogue = [
@@ -32,6 +39,13 @@ export const sourceCatalogue = [
       "https://platform.claude.com/docs/en/manage-claude/compliance-content-data",
       "https://platform.claude.com/docs/en/api/compliance/apps/chats/messages",
     ],
+    provenance: {
+      sourceFamily: "ai_chat_export",
+      sourceName: "claude",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Independent user export; do not treat copied/pasted source material inside chats as independent evidence.",
+    },
   },
   {
     rank: 2,
@@ -47,6 +61,13 @@ export const sourceCatalogue = [
       "https://www.rfc-editor.org/rfc/rfc4155",
       "https://www.rfc-editor.org/rfc/rfc5322",
     ],
+    provenance: {
+      sourceFamily: "personal_communications",
+      sourceName: "email_mbox",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Email forwards and quoted replies can duplicate upstream content; preserve headers before weighting.",
+    },
   },
   {
     rank: 3,
@@ -62,6 +83,13 @@ export const sourceCatalogue = [
       "https://git-scm.com/docs/pretty-formats",
       "https://git-scm.com/docs/user-manual",
     ],
+    provenance: {
+      sourceFamily: "software_development",
+      sourceName: "git",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "GitHub mirrors Git commits; count commit evidence once per repository lineage.",
+    },
   },
   {
     rank: 4,
@@ -77,6 +105,13 @@ export const sourceCatalogue = [
       "https://docs.github.com/en/rest/issues/comments",
       "https://docs.github.com/en/rest/pulls/pulls",
     ],
+    provenance: {
+      sourceFamily: "software_development",
+      sourceName: "github",
+      upstreamSources: ["git"],
+      derivedFrom: [],
+      overlapWarning: "GitHub commits can duplicate Git data; issues/PR comments are separate collaboration records.",
+    },
   },
   {
     rank: 5,
@@ -92,6 +127,13 @@ export const sourceCatalogue = [
       "https://www.mediawiki.org/wiki/API:Revisions",
       "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html",
     ],
+    provenance: {
+      sourceFamily: "public_knowledge_graph",
+      sourceName: "wikimedia",
+      upstreamSources: ["wikipedia", "wikidata"],
+      derivedFrom: ["wikipedia"],
+      overlapWarning: "Wikipedia, Wikidata, DBpedia, and many downstream knowledge graphs share lineage; do not count as independent by default.",
+    },
   },
   {
     rank: 6,
@@ -104,6 +146,13 @@ export const sourceCatalogue = [
     nextEventTarget: "Calendar event",
     exampleDataPath: "data/calendar/basic-event.ics",
     officialDocs: ["https://www.rfc-editor.org/rfc/rfc5545"],
+    provenance: {
+      sourceFamily: "personal_schedule",
+      sourceName: "icalendar",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Calendar invites may duplicate email messages; use UID and organizer/attendee lineage.",
+    },
   },
   {
     rank: 7,
@@ -118,6 +167,13 @@ export const sourceCatalogue = [
     officialDocs: [
       "https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports",
     ],
+    provenance: {
+      sourceFamily: "team_communications",
+      sourceName: "slack",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Slack imports, cross-posts, and GitHub app messages may duplicate other sources.",
+    },
   },
   {
     rank: 8,
@@ -130,6 +186,13 @@ export const sourceCatalogue = [
     nextEventTarget: "Markdown file revision snapshot",
     exampleDataPath: "README.md",
     officialDocs: ["https://spec.commonmark.org/"],
+    provenance: {
+      sourceFamily: "local_documents",
+      sourceName: "markdown",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Docs may be generated from chats, issues, or code; record generator lineage when known.",
+    },
   },
   {
     rank: 9,
@@ -145,6 +208,13 @@ export const sourceCatalogue = [
       "https://developers.google.com/data-portability/schema-reference/my_activity",
       "https://support.google.com/accounts/answer/3024190",
     ],
+    provenance: {
+      sourceFamily: "activity_log",
+      sourceName: "google_takeout",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Activity records may be pointers to web/email/calendar artifacts already imported elsewhere.",
+    },
   },
   {
     rank: 10,
@@ -157,6 +227,13 @@ export const sourceCatalogue = [
     nextEventTarget: "Notion markdown page",
     exampleDataPath: null,
     officialDocs: ["https://www.notion.com/help/export-your-content"],
+    provenance: {
+      sourceFamily: "workspace_documents",
+      sourceName: "notion",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Notion pages may embed synced docs, GitHub issues, or pasted chat outputs.",
+    },
   },
 ] as const satisfies SourceCatalogueEntry[];
 
@@ -172,5 +249,12 @@ export const postponedSourceCatalogue = [
     nextEventTarget: "ChatGPT conversation message",
     exampleDataPath: "src/fixtures/chatgpt-one-conversation.json",
     officialDocs: ["https://help.openai.com/en/articles/7260999-how-do-i-export-my-chatgpt-history-and-data"],
+    provenance: {
+      sourceFamily: "ai_chat_export",
+      sourceName: "chatgpt",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Independent user export; pasted source material inside chats needs its own lineage.",
+    },
   },
 ] as const satisfies SourceCatalogueEntry[];

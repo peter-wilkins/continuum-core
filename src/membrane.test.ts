@@ -20,6 +20,14 @@ const privateEmailEvent: CanonicalEvent = {
     externalParentId: null,
     canonicalParentEventId: null,
   },
+  provenance: {
+    sourceFamily: "personal_communications",
+    sourceName: "email_mbox",
+    upstreamSources: [],
+    derivedFrom: [],
+    retrievedAt: "unknown",
+    license: null,
+  },
   time: {
     createdAt: "2026-05-21T10:42:03.000Z",
     createdAtConfidence: "exact",

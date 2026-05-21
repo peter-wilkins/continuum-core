@@ -108,6 +108,53 @@ export const canonicalEventSchema = {
       ],
     },
     {
+      name: "provenance",
+      purpose:
+        "Where the source record comes from and whether it shares upstream lineage with other evidence.",
+      fields: [
+        {
+          name: "sourceFamily",
+          type: "string",
+          required: true,
+          description:
+            "Broad provenance family such as personal communications, package registry, legal, or public knowledge graph.",
+        },
+        {
+          name: "sourceName",
+          type: "string",
+          required: true,
+          description: "Specific source such as email_mbox, wikipedia, Crossref, or npm.",
+        },
+        {
+          name: "upstreamSources",
+          type: "string[]",
+          required: true,
+          description:
+            "Known upstream sources this record depends on before this importer saw it.",
+        },
+        {
+          name: "derivedFrom",
+          type: "string[]",
+          required: true,
+          description:
+            "Explicit lineage markers used to avoid double-counting derived evidence.",
+        },
+        {
+          name: "retrievedAt",
+          type: "ISO datetime string | \"unknown\"",
+          required: true,
+          description:
+            "When this source record was retrieved by the importer, or unknown for fixtures.",
+        },
+        {
+          name: "license",
+          type: "string | null",
+          required: true,
+          description: "Source license or null when not known/applicable.",
+        },
+      ],
+    },
+    {
       name: "actor",
       purpose: "Who or what produced the event.",
       fields: [
@@ -181,6 +228,11 @@ export const canonicalEventSchema = {
       from: "source.externalParentId",
       to: "source.canonicalParentEventId",
       label: "source id can later resolve to canonical id",
+    },
+    {
+      from: "provenance.derivedFrom",
+      to: "Evidence Weighting",
+      label: "same upstream lineage must not count as independent evidence",
     },
     {
       from: "participants.address",

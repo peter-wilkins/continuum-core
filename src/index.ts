@@ -28,6 +28,15 @@ export type CanonicalParticipant = {
   address: string;
 };
 
+export type EventProvenance = {
+  sourceFamily: string;
+  sourceName: string;
+  upstreamSources: string[];
+  derivedFrom: string[];
+  retrievedAt: string;
+  license: string | null;
+};
+
 export type TimeConfidence = "exact" | "inferred" | "unknown";
 
 export type CanonicalEvent = {
@@ -42,6 +51,7 @@ export type CanonicalEvent = {
     externalParentId: string | null;
     canonicalParentEventId: string | null;
   };
+  provenance: EventProvenance;
   time: {
     createdAt: string;
     createdAtConfidence: TimeConfidence;
@@ -235,6 +245,22 @@ export type DisclosureMembraneResult = {
   events: CanonicalEvent[];
   decisions: MembraneDecision[];
 };
+
+function provenanceKey(provenance: EventProvenance): string {
+  const lineageInputs =
+    provenance.derivedFrom.length > 0
+      ? provenance.derivedFrom
+      : provenance.upstreamSources.length > 0
+        ? provenance.upstreamSources
+        : [provenance.sourceName];
+  const lineage = new Set(lineageInputs);
+
+  return `${provenance.sourceFamily}:${[...lineage].sort().join("|")}`;
+}
+
+export function countIndependentEvidence(events: CanonicalEvent[]): number {
+  return new Set(events.map((event) => provenanceKey(event.provenance))).size;
+}
 
 function stableHash(input: string): string {
   let hash = 0xcbf29ce484222325n;
@@ -531,6 +557,14 @@ export function normalizeChatGptMessage(
       externalParentId: input.node.parent,
       canonicalParentEventId: null,
     },
+    provenance: {
+      sourceFamily: "ai_chat_export",
+      sourceName: "chatgpt",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
     time: {
       createdAt: new Date(input.node.message.create_time * 1000).toISOString(),
       createdAtConfidence: "exact",
@@ -563,6 +597,14 @@ export function normalizeClaudeMessage(
       artifactId: null,
       externalParentId: null,
       canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "ai_chat_export",
+      sourceName: "claude",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
     },
     time: {
       createdAt: new Date(input.message.created_at).toISOString(),
@@ -597,6 +639,14 @@ export function normalizeEmailMessage(
       externalParentId: input.message.inReplyTo[0] ?? null,
       canonicalParentEventId: null,
     },
+    provenance: {
+      sourceFamily: "personal_communications",
+      sourceName: "email_mbox",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
     time: {
       createdAt: new Date(input.message.date).toISOString(),
       createdAtConfidence: "exact",
@@ -630,6 +680,14 @@ export function normalizeMediaWikiRevision(
       externalParentId:
         input.revision.parentid === 0 ? null : String(input.revision.parentid),
       canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "public_knowledge_graph",
+      sourceName: "wikipedia",
+      upstreamSources: [],
+      derivedFrom: ["wikipedia"],
+      retrievedAt: "unknown",
+      license: "CC-BY-SA",
     },
     time: {
       createdAt: new Date(input.revision.timestamp).toISOString(),

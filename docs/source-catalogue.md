@@ -15,6 +15,22 @@ ChatGPT is postponed until the export arrives. Active ranking starts with source
 | 9 | Google My Activity / Gemini / Takeout | needs user export | high | high | high | Google activity record | none yet |
 | 10 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
 
+## Provenance Rules
+
+Every source entry carries provenance metadata in `src/source-catalogue.ts`:
+
+- `sourceFamily`: broad evidence family.
+- `sourceName`: direct source imported.
+- `upstreamSources`: known upstream sources behind the imported record.
+- `derivedFrom`: explicit lineage markers.
+- `overlapWarning`: why this source might duplicate another source.
+
+Consensus rule:
+
+> Never treat two records as independent unless their upstream lineage differs.
+
+This means content-hash dedupe is not the main tool. Similar evidence can be phrased differently, and exact text can be copied through many channels.
+
 ## Postponed
 
 | Rank | Source | Reason |

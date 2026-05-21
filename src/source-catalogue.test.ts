@@ -16,6 +16,9 @@ describe("source catalogue", () => {
     for (const entry of sourceCatalogue) {
       expect(entry.officialDocs.length).toBeGreaterThan(0);
       expect(entry.nextEventTarget.length).toBeGreaterThan(0);
+      expect(entry.provenance.sourceFamily.length).toBeGreaterThan(0);
+      expect(entry.provenance.sourceName.length).toBeGreaterThan(0);
+      expect(entry.provenance.overlapWarning.length).toBeGreaterThan(0);
     }
   });
 
@@ -26,5 +29,6 @@ describe("source catalogue", () => {
 
     expect(wikimedia?.name).toContain("Wikimedia");
     expect(wikimedia?.nextEventTarget).toBe("MediaWiki page revision");
+    expect(wikimedia?.provenance.derivedFrom).toContain("wikipedia");
   });
 });
