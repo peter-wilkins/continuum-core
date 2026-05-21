@@ -187,26 +187,28 @@ The first cache shape should be flat event rows plus full JSON:
 ```sql
 local_source_events(
   id text primary key,
-  source_platform text not null,
-  source_name text not null,
-  source_key text not null,
-  external_conversation_id text not null,
-  external_message_id text not null,
-  created_at text not null,
-  created_at_confidence text not null,
-  ingested_at text not null,
-  actor_role text not null,
+  sourcePlatform text not null,
+  sourceName text not null,
+  sourceKey text not null,
+  externalConversationId text not null,
+  externalMessageId text not null,
+  createdAt text not null,
+  createdAtConfidence text not null,
+  ingestedAt text not null,
+  actorRole text not null,
   subject text,
   text text not null,
-  event_json text not null
+  eventJson text not null
 )
 ```
 
 This is enough for early timelines, source filters, search probes, and event detail views while preserving the full Canonical Event. It is deliberately not an identity graph, conversation model, entity store, or Memory Layer.
 
-The `text` column is intentionally duplicated from `event_json` so the Host App can serve timelines, simple search, and later SQLite FTS without reparsing every event. Because it is readable payload data, the Local Source Cache must be purged or rebuilt after Forget Requests and erasure operations.
+Use the same camelCase field names in TypeScript and SQLite. Avoid camelCase-to-snake_case conversion at this boundary; it adds boilerplate and creates a bug surface. SQLite accepts these identifiers directly, and the Host App may quote them with double quotes if needed.
 
-`created_at` is event time: when the source event happened. `ingested_at` is ingest/cache time: when Continuum learned about it or rebuilt the local row. Both are required because imported history often arrives long after it happened.
+The `text` column is intentionally duplicated from `eventJson` so the Host App can serve timelines, simple search, and later SQLite FTS without reparsing every event. Because it is readable payload data, the Local Source Cache must be purged or rebuilt after Forget Requests and erasure operations.
+
+`createdAt` is event time: when the source event happened. `ingestedAt` is ingest/cache time: when Continuum learned about it or rebuilt the local row. Both are required because imported history often arrives long after it happened.
 
 SQLite FTS is not part of the first Local Source Cache slice. Add it after the basic timeline, source filtering, and event detail path is working, and test that erasure purges both base rows and FTS rows.
 
@@ -215,48 +217,48 @@ Import batch provenance should use a link table rather than an `import_batch_id`
 ```sql
 local_import_batches(
   id text primary key,
-  source_platform text not null,
-  source_name text not null,
-  original_filename text not null,
-  original_file_hash text not null,
-  created_at text not null,
-  stats_json text not null,
-  batch_json text not null
+  sourcePlatform text not null,
+  sourceName text not null,
+  originalFilename text not null,
+  originalFileHash text not null,
+  createdAt text not null,
+  statsJson text not null,
+  batchJson text not null
 )
 
 local_import_batch_events(
-  batch_id text not null,
-  event_id text not null,
-  import_status text not null check (
-    import_status in ('new', 'known', 'changed', 'uncertain')
+  batchId text not null,
+  eventId text not null,
+  importStatus text not null check (
+    importStatus in ('new', 'known', 'changed', 'uncertain')
   ),
-  primary key (batch_id, event_id)
+  primary key (batchId, eventId)
 )
 
 local_import_quarantine(
   id text primary key,
-  batch_id text not null,
-  source_path text not null,
-  record_index integer,
-  error_code text not null,
+  batchId text not null,
+  sourcePath text not null,
+  recordIndex integer,
+  errorCode text not null,
   message text not null,
-  quarantine_json text not null
+  quarantineJson text not null
 )
 ```
 
-Quarantine records live separately because malformed records may not produce Canonical Event ids. Do not make `event_id` nullable to mix successful event observations with failed records.
+Quarantine records live separately because malformed records may not produce Canonical Event ids. Do not make `eventId` nullable to mix successful event observations with failed records.
 
 First slice indexes should stay operational:
 
 ```sql
 create index local_source_events_created_at_idx
-  on local_source_events(created_at);
+  on local_source_events(createdAt);
 
 create index local_source_events_source_platform_idx
-  on local_source_events(source_platform);
+  on local_source_events(sourcePlatform);
 
 create index local_import_batch_events_event_id_idx
-  on local_import_batch_events(event_id);
+  on local_import_batch_events(eventId);
 ```
 
 Do not add semantic, vector, or FTS indexes in the first Local Source Cache slice.
