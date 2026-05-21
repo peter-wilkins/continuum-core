@@ -1,5 +1,9 @@
 # 005: Export ChatGPT Conversations JSON To Event JSONL
 
+## Status
+
+Done.
+
 ## Type
 
 AFK.
@@ -20,12 +24,12 @@ Given a fixture with one conversation containing two message nodes, `continuum-i
 
 ## Acceptance Criteria
 
-- [ ] CLI command accepts a ChatGPT `conversations.json` path.
-- [ ] Output is newline-delimited canonical events.
-- [ ] Output preserves source conversation and message ids.
-- [ ] Raw export is not copied to any remote target.
-- [ ] Fixture is tiny and contains no personal data.
-- [ ] Test runs without network access.
+- [x] CLI command accepts a ChatGPT `conversations.json` path.
+- [x] Output is newline-delimited canonical events.
+- [x] Output preserves source conversation and message ids.
+- [x] Raw export is not copied to any remote target.
+- [x] Fixture is tiny and contains no personal data.
+- [x] Test runs without network access.
 
 ## TDD Notes
 

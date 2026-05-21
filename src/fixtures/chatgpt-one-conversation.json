@@ -1,0 +1,44 @@
+[
+  {
+    "id": "conv_123",
+    "title": "Boiler quote",
+    "create_time": 1779360000,
+    "update_time": 1779360300,
+    "mapping": {
+      "msg_456": {
+        "id": "msg_456",
+        "parent": "msg_root",
+        "children": ["msg_789"],
+        "message": {
+          "id": "msg_456",
+          "create_time": 1779360123,
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["Need to quote Bob for the boiler."]
+          }
+        }
+      },
+      "msg_789": {
+        "id": "msg_789",
+        "parent": "msg_456",
+        "children": [],
+        "message": {
+          "id": "msg_789",
+          "create_time": 1779360180,
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "You should ask Bob whether the boiler is combi or system."
+            ]
+          }
+        }
+      }
+    }
+  }
+]

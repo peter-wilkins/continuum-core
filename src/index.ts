@@ -61,6 +61,14 @@ export type ChatGptMessageNormalizationInput = {
   };
 };
 
+export type ChatGptConversationExport = {
+  id: string;
+  title: string;
+  create_time: number;
+  update_time: number;
+  mapping: Record<string, ChatGptMessageNormalizationInput["node"]>;
+};
+
 export function normalizeChatGptMessage(
   input: ChatGptMessageNormalizationInput,
 ): CanonicalEvent {
@@ -85,4 +93,19 @@ export function normalizeChatGptMessage(
       text: input.node.message.content.parts.join("\n"),
     },
   };
+}
+
+export function normalizeChatGptConversations(
+  conversations: ChatGptConversationExport[],
+): CanonicalEvent[] {
+  return conversations.flatMap((conversation) =>
+    Object.values(conversation.mapping)
+      .filter((node) => node.message)
+      .map((node) =>
+        normalizeChatGptMessage({
+          conversation,
+          node,
+        }),
+      ),
+  );
 }
