@@ -101,7 +101,7 @@ A kind of **Signal Evidence** used by **Continuity Retrieval** to rank **Continu
 _Avoid_: context clue for all retrieval evidence, raw feature, hidden ranking input
 
 **Ranking Profile**:
-A named weighting configuration for **Ranking Signals**. Ranking Profiles allow debugging, QA, user testing, and future personalisation to compare how different evidence mixes affect **Continuation Candidate** ranking.
+A named weighting configuration for **Ranking Signals**. Ranking Profiles are debugging, QA, and user-testing tools first; they compare how different evidence mixes affect **Continuation Candidate** ranking without exposing tuning controls to normal users.
 _Avoid_: hard-coded scoring, single global weighting, invisible ranking mode
 
 **Signal Evidence Trail**:
