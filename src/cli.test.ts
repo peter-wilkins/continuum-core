@@ -28,6 +28,9 @@ const googleMyActivityFixturePath = fileURLToPath(
 const calendarFixturePath = fileURLToPath(
   new URL("./fixtures/calendar-one-event.ics", import.meta.url),
 );
+const markdownFixturePath = fileURLToPath(
+  new URL("./fixtures/markdown-one-note.md", import.meta.url),
+);
 
 describe("continuum-import CLI", () => {
   it("formats inspect output with warnings and source file counts", () => {
@@ -998,6 +1001,82 @@ describe("continuum-import CLI", () => {
         {
           path: "Takeout/Calendar/basic-event.ics",
           source: "icalendar",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports a Markdown file through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "markdown",
+        markdownFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "markdown",
+          externalConversationId: "markdown-one-note.md",
+        },
+        content: {
+          subject: "Boiler notes",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes Markdown files inside a Google Takeout zip", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Keep/boiler.md": strToU8(
+          await readFile(markdownFixturePath, "utf8"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Keep/boiler.md",
+          source: "markdown",
           status: "matched",
           eventsCreated: 1,
           quarantineRecords: 0,

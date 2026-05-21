@@ -431,6 +431,7 @@ Done:
 - CLI supports `icalendar` files and routes `.ics` files inside Takeout folders/zips.
 - CLI iCalendar imports preserve the source file path as the source grouping id.
 - Markdown normalizes one local document snapshot.
+- CLI supports `markdown` files and routes Markdown files inside Takeout folders/zips.
 
 Next:
 

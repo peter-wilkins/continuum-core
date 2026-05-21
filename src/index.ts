@@ -274,6 +274,7 @@ export type MarkdownDocumentNormalizationInput = {
   file: {
     path: string;
     modifiedAt: string;
+    modifiedAtConfidence: TimeConfidence;
   };
   content: string;
 };
@@ -1876,7 +1877,7 @@ export function normalizeMarkdownDocument(
     },
     time: {
       createdAt: new Date(input.file.modifiedAt).toISOString(),
-      createdAtConfidence: "exact",
+      createdAtConfidence: input.file.modifiedAtConfidence,
     },
     actor: {
       role: "other",

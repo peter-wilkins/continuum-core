@@ -117,6 +117,7 @@ Supported source names:
 - `google-chrome-reading-list`
 - `google-my-activity`
 - `icalendar`
+- `markdown`
 - `google-takeout-folder`
 - `google-takeout-zip`
 

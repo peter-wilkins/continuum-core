@@ -15,6 +15,7 @@ import {
   normalizeGoogleChromeReadingListExport,
   normalizeGoogleMyActivityExport,
   normalizeICalendarEvent,
+  normalizeMarkdownDocument,
   parseClaudeConversationsWithQuarantine,
   parseGoogleChromeBookmarksExport,
   parseGoogleChromeHistoryExport,
@@ -131,6 +132,7 @@ type ImportCommand =
   | "google-chrome-reading-list"
   | "google-my-activity"
   | "icalendar"
+  | "markdown"
   | "google-takeout-folder"
   | "google-takeout-zip";
 
@@ -142,6 +144,7 @@ const importCommands = [
   "google-chrome-reading-list",
   "google-my-activity",
   "icalendar",
+  "markdown",
   "google-takeout-folder",
   "google-takeout-zip",
 ] as const satisfies ImportCommand[];
@@ -301,6 +304,13 @@ type ICalendarCliInput = {
   raw: string;
 };
 
+type MarkdownCliInput = {
+  filePath: string;
+  modifiedAt: string;
+  modifiedAtConfidence: "exact" | "unknown";
+  raw: string;
+};
+
 type NormalizedSourceInput = {
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
@@ -362,6 +372,13 @@ async function readSourceInput(
           calendarPath: basename(inputPath),
           raw,
         } satisfies ICalendarCliInput
+      : source === "markdown"
+        ? {
+            filePath: basename(inputPath),
+            modifiedAt: (await stat(inputPath)).mtime.toISOString(),
+            modifiedAtConfidence: "exact",
+            raw,
+          } satisfies MarkdownCliInput
       : raw;
   let parseError: string | null = null;
 
@@ -463,6 +480,7 @@ function sourceInputNeedsJson(source: ImportCommand): boolean {
     "google-chrome-bookmarks",
     "google-chrome-reading-list",
     "icalendar",
+    "markdown",
     "google-takeout-folder",
     "google-takeout-zip",
   ].includes(source);
@@ -533,6 +551,14 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
           raw: file.raw,
         } satisfies ICalendarCliInput;
       }
+      if (source === "markdown") {
+        parsed = {
+          filePath: file.relativePath,
+          modifiedAt: "1970-01-01T00:00:00.000Z",
+          modifiedAtConfidence: "unknown",
+          raw: file.raw,
+        } satisfies MarkdownCliInput;
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -599,6 +625,10 @@ function classifyTakeoutFile(file: TakeoutFolderFile): ImportCommand | null {
 
   if (lowerPath.endsWith(".ics")) {
     return "icalendar";
+  }
+
+  if (lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown")) {
+    return "markdown";
   }
 
   if (!lowerPath.endsWith(".json")) {
@@ -743,6 +773,26 @@ function normalizeSourceInput(
           event,
         }),
       ),
+      quarantine: [],
+      sourceFiles: [],
+      warnings: 0,
+    };
+  }
+
+  if (source === "markdown") {
+    const input = parsed as MarkdownCliInput;
+
+    return {
+      incomingEvents: [
+        normalizeMarkdownDocument({
+          file: {
+            path: input.filePath,
+            modifiedAt: input.modifiedAt,
+            modifiedAtConfidence: input.modifiedAtConfidence,
+          },
+          content: input.raw,
+        }),
+      ],
       quarantine: [],
       sourceFiles: [],
       warnings: 0,

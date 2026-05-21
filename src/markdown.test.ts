@@ -18,6 +18,7 @@ describe("Markdown import", () => {
       file: {
         path: "notes/boiler.md",
         modifiedAt: "2026-05-21T10:42:03.000Z",
+        modifiedAtConfidence: "exact",
       },
       content: markdownFixture,
     } satisfies MarkdownDocumentNormalizationInput);
