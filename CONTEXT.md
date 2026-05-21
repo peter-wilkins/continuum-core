@@ -92,6 +92,10 @@ _Avoid_: search result, guessed thread, ungrounded match
 A human-readable explanation for why an **Entry** supports a **Continuation Link** or **Continuation Candidate**. Link Reasons make retrieval inspectable for users, debugging, and later **Continuity Maps**.
 _Avoid_: opaque score, hidden embedding match, magic relevance
 
+**Signal Evidence**:
+Any evidence used to create, update, strengthen, weaken, split, or reject a **Continuation Link**. Signal Evidence can include semantic inference, recurrence, time, explicit **Resume Requests**, **Subject Boundary Cues**, user corrections, or future signals not yet imagined.
+_Avoid_: closed signal list, embedding-only evidence, user-action-only evidence
+
 **Ambiguous Resume**:
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match
