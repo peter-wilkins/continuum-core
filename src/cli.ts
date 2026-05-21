@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, resolve, join } from "node:path";
 
 import {
   type ImportErrorRecord,
@@ -72,6 +72,7 @@ export type ImportWriteCliResult = {
   outputPath: string;
   report: ImportReport;
   quarantine: ImportErrorRecord[];
+  warnings: number;
 };
 
 export type InspectCliResult = {
@@ -220,7 +221,11 @@ export async function runContinuumImportCli(
   args: string[],
 ): Promise<ContinuumImportCliResult> {
   const command = parseCommand(args);
-  const sourceInput = await readSourceInput(command.source, command.inputPath);
+  const sourceInput = await readSourceInput(
+    command.source,
+    command.inputPath,
+    command.kind === "inspect" ? null : command.kind === "dry-run" ? command.previewPath : command.outputPath,
+  );
 
   if (command.kind === "inspect") {
     return inspectSource(command, sourceInput);
@@ -230,7 +235,7 @@ export async function runContinuumImportCli(
     return dryRunImport(command, sourceInput);
   }
 
-  const { incomingEvents, quarantine } = normalizeSourceInput(
+  const { incomingEvents, quarantine, warnings } = normalizeSourceInput(
     command.source,
     sourceInput.parsed,
   );
@@ -246,6 +251,7 @@ export async function runContinuumImportCli(
     outputPath: command.outputPath,
     report,
     quarantine,
+    warnings,
   };
 }
 
@@ -273,9 +279,10 @@ type NormalizedSourceInput = {
 async function readSourceInput(
   source: ImportCommand,
   inputPath: string,
+  excludePath: string | null,
 ): Promise<SourceInput> {
   if (source === "google-takeout-folder") {
-    const files = await readTakeoutFolder(inputPath);
+    const files = await readTakeoutFolder(inputPath, excludePath);
     const hash = createHash("sha256");
 
     for (const file of files) {
@@ -301,8 +308,12 @@ async function readSourceInput(
   };
 }
 
-async function readTakeoutFolder(inputPath: string): Promise<TakeoutFolderFile[]> {
+async function readTakeoutFolder(
+  inputPath: string,
+  excludePath: string | null,
+): Promise<TakeoutFolderFile[]> {
   const files: TakeoutFolderFile[] = [];
+  const excludedAbsolutePath = excludePath === null ? null : resolve(excludePath);
 
   async function walk(currentPath: string, relativePrefix: string): Promise<void> {
     const entries = await readdir(currentPath, { withFileTypes: true });
@@ -317,6 +328,10 @@ async function readTakeoutFolder(inputPath: string): Promise<TakeoutFolderFile[]
       }
 
       if (!entry.isFile()) {
+        continue;
+      }
+
+      if (excludedAbsolutePath !== null && resolve(path) === excludedAbsolutePath) {
         continue;
       }
 

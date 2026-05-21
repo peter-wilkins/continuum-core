@@ -49,6 +49,7 @@ describe("continuum-import CLI", () => {
           uncertain: 0,
         },
         quarantine: [],
+        warnings: 0,
       });
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
@@ -110,6 +111,7 @@ describe("continuum-import CLI", () => {
           uncertain: 0,
         },
         quarantine: [],
+        warnings: 0,
       });
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
@@ -143,6 +145,7 @@ describe("continuum-import CLI", () => {
           uncertain: 0,
         },
         quarantine: [],
+        warnings: 0,
       });
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
@@ -558,6 +561,7 @@ describe("continuum-import CLI", () => {
       expect(first).toMatchObject({
         command: "import",
         eventsWritten: 5,
+        warnings: 0,
         report: {
           new: 5,
           known: 0,
@@ -568,6 +572,7 @@ describe("continuum-import CLI", () => {
       expect(second).toMatchObject({
         command: "import",
         eventsWritten: 0,
+        warnings: 0,
         report: {
           new: 0,
           known: 5,
@@ -578,6 +583,37 @@ describe("continuum-import CLI", () => {
 
       const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
       expect(lines).toHaveLength(5);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports skipped-file warnings when importing a Google Takeout folder", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const chromeDir = join(dir, "Takeout", "Chrome");
+      await mkdir(chromeDir, { recursive: true });
+      await writeFile(
+        join(chromeDir, "Bookmarks.html"),
+        await readFile(chromeBookmarksFixturePath, "utf8"),
+        "utf8",
+      );
+      await writeFile(join(dir, "Takeout", "metadata.txt"), "skip me", "utf8");
+
+      const result = await runContinuumImportCli([
+        "google-takeout-folder",
+        dir,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 1,
+      });
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
