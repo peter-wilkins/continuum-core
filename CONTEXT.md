@@ -52,6 +52,10 @@ _Avoid_: archived entry, hidden entry, redacted entry
 An ongoing and potentially unbounded context the system can resume, such as a thought, job, customer situation, topic, or piece of work. A **Continuation** may be inferred before the user explicitly resumes it, and its identity may later be renamed, merged, or split.
 _Avoid_: stream, folder, project, thread
 
+**Continuation Surface**:
+A user-facing projection over **Continuations**, **Entries**, and **Resume Briefs**. A Continuation Surface may look like a chat list, timeline, graph, recent activity list, or explicit "new subject" affordance, but it is not the source of truth.
+_Avoid_: conversation as source truth, folder UI, canonical chat
+
 **Continuation Link**:
 A relationship between an **Entry** and a **Continuation**, including why the Entry appears relevant and how confident that relationship is. One **Entry** may have many **Continuation Links**.
 _Avoid_: membership, filing, tag
