@@ -82,6 +82,45 @@ http://127.0.0.1:5173/
 
 If that port is busy, Vite prints the next available port. The page reloads when schema files change.
 
+## Import CLI
+
+Build the CLI:
+
+```bash
+npm run build
+```
+
+Inspect a Google Takeout zip before importing:
+
+```bash
+node dist/cli.js inspect google-takeout-zip data/google/takeout.zip
+```
+
+Write a local dry-run preview:
+
+```bash
+node dist/cli.js dry-run google-takeout-zip data/google/takeout.zip --out data/google/preview.json
+```
+
+Import into local JSONL:
+
+```bash
+node dist/cli.js google-takeout-zip data/google/takeout.zip --out data/google/events.jsonl
+```
+
+Supported source names:
+
+- `claude`
+- `chatgpt`
+- `google-chrome-history`
+- `google-chrome-bookmarks`
+- `google-chrome-reading-list`
+- `google-my-activity`
+- `google-takeout-folder`
+- `google-takeout-zip`
+
+Raw data, previews, and event JSONL should stay under `data/`, which is gitignored.
+
 ## Read next
 
 - [`docs/product-philosophy.md`](docs/product-philosophy.md)
