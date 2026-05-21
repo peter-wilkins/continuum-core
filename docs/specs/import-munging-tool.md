@@ -412,11 +412,13 @@ Done:
 - Google Chrome reading list parses and imports one saved reference.
 - Google My Activity validates and imports YouTube, Search, and Maps activity records.
 - CLI supports Google Chrome history, bookmarks, reading list, and My Activity files.
+- CLI inspect can walk a Google Takeout folder and route known files.
 
 Next:
 
 - persist import batches through a storage adapter.
-- inspect/dry-run support for archives and remaining later sources.
+- dry-run/import support for Takeout folders and archives.
+- inspect/dry-run support for remaining later sources.
 - richer preview model before sync/export.
 - source adapters move out of one large `src/index.ts`.
 - define identity graph before importing Google Contacts.

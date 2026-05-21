@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
-import { basename } from "node:path";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 
 import {
   type ImportErrorRecord,
@@ -114,7 +114,8 @@ type ImportCommand =
   | "google-chrome-history"
   | "google-chrome-bookmarks"
   | "google-chrome-reading-list"
-  | "google-my-activity";
+  | "google-my-activity"
+  | "google-takeout-folder";
 
 const importCommands = [
   "chatgpt",
@@ -123,6 +124,7 @@ const importCommands = [
   "google-chrome-bookmarks",
   "google-chrome-reading-list",
   "google-my-activity",
+  "google-takeout-folder",
 ] as const satisfies ImportCommand[];
 const importCommandUsage = importCommands.join("|");
 
@@ -243,10 +245,33 @@ type SourceInput = {
   hash: string;
 };
 
+type TakeoutFolderFile = {
+  path: string;
+  relativePath: string;
+  raw: string;
+  hash: string;
+};
+
 async function readSourceInput(
   source: ImportCommand,
   inputPath: string,
 ): Promise<SourceInput> {
+  if (source === "google-takeout-folder") {
+    const files = await readTakeoutFolder(inputPath);
+    const hash = createHash("sha256");
+
+    for (const file of files) {
+      hash.update(file.relativePath);
+      hash.update(file.hash);
+    }
+
+    return {
+      raw: "",
+      parsed: files,
+      hash: hash.digest("hex"),
+    };
+  }
+
   const raw = await readFile(inputPath, "utf8");
 
   return {
@@ -256,10 +281,54 @@ async function readSourceInput(
   };
 }
 
+async function readTakeoutFolder(inputPath: string): Promise<TakeoutFolderFile[]> {
+  const files: TakeoutFolderFile[] = [];
+
+  async function walk(currentPath: string, relativePrefix: string): Promise<void> {
+    const entries = await readdir(currentPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const path = join(currentPath, entry.name);
+      const relativePath = relativePrefix ? join(relativePrefix, entry.name) : entry.name;
+
+      if (entry.isDirectory()) {
+        await walk(path, relativePath);
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      const raw = await readFile(path, "utf8");
+
+      files.push({
+        path,
+        relativePath,
+        raw,
+        hash: createHash("sha256").update(raw).digest("hex"),
+      });
+    }
+  }
+
+  const inputStat = await stat(inputPath);
+
+  if (!inputStat.isDirectory()) {
+    throw new Error("google-takeout-folder input must be a directory.");
+  }
+
+  await walk(inputPath, "");
+
+  return files.sort((left, right) =>
+    left.relativePath.localeCompare(right.relativePath),
+  );
+}
+
 function sourceInputNeedsJson(source: ImportCommand): boolean {
   return ![
     "google-chrome-bookmarks",
     "google-chrome-reading-list",
+    "google-takeout-folder",
   ].includes(source);
 }
 
@@ -276,6 +345,60 @@ function validationErrorsToQuarantine(
   }));
 }
 
+function unsupportedTakeoutFile(file: TakeoutFolderFile): ImportErrorRecord {
+  return {
+    sourcePath: file.relativePath,
+    recordIndex: null,
+    errorCode: "unsupported_source_file",
+    message: `google-takeout-folder:${file.relativePath}: no importer matched this file`,
+    recoverable: true,
+  };
+}
+
+function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
+  incomingEvents: CanonicalEvent[];
+  quarantine: ImportErrorRecord[];
+} {
+  const incomingEvents: CanonicalEvent[] = [];
+  const quarantine: ImportErrorRecord[] = [];
+
+  for (const file of files) {
+    const lowerPath = file.relativePath.toLowerCase();
+    const source =
+      lowerPath.endsWith(".html") && lowerPath.includes("reading")
+        ? "google-chrome-reading-list"
+        : lowerPath.endsWith(".html") && lowerPath.includes("bookmark")
+          ? "google-chrome-bookmarks"
+          : lowerPath.endsWith(".json") && lowerPath.includes("history")
+            ? "google-chrome-history"
+            : lowerPath.endsWith(".json") &&
+                (lowerPath.includes("myactivity") ||
+                  lowerPath.includes("my activity"))
+              ? "google-my-activity"
+              : null;
+
+    if (source === null) {
+      quarantine.push(unsupportedTakeoutFile(file));
+      continue;
+    }
+
+    const parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
+    const result = normalizeSourceInput(source, parsed);
+
+    incomingEvents.push(...result.incomingEvents);
+    quarantine.push(
+      ...result.quarantine.map((record) => ({
+        ...record,
+        sourcePath: record.sourcePath
+          ? `${file.relativePath}:${record.sourcePath}`
+          : file.relativePath,
+      })),
+    );
+  }
+
+  return { incomingEvents, quarantine };
+}
+
 function normalizeSourceInput(
   source: ImportCommand,
   parsed: unknown,
@@ -283,6 +406,10 @@ function normalizeSourceInput(
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
 } {
+  if (source === "google-takeout-folder") {
+    return normalizeTakeoutFolder(parsed as TakeoutFolderFile[]);
+  }
+
   if (source === "chatgpt") {
     return {
       incomingEvents: normalizeChatGptConversations(
@@ -369,7 +496,10 @@ function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input:
     command.source,
     input.parsed,
   );
-  const conversationsSeen = Array.isArray(input.parsed) ? input.parsed.length : 0;
+  const conversationsSeen =
+    command.source !== "google-takeout-folder" && Array.isArray(input.parsed)
+      ? input.parsed.length
+      : 0;
 
   return {
     command: "inspect",

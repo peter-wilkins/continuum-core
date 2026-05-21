@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -366,6 +366,61 @@ describe("continuum-import CLI", () => {
         "Search",
         "Maps",
       ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("inspects a Google Takeout folder and routes known files", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+
+    try {
+      const chromeDir = join(dir, "Takeout", "Chrome");
+      const activityDir = join(dir, "Takeout", "My Activity", "YouTube");
+      await mkdir(chromeDir, { recursive: true });
+      await mkdir(activityDir, { recursive: true });
+
+      const chromeHistoryFixture = JSON.parse(
+        await readFile(chromeHistoryFixturePath, "utf8"),
+      );
+      await writeFile(
+        join(chromeDir, "BrowserHistory.json"),
+        JSON.stringify({ "Browser History": [chromeHistoryFixture.history] }),
+        "utf8",
+      );
+      await writeFile(
+        join(chromeDir, "Bookmarks.html"),
+        await readFile(chromeBookmarksFixturePath, "utf8"),
+        "utf8",
+      );
+      await writeFile(
+        join(chromeDir, "ReadingList.html"),
+        await readFile(chromeReadingListFixturePath, "utf8"),
+        "utf8",
+      );
+      await writeFile(
+        join(activityDir, "MyActivity.json"),
+        await readFile(googleMyActivityFixturePath, "utf8"),
+        "utf8",
+      );
+      await writeFile(join(dir, "Takeout", "unknown.txt"), "skip me", "utf8");
+
+      const result = await runContinuumImportCli([
+        "inspect",
+        "google-takeout-folder",
+        dir,
+      ]);
+
+      expect(result).toEqual({
+        command: "inspect",
+        sourcePlatform: "google-takeout-folder",
+        sourceName: "google-takeout-folder",
+        inputPath: dir,
+        conversationsSeen: 0,
+        recordsSeen: 6,
+        validationErrors: 1,
+        importableEvents: 6,
+      });
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
