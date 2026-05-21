@@ -579,4 +579,47 @@ describe("continuum-import CLI", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("quarantines malformed JSON inside a Google Takeout folder", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const chromeDir = join(dir, "Takeout", "Chrome");
+      await mkdir(chromeDir, { recursive: true });
+      await writeFile(join(chromeDir, "BrowserHistory.json"), "{", "utf8");
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-folder",
+        dir,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Chrome/BrowserHistory.json",
+          source: "google-chrome-history",
+          status: "invalid",
+          eventsCreated: 0,
+          quarantineRecords: 1,
+        },
+      ]);
+      expect(preview.quarantine[0]).toMatchObject({
+        sourcePath: "Takeout/Chrome/BrowserHistory.json",
+        errorCode: "source_parse_failed",
+        recoverable: true,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

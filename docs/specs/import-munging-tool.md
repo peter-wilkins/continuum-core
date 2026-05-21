@@ -416,6 +416,7 @@ Done:
 - CLI inspect can walk a Google Takeout folder and route known files.
 - CLI dry-run can preview a Google Takeout folder across known files.
 - CLI import can write a Google Takeout folder idempotently.
+- Malformed files inside a Google Takeout folder are quarantined without aborting the folder.
 
 Next:
 

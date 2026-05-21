@@ -409,7 +409,30 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
       continue;
     }
 
-    const parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
+    let parsed: unknown;
+
+    try {
+      parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      quarantine.push({
+        sourcePath: file.relativePath,
+        recordIndex: null,
+        errorCode: "source_parse_failed",
+        message: `google-takeout-folder:${file.relativePath}: ${message}`,
+        recoverable: true,
+      });
+      sourceFiles.push({
+        path: file.relativePath,
+        source,
+        status: "invalid",
+        eventsCreated: 0,
+        quarantineRecords: 1,
+      });
+      continue;
+    }
+
     const result = normalizeSourceInput(source, parsed);
     const fileQuarantine = result.quarantine.map((record) => ({
       ...record,
