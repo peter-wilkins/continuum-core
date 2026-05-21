@@ -35,7 +35,7 @@ export const canonicalEventSchema = {
       fields: [
         {
           name: "platform",
-          type: '"chatgpt" | "claude" | "email" | "wikimedia"',
+          type: '"chatgpt" | "claude" | "email" | "google_chrome" | "wikimedia"',
           required: true,
           description: "Source platform for the importer adapter.",
         },

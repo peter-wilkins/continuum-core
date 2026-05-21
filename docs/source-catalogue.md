@@ -12,8 +12,13 @@ ChatGPT is postponed until the export arrives. Active ranking starts with source
 | 6 | Calendar / iCalendar | sample available | high | medium | high | Calendar event | `data/calendar/basic-event.ics` |
 | 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |
 | 8 | Markdown / Obsidian / local docs | sample available | high | medium | medium | Markdown file revision snapshot | `README.md` |
-| 9 | Google My Activity / Gemini / Takeout | needs user export | high | high | high | Google activity record | none yet |
-| 10 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
+| 9 | Google Chrome history | implemented fixture | high | medium | high | Chrome browser history visit | `src/fixtures/google-chrome-history-one-record.json` |
+| 10 | Google Chrome bookmarks | needs user export | high | medium | high | Chrome bookmark snapshot | none yet |
+| 11 | Google My Activity / Search / Gemini | needs user export | high | high | high | Google activity record | none yet |
+| 12 | YouTube history | needs user export | high | medium | high | YouTube watch/search activity | none yet |
+| 13 | Google Contacts | needs user export | high | high | high | Contact identity snapshot | none yet |
+| 14 | Google Maps / location activity | needs user export | high | high | high | Maps activity or location visit | none yet |
+| 15 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
 
 ## Provenance Rules
 
@@ -35,7 +40,7 @@ This means content-hash dedupe is not the main tool. Similar evidence can be phr
 
 | Rank | Source | Reason |
 | --- | --- | --- |
-| 11 | ChatGPT export | Peter is waiting on export delivery. Keep fixture coverage, but do not spend the next real-data cycle here. |
+| 16 | ChatGPT export | Peter is waiting on export delivery. Keep fixture coverage, but do not spend the next real-data cycle here. |
 
 ## Wikimedia Family
 
@@ -46,6 +51,17 @@ Wikimedia is not one schema:
 - MediaWiki links/categories: graph edges.
 - Wikidata entities/claims: structured knowledge assertions.
 - Pageviews: aggregate metric events.
+
+## Google Takeout Family
+
+Google Takeout is not one schema:
+
+- Chrome history: timestamped attention/activity events pointing at URLs.
+- Chrome bookmarks: saved-reference snapshots pointing at URLs.
+- My Activity: timestamped product activity across Search, Maps, YouTube, Play, Ads, and related products.
+- YouTube history: watch/search activity, with possible overlap between My Activity and YouTube product exports.
+- Contacts: identity graph snapshots, not ordinary activity events.
+- Maps/location activity: location and route activity requiring stricter privacy membranes.
 
 ## Evidence Links
 
@@ -62,5 +78,9 @@ Wikimedia is not one schema:
 - Slack exports: https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports
 - CommonMark: https://spec.commonmark.org/
 - Google My Activity schema: https://developers.google.com/data-portability/schema-reference/my_activity
+- Google Chrome schema: https://developers.google.com/data-portability/schema-reference/chrome
+- YouTube schema: https://developers.google.com/data-portability/schema-reference/youtube
+- Google Maps schema: https://developers.google.com/data-portability/schema-reference/maps
+- Google Contacts export: https://support.google.com/contacts/answer/7199294
 - Google Takeout: https://support.google.com/accounts/answer/3024190
 - Notion export: https://www.notion.com/help/export-your-content

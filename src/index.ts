@@ -19,7 +19,12 @@ export function describeContinuumCorePackage(): ContinuumCorePackage {
 
 export type CanonicalActorRole = "user" | "assistant" | "system" | "tool" | "other";
 
-export type CanonicalSourcePlatform = "chatgpt" | "claude" | "email" | "wikimedia";
+export type CanonicalSourcePlatform =
+  | "chatgpt"
+  | "claude"
+  | "email"
+  | "google_chrome"
+  | "wikimedia";
 
 export type CanonicalParticipantRole = "sender" | "recipient" | "cc" | "bcc" | "reply_to";
 
@@ -179,6 +184,22 @@ export type EmailMessageNormalizationInput = {
     attachmentCount: number;
     headers: Record<string, string>;
   };
+};
+
+export type GoogleChromeHistoryRecord = {
+  title: string;
+  url: string;
+  time_usec: number;
+  client_id: string;
+  favicon_url: string | null;
+};
+
+export type GoogleChromeHistoryExport = {
+  "Browser History": GoogleChromeHistoryRecord[];
+};
+
+export type GoogleChromeHistoryNormalizationInput = {
+  history: GoogleChromeHistoryRecord;
 };
 
 export type ImportProfile = "everything" | "clean_default" | "engaged_contacts";
@@ -504,6 +525,22 @@ const claudeConversationSchema = z
 
 const claudeConversationsSchema = z.array(claudeConversationSchema);
 
+const googleChromeHistoryRecordSchema = z
+  .object({
+    title: z.string(),
+    url: z.string(),
+    time_usec: z.number(),
+    client_id: z.string(),
+    favicon_url: z.string().nullable(),
+  })
+  .passthrough();
+
+const googleChromeHistoryExportSchema = z
+  .object({
+    "Browser History": z.array(googleChromeHistoryRecordSchema),
+  })
+  .passthrough();
+
 function validationPath(path: PropertyKey[]): string {
   return path.map(String).join(".");
 }
@@ -572,6 +609,27 @@ export function parseClaudeConversationsWithQuarantine(
   return { conversations, quarantine };
 }
 
+export function parseGoogleChromeHistoryExport(
+  input: unknown,
+): SourceValidationResult<GoogleChromeHistoryExport> {
+  const result = googleChromeHistoryExportSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
 function chatGptSourceKey(input: ChatGptMessageNormalizationInput): string {
   return `chatgpt:${input.conversation.id}:${input.node.message.id}`;
 }
@@ -638,6 +696,33 @@ function emailSourceFingerprint(input: EmailMessageNormalizationInput): string {
       inReplyTo: input.message.inReplyTo,
       references: input.message.references,
       attachmentCount: input.message.attachmentCount,
+    }),
+  );
+}
+
+function googleChromeHistoryExternalMessageId(
+  input: GoogleChromeHistoryNormalizationInput,
+): string {
+  return `${input.history.client_id}:${input.history.time_usec}:${input.history.url}`;
+}
+
+function googleChromeHistorySourceKey(
+  input: GoogleChromeHistoryNormalizationInput,
+): string {
+  return `google_chrome_history:${googleChromeHistoryExternalMessageId(input)}`;
+}
+
+function googleChromeHistorySourceFingerprint(
+  input: GoogleChromeHistoryNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "google_chrome",
+      title: input.history.title,
+      url: input.history.url,
+      time_usec: input.history.time_usec,
+      client_id: input.history.client_id,
+      favicon_url: input.history.favicon_url,
     }),
   );
 }
@@ -1007,6 +1092,47 @@ export function normalizeEmailMessage(
   };
 }
 
+export function normalizeGoogleChromeHistoryRecord(
+  input: GoogleChromeHistoryNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = googleChromeHistorySourceKey(input);
+
+  return {
+    id: sourceKey,
+    source: {
+      platform: "google_chrome",
+      key: sourceKey,
+      fingerprint: googleChromeHistorySourceFingerprint(input),
+      externalConversationId: input.history.client_id,
+      externalMessageId: googleChromeHistoryExternalMessageId(input),
+      artifactId: input.history.url,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "activity_log",
+      sourceName: "google_chrome_history",
+      upstreamSources: ["google_takeout"],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: new Date(input.history.time_usec / 1000).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: input.history.title,
+      text: `Visited ${input.history.title}\n${input.history.url}`,
+    },
+  };
+}
+
 export function normalizeMediaWikiRevision(
   input: MediaWikiRevisionNormalizationInput,
 ): CanonicalEvent {
@@ -1074,6 +1200,14 @@ export function normalizeClaudeConversations(
         message,
       }),
     ),
+  );
+}
+
+export function normalizeGoogleChromeHistoryExport(
+  historyExport: GoogleChromeHistoryExport,
+): CanonicalEvent[] {
+  return historyExport["Browser History"].map((history) =>
+    normalizeGoogleChromeHistoryRecord({ history }),
   );
 }
 
