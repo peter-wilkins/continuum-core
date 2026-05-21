@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { basename, resolve, join } from "node:path";
-import { strFromU8, unzipSync } from "fflate";
+import { readFile, stat, writeFile } from "node:fs/promises";
+import { basename } from "node:path";
 
 import {
   type ImportErrorRecord,
@@ -12,14 +11,19 @@ import {
   type ImportReport,
 } from "./index";
 import {
-  classifySourceFile,
+  normalizeArchiveFiles,
+  readTakeoutArchive,
+  type ArchiveSourceFile,
+  type SourceFilePreview,
+} from "./archive-intake";
+import {
   importCommands,
   isArchiveImportCommand,
   isImportCommand,
   isSourceImportCommand,
   normalizeSourceInput,
-  prepareSourceInput,
   sourceInputNeedsJson,
+  prepareSourceInput,
   type ImportCommand,
 } from "./import-source-adapters";
 
@@ -56,14 +60,6 @@ export type ImportPreview = {
     createdAt: string;
     subject: string | null;
   }>;
-};
-
-export type SourceFilePreview = {
-  path: string;
-  source: ImportCommand | null;
-  status: "matched" | "skipped" | "invalid";
-  eventsCreated: number;
-  quarantineRecords: number;
 };
 
 export type ImportWriteCliResult = {
@@ -250,7 +246,7 @@ function normalizeCommandInput(
   }
 
   if (isArchiveImportCommand(source)) {
-    return normalizeTakeoutFolder(input.parsed as TakeoutFolderFile[]);
+    return normalizeArchiveFiles(input.parsed as ArchiveSourceFile[]);
   }
 
   if (!isSourceImportCommand(source)) {
@@ -268,13 +264,6 @@ type SourceInput = {
   parseError: string | null;
 };
 
-type TakeoutFolderFile = {
-  path: string;
-  relativePath: string;
-  raw: string;
-  hash: string;
-};
-
 type NormalizedSourceInput = {
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
@@ -287,46 +276,16 @@ async function readSourceInput(
   inputPath: string,
   excludePath: string | null,
 ): Promise<SourceInput> {
-  if (source === "google-takeout-folder") {
-    const files = await readTakeoutFolder(inputPath, excludePath);
-    const hash = createHash("sha256");
-
-    for (const file of files) {
-      hash.update(file.relativePath);
-      hash.update(file.hash);
-    }
+  if (isArchiveImportCommand(source)) {
+    const archive = await readTakeoutArchive(source, inputPath, excludePath);
 
     return {
       raw: "",
-      parsed: files,
-      hash: hash.digest("hex"),
-      filesSeen: files.length,
-      parseError: null,
+      parsed: archive.files,
+      hash: archive.hash,
+      filesSeen: archive.filesSeen,
+      parseError: archive.parseError,
     };
-  }
-
-  if (source === "google-takeout-zip") {
-    const rawBuffer = await readFile(inputPath);
-
-    try {
-      const files = readTakeoutZip(rawBuffer);
-
-      return {
-        raw: "",
-        parsed: files,
-        hash: createHash("sha256").update(rawBuffer).digest("hex"),
-        filesSeen: files.length,
-        parseError: null,
-      };
-    } catch (error: unknown) {
-      return {
-        raw: "",
-        parsed: null,
-        hash: createHash("sha256").update(rawBuffer).digest("hex"),
-        filesSeen: 1,
-        parseError: error instanceof Error ? error.message : String(error),
-      };
-    }
   }
 
   const raw = await readFile(inputPath, "utf8");
@@ -365,81 +324,6 @@ async function readSourceInput(
   };
 }
 
-function readTakeoutZip(raw: Uint8Array): TakeoutFolderFile[] {
-  const files: TakeoutFolderFile[] = [];
-  const unzipped = unzipSync(raw);
-
-  for (const [relativePath, content] of Object.entries(unzipped)) {
-    if (relativePath.endsWith("/")) {
-      continue;
-    }
-
-    const decoded = strFromU8(content);
-
-    files.push({
-      path: relativePath,
-      relativePath,
-      raw: decoded,
-      hash: createHash("sha256").update(decoded).digest("hex"),
-    });
-  }
-
-  return files.sort((left, right) =>
-    left.relativePath.localeCompare(right.relativePath),
-  );
-}
-
-async function readTakeoutFolder(
-  inputPath: string,
-  excludePath: string | null,
-): Promise<TakeoutFolderFile[]> {
-  const files: TakeoutFolderFile[] = [];
-  const excludedAbsolutePath = excludePath === null ? null : resolve(excludePath);
-
-  async function walk(currentPath: string, relativePrefix: string): Promise<void> {
-    const entries = await readdir(currentPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const path = join(currentPath, entry.name);
-      const relativePath = relativePrefix ? join(relativePrefix, entry.name) : entry.name;
-
-      if (entry.isDirectory()) {
-        await walk(path, relativePath);
-        continue;
-      }
-
-      if (!entry.isFile()) {
-        continue;
-      }
-
-      if (excludedAbsolutePath !== null && resolve(path) === excludedAbsolutePath) {
-        continue;
-      }
-
-      const raw = await readFile(path, "utf8");
-
-      files.push({
-        path,
-        relativePath,
-        raw,
-        hash: createHash("sha256").update(raw).digest("hex"),
-      });
-    }
-  }
-
-  const inputStat = await stat(inputPath);
-
-  if (!inputStat.isDirectory()) {
-    throw new Error("google-takeout-folder input must be a directory.");
-  }
-
-  await walk(inputPath, "");
-
-  return files.sort((left, right) =>
-    left.relativePath.localeCompare(right.relativePath),
-  );
-}
-
 function parseErrorToQuarantine(
   source: ImportCommand,
   inputPath: string,
@@ -454,84 +338,6 @@ function parseErrorToQuarantine(
       recoverable: true,
     },
   ];
-}
-
-function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
-  incomingEvents: CanonicalEvent[];
-  quarantine: ImportErrorRecord[];
-  sourceFiles: SourceFilePreview[];
-  warnings: number;
-} {
-  const incomingEvents: CanonicalEvent[] = [];
-  const quarantine: ImportErrorRecord[] = [];
-  const sourceFiles: SourceFilePreview[] = [];
-  let warnings = 0;
-
-  for (const file of files) {
-    const source = classifySourceFile(file);
-
-    if (source === null) {
-      warnings += 1;
-      sourceFiles.push({
-        path: file.relativePath,
-        source: null,
-        status: "skipped",
-        eventsCreated: 0,
-        quarantineRecords: 0,
-      });
-      continue;
-    }
-
-    let parsed: unknown;
-
-    try {
-      parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
-      parsed = prepareSourceInput(source, parsed, {
-        inputPath: file.path,
-        relativePath: file.relativePath,
-        modifiedAt: "1970-01-01T00:00:00.000Z",
-        modifiedAtConfidence: "unknown",
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      quarantine.push({
-        sourcePath: file.relativePath,
-        recordIndex: null,
-        errorCode: "source_parse_failed",
-        message: `google-takeout-folder:${file.relativePath}: ${message}`,
-        recoverable: true,
-      });
-      sourceFiles.push({
-        path: file.relativePath,
-        source,
-        status: "invalid",
-        eventsCreated: 0,
-        quarantineRecords: 1,
-      });
-      continue;
-    }
-
-    const result = normalizeSourceInput(source, parsed);
-    const fileQuarantine = result.quarantine.map((record) => ({
-      ...record,
-      sourcePath: record.sourcePath
-        ? `${file.relativePath}:${record.sourcePath}`
-        : file.relativePath,
-    }));
-
-    incomingEvents.push(...result.incomingEvents);
-    quarantine.push(...fileQuarantine);
-    sourceFiles.push({
-      path: file.relativePath,
-      source,
-      status: fileQuarantine.length > 0 ? "invalid" : "matched",
-      eventsCreated: result.incomingEvents.length,
-      quarantineRecords: fileQuarantine.length,
-    });
-  }
-
-  return { incomingEvents, quarantine, sourceFiles, warnings };
 }
 
 function inspectSource(command: Extract<CliCommand, { kind: "inspect" }>, input: SourceInput): InspectCliResult {
