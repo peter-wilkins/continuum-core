@@ -296,6 +296,11 @@ type TakeoutFolderFile = {
   hash: string;
 };
 
+type ICalendarCliInput = {
+  calendarPath: string;
+  raw: string;
+};
+
 type NormalizedSourceInput = {
   incomingEvents: CanonicalEvent[];
   quarantine: ImportErrorRecord[];
@@ -351,7 +356,13 @@ async function readSourceInput(
   }
 
   const raw = await readFile(inputPath, "utf8");
-  let parsed: unknown = raw;
+  let parsed: unknown =
+    source === "icalendar"
+      ? {
+          calendarPath: basename(inputPath),
+          raw,
+        } satisfies ICalendarCliInput
+      : raw;
   let parseError: string | null = null;
 
   if (sourceInputNeedsJson(source)) {
@@ -516,6 +527,12 @@ function normalizeTakeoutFolder(files: TakeoutFolderFile[]): {
 
     try {
       parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
+      if (source === "icalendar") {
+        parsed = {
+          calendarPath: file.relativePath,
+          raw: file.raw,
+        } satisfies ICalendarCliInput;
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -705,7 +722,8 @@ function normalizeSourceInput(
   }
 
   if (source === "icalendar") {
-    const result = parseICalendarEvents(String(parsed));
+    const input = parsed as ICalendarCliInput;
+    const result = parseICalendarEvents(input.raw);
 
     if (!result.ok) {
       return {
@@ -720,7 +738,7 @@ function normalizeSourceInput(
       incomingEvents: result.value.map((event) =>
         normalizeICalendarEvent({
           calendar: {
-            path: "calendar.ics",
+            path: input.calendarPath,
           },
           event,
         }),

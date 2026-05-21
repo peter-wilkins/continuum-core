@@ -429,6 +429,7 @@ Done:
 - Malformed Google Takeout zip files are quarantined during dry-run instead of crashing.
 - iCalendar parses and imports one calendar event.
 - CLI supports `icalendar` files and routes `.ics` files inside Takeout folders/zips.
+- CLI iCalendar imports preserve the source file path as the source grouping id.
 
 Next:
 

@@ -954,6 +954,7 @@ describe("continuum-import CLI", () => {
       expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
         source: {
           platform: "icalendar",
+          externalConversationId: "calendar-one-event.ics",
           externalMessageId: "boiler-quote@example.com",
         },
         content: {
