@@ -96,6 +96,10 @@ _Avoid_: opaque score, hidden embedding match, magic relevance
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match
 
+**Ambiguous Resume Surface**:
+A **Continuation Surface** for an **Ambiguous Resume** that leads with the strongest **Continuation Candidate** while showing alternates. Debugging surfaces may expose many candidates so the ranking and **Candidate Spread** can be inspected.
+_Avoid_: blocking chooser, single forced answer, hidden alternates
+
 **Candidate Spread**:
 The distance between ranked **Continuation Candidates** in **Retrieval Confidence** and supporting evidence. A narrow Candidate Spread should produce an **Ambiguous Resume** instead of forcing a single Continuation.
 _Avoid_: winner by default, hidden uncertainty, arbitrary tie break
