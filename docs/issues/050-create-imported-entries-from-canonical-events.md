@@ -1,6 +1,6 @@
 # 050: Create Imported Entries From Canonical Events
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,12 +20,12 @@ Create the first path from imported **Canonical Events** into **Imported Entries
 
 ## Acceptance Criteria
 
-- [ ] Add an `ImportedEntry` type or equivalent Entry shape that follows `CONTEXT.md`.
-- [ ] Convert at least one existing Canonical Event fixture into an Imported Entry.
-- [ ] Preserve source identity and provenance from the Canonical Event.
-- [ ] Preserve content, created time, and explicit absence values.
-- [ ] Do not make retrieval code depend directly on source-specific Canonical Event fields.
-- [ ] Add tests that show Imported Entries are stable inputs for later Continuity Retrieval.
+- [x] Add an `ImportedEntry` type or equivalent Entry shape that follows `CONTEXT.md`.
+- [x] Convert at least one existing Canonical Event fixture into an Imported Entry.
+- [x] Preserve source identity and provenance from the Canonical Event.
+- [x] Preserve content, created time, and explicit absence values.
+- [x] Do not make retrieval code depend directly on source-specific Canonical Event fields.
+- [x] Add tests that show Imported Entries are stable inputs for later Continuity Retrieval.
 
 ## Blocked by
 

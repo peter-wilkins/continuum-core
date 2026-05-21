@@ -84,6 +84,24 @@ export type CanonicalEvent = {
   };
 };
 
+export type ImportedEntry = {
+  id: string;
+  canonicalEventId: string;
+  source: CanonicalEvent["source"];
+  provenance: EventProvenance;
+  captureContext: {
+    capturedAt: string;
+    contextClues: [];
+  };
+  time: {
+    occurredAt: string;
+    occurredAtConfidence: TimeConfidence;
+  };
+  actor: CanonicalEvent["actor"];
+  participants: CanonicalParticipant[];
+  content: CanonicalEvent["content"];
+};
+
 export type ChatGptMessageNormalizationInput = {
   conversation: {
     id: string;
@@ -1658,6 +1676,28 @@ export function summarizeImportFilterDecisions(
   }
 
   return summary;
+}
+
+export function createImportedEntryFromCanonicalEvent(
+  event: CanonicalEvent,
+): ImportedEntry {
+  return {
+    id: `entry:${event.id}`,
+    canonicalEventId: event.id,
+    source: event.source,
+    provenance: event.provenance,
+    captureContext: {
+      capturedAt: event.time.createdAt,
+      contextClues: [],
+    },
+    time: {
+      occurredAt: event.time.createdAt,
+      occurredAtConfidence: event.time.createdAtConfidence,
+    },
+    actor: event.actor,
+    participants: event.participants,
+    content: event.content,
+  };
 }
 
 type CanonicalEventBuildInput = {

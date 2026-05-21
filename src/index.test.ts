@@ -13,6 +13,7 @@ import {
   type ClaudeConversationExport,
   type EmailMessageNormalizationInput,
   type MediaWikiRevisionNormalizationInput,
+  createImportedEntryFromCanonicalEvent,
   mergeCanonicalEvents,
   continuumCorePackageName,
   describeContinuumCorePackage,
@@ -337,6 +338,57 @@ describe("Wikimedia import normalization", () => {
       },
     });
     expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
+  });
+});
+
+describe("Imported Entry creation", () => {
+  it("creates Imported Entries from Canonical Events", () => {
+    const canonicalEvent = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_456",
+        parent: "msg_parent",
+        children: [],
+        message: {
+          id: "msg_456",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Need to quote Bob for the boiler."],
+          },
+        },
+      },
+    });
+
+    expect(createImportedEntryFromCanonicalEvent(canonicalEvent)).toEqual({
+      id: "entry:chatgpt:conv_123:msg_456",
+      canonicalEventId: "chatgpt:conv_123:msg_456",
+      source: canonicalEvent.source,
+      provenance: canonicalEvent.provenance,
+      captureContext: {
+        capturedAt: "2026-05-21T10:42:03.000Z",
+        contextClues: [],
+      },
+      time: {
+        occurredAt: "2026-05-21T10:42:03.000Z",
+        occurredAtConfidence: "exact",
+      },
+      actor: {
+        role: "user",
+      },
+      participants: [],
+      content: {
+        kind: "text",
+        subject: null,
+        text: "Need to quote Bob for the boiler.",
+      },
+    });
   });
 });
 
