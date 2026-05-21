@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
-import { runContinuumImportCli } from "./cli";
+import { formatContinuumImportCliResult, runContinuumImportCli } from "./cli";
 
 const fixturePath = fileURLToPath(
   new URL("./fixtures/chatgpt-one-conversation.json", import.meta.url),
@@ -27,6 +27,71 @@ const googleMyActivityFixturePath = fileURLToPath(
 );
 
 describe("continuum-import CLI", () => {
+  it("formats inspect output with warnings and source file counts", () => {
+    expect(
+      formatContinuumImportCliResult({
+        command: "inspect",
+        sourcePlatform: "google-takeout-folder",
+        sourceName: "google-takeout-folder",
+        inputPath: "/tmp/takeout",
+        conversationsSeen: 0,
+        recordsSeen: 6,
+        validationErrors: 0,
+        importableEvents: 6,
+        warnings: 1,
+        sourceFiles: [
+          {
+            path: "Takeout/metadata.txt",
+            source: null,
+            status: "skipped",
+            eventsCreated: 0,
+            quarantineRecords: 0,
+          },
+        ],
+      }),
+    ).toBe(
+      "Detected google-takeout-folder conversations=0 records=6 importable=6 validationErrors=0 warnings=1 sourceFiles=1\n",
+    );
+  });
+
+  it("formats dry-run output with warnings and source file counts", () => {
+    expect(
+      formatContinuumImportCliResult({
+        command: "dry-run",
+        previewPath: "/tmp/preview.json",
+        batch: {
+          id: "batch:abc",
+          sourcePlatform: "google-takeout-zip",
+          sourceName: "google-takeout-zip",
+          originalFilename: "takeout.zip",
+          originalFileHash: "abc",
+          createdAt: "unknown",
+          completedAt: null,
+          status: "previewed",
+          stats: {
+            filesSeen: 3,
+            recordsSeen: 2,
+            eventsCreated: 2,
+            eventsKnown: 0,
+            eventsChanged: 0,
+            eventsUncertain: 0,
+            recordsQuarantined: 0,
+            warnings: 1,
+          },
+        },
+        report: {
+          new: 2,
+          known: 0,
+          changed: 0,
+          uncertain: 0,
+        },
+        quarantine: [],
+      }),
+    ).toBe(
+      "Preview written to /tmp/preview.json\nReport new=2 known=0 changed=0 uncertain=0 quarantined=0 warnings=1 sourceFiles=3\n",
+    );
+  });
+
   it("exports one ChatGPT conversation fixture to canonical event JSONL", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
     const outputPath = join(dir, "events.jsonl");

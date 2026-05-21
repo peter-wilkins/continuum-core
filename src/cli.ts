@@ -822,28 +822,30 @@ function createImportBatch(input: {
   };
 }
 
+export function formatContinuumImportCliResult(
+  result: ContinuumImportCliResult,
+): string {
+  if (result.command === "inspect") {
+    return `Detected ${result.sourcePlatform} conversations=${result.conversationsSeen} records=${result.recordsSeen} importable=${result.importableEvents} validationErrors=${result.validationErrors} warnings=${result.warnings} sourceFiles=${result.sourceFiles.length}\n`;
+  }
+
+  if (result.command === "dry-run") {
+    return [
+      `Preview written to ${result.previewPath}`,
+      `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length} warnings=${result.batch.stats.warnings} sourceFiles=${result.batch.stats.filesSeen}`,
+    ].join("\n") + "\n";
+  }
+
+  return [
+    `Wrote ${result.eventsWritten} new events to ${result.outputPath}`,
+    `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length} warnings=${result.warnings}`,
+  ].join("\n") + "\n";
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   runContinuumImportCli(process.argv.slice(2))
     .then((result) => {
-      if (result.command === "inspect") {
-        process.stdout.write(
-          `Detected ${result.sourcePlatform} conversations=${result.conversationsSeen} records=${result.recordsSeen} importable=${result.importableEvents} validationErrors=${result.validationErrors}\n`,
-        );
-        return;
-      }
-
-      if (result.command === "dry-run") {
-        process.stdout.write(`Preview written to ${result.previewPath}\n`);
-        process.stdout.write(
-          `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length}\n`,
-        );
-        return;
-      }
-
-      process.stdout.write(`Wrote ${result.eventsWritten} new events to ${result.outputPath}\n`);
-      process.stdout.write(
-        `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length}\n`,
-      );
+      process.stdout.write(formatContinuumImportCliResult(result));
     })
     .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
