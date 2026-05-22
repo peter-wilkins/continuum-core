@@ -16,6 +16,18 @@ _Avoid_: metadata, optional fields, source
 An individual piece of evidence that helps interpret or connect an **Entry**, such as location, calendar, device, app route, active job, or recent user activity. A Context Clue has a kind, human-readable text, confidence, and observation time.
 _Avoid_: tag, category, note
 
+**Capture Inlet**:
+An interface where a Host App or local tool submits captured material into Continuum. A Capture Inlet may receive transcript text, files, events, or artifact references, but it must pass through the relevant membranes before material becomes source truth or durable local storage.
+_Avoid_: direct Source Log write, tool-specific ingestion shortcut, unguarded import
+
+**Artifact Reference**:
+A durable reference from an **Entry** or **Canonical Event** to a raw captured artifact such as a WAV file, image, screenshot, or source file. Artifact References preserve origin material without making the artifact itself the searchable Entry text.
+_Avoid_: blob as Entry, hidden file path, copied payload without provenance
+
+**File System Membrane**:
+A membrane that controls which raw artifacts may be written to local disk, at what quality, under what path, with what retention, checksum, quota, and later erasure behaviour. A File System Membrane can be permissive for a local dogfooding setup and stricter for other users.
+_Avoid_: unlimited writes without policy, storage as source truth, silent artifact loss
+
 **Confidence**:
 A bounded 0..1 strength value used when the system is uncertain, such as Context Clue reliability, Continuation Links, and retrieval ranking. Confidence is not a user-facing truth claim.
 _Avoid_: certainty, score without bounds, priority
