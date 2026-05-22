@@ -413,6 +413,42 @@ export function createSourceParagraph(
   };
 }
 
+export function extractSourceParagraphsFromPublicDocument(
+  input: PublicDocumentNormalizationInput,
+): SourceParagraph[] {
+  const sourceKey = publicDocumentSourceKey(input);
+  const documentId = `source-document:${input.source.sourceName}:${input.source.sourceId}`;
+  const documentFingerprint = publicDocumentSourceFingerprint(input);
+  const paragraphs = splitSourceParagraphText(input.document.text);
+
+  return paragraphs.map((text, index) =>
+    createSourceParagraph({
+      id: `source-paragraph:${sourceKey}:${index}`,
+      canonicalEventId: sourceKey,
+      documentId,
+      paragraphIndex: index,
+      sourceFingerprint: stableHash(
+        JSON.stringify({
+          sourceKey,
+          documentFingerprint,
+          paragraphIndex: index,
+          text,
+        }),
+      ),
+      text,
+      context: {
+        title: input.document.title,
+        sourceName: input.source.sourceName,
+        sourceRecordId: input.source.sourceId,
+        sourceUrl: input.source.sourceUrl,
+        license: input.source.license,
+        retrievedAt: input.source.retrievedAt,
+        parserVersion: "public-document:v1",
+      },
+    }),
+  );
+}
+
 export const defaultPublicLensDefinitions: LensDefinition[] = [
   {
     id: "atlas",
@@ -630,6 +666,13 @@ function sourceUrl(value: string): SourceUrl {
   }
 
   return value as SourceUrl;
+}
+
+function splitSourceParagraphText(text: string): string[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
 }
 
 function validateLensOutput(output: LensOutput): void {

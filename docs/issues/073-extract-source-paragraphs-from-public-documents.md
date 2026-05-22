@@ -1,6 +1,6 @@
 # 073: Extract Source Paragraphs From Public Documents
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -10,7 +10,7 @@ AFK.
 
 The public MVP needs paragraph-level provenance for Wikipedia-style and public-document sources. Existing public document import creates canonical events, but Thought Cards need Source Paragraph records to cite.
 
-## What to build
+## What Was Built
 
 Add a deterministic helper that extracts Source Paragraph records from one public document source record or its normalized canonical event, preserving paragraph order and explicit source context.
 
@@ -20,13 +20,13 @@ Add a deterministic helper that extracts Source Paragraph records from one publi
 
 ## Acceptance Criteria
 
-- [ ] Split one public document text into non-blank Source Paragraphs.
-- [ ] Preserve paragraph order using paragraph indexes.
-- [ ] Generate deterministic Source Paragraph ids from stable source identity and paragraph index.
-- [ ] Generate a source fingerprint for each paragraph or its referenced source text/version.
-- [ ] Preserve explicit source context on each Source Paragraph.
-- [ ] Re-running extraction for unchanged input produces the same ids and fingerprints.
-- [ ] Do not generate Thought Cards in this slice.
+- [x] Split one public document text into non-blank Source Paragraphs.
+- [x] Preserve paragraph order using paragraph indexes.
+- [x] Generate deterministic Source Paragraph ids from stable source identity and paragraph index.
+- [x] Generate a source fingerprint for each paragraph or its referenced source text/version.
+- [x] Preserve explicit source context on each Source Paragraph.
+- [x] Re-running extraction for unchanged input produces the same ids and fingerprints.
+- [x] Do not generate Thought Cards in this slice.
 
 ## Blocked by
 
