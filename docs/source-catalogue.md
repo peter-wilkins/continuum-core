@@ -1,6 +1,25 @@
 # Source Catalogue
 
-ChatGPT is postponed until the export arrives. Active ranking starts with sources we can inspect now or soon.
+ChatGPT and broad private-history imports are postponed for the MVP path.
+
+The MVP source strategy is now public-first and identity-first: choose a target identity or topic, gather public source records, then let users explore the resulting Continuum and give feedback. The existing catalogue below still records parser pressure-test coverage, but the next active imports should prefer public, licensed, inspectable data.
+
+Example import scopes:
+
+- `identity=Ada Lovelace`
+- `identity=Ada Lovelace topic=computing`
+- `identity=Charles Babbage topic=Analytical Engine`
+
+Public-first source queue:
+
+| Rank | Source | Why it matters |
+| --- | --- | --- |
+| 1 | Wikidata identity/entity records | Stable identity ids, aliases, dates, relationships, and source links. |
+| 2 | Wikipedia/MediaWiki revisions and page metadata | Public narrative plus revision history for how shared understanding changed. |
+| 3 | Wikisource/public-domain texts and letters | Primary public writings where available. |
+| 4 | Project Gutenberg / Internet Archive public texts | Public-domain books and scans for historical thought corpora. |
+| 5 | GitHub public issues, pull requests, reviews, discussions | Modern extended thought around software projects. |
+| 6 | Crossref/OpenAlex-style publication metadata | Public scholarly graph pressure without importing private material. |
 
 | Rank | Source | Status | Personal value | Schema stress | Privacy risk | Next event target | Example data |
 | --- | --- | --- | --- | --- | --- | --- | --- |

@@ -28,9 +28,25 @@ _Avoid_: truth probability, raw similarity score, certainty
 The append-only record of **Entries** that acts as the source of truth for captured context. Derived material must not be treated as source truth.
 _Avoid_: memory, archive, database
 
+**Extended Thought Continuum**:
+A Continuum built around a person, group, topic, artefact, or intellectual tradition rather than only around one user's private memory. The MVP targets public, inspectable extended thought so users can explore the product and provide feedback before private personal import becomes central.
+_Avoid_: personal-only continuum, generic knowledge base, biography page
+
 **Canonical Event**:
 An immutable normalized event in Continuum's unified event model. A Canonical Event may come from live capture or from an imported external source record.
 _Avoid_: vendor record, raw message, source-specific event
+
+**Import Scope**:
+The explicit boundary for an import before source parsing begins. An Import Scope names the target **Identity**, optional **Topic Filter**, source families, and time/license constraints. It prevents "import everything" from being the default shape.
+_Avoid_: broad dump, source-first import, implicit filter
+
+**Identity**:
+The person, organisation, group, project, or artefact an import is about. Identity is not resolved by string matching alone; source-specific identifiers, names, aliases, and provenance stay inspectable until later identity resolution.
+_Avoid_: author string as person, account as person, guessed entity
+
+**Topic Filter**:
+A subject boundary inside an **Import Scope**, such as "Ada Lovelace about computing". Topic Filters narrow candidate source records before promotion, but uncertain records should remain inspectable rather than silently discarded.
+_Avoid_: search query as truth, hidden relevance filter, destructive prefilter
 
 **Imported Entry**:
 An **Entry** created from a **Canonical Event** during import. Retrieval and **Continuation** inference work over Entries in the **Source Log**, not over source-specific Canonical Events directly.

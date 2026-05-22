@@ -6,13 +6,33 @@
 
 ## Purpose
 
-Import messy external AI/chat/personal-data exports into Continuum's unified event model, safely, locally, repeatably, and idempotently.
+Import messy external source material into Continuum's unified event model, safely, repeatably, and idempotently.
 
 Primary value:
 
-> Bring existing thinking history into a private local core. Let nothing leave until a membrane allows it.
+> Build an inspectable Continuum about extended thought, starting from public sources and explicit import scopes.
 
-This is a reversible digestion pipeline for external cognition, not just a file importer.
+This is a reversible digestion pipeline for external cognition, not just a file importer. Private personal imports remain important, but they are no longer the MVP path.
+
+## MVP Pivot
+
+The MVP is not "Peter's personal Continuum" and not "import all my private history".
+
+The MVP is a public, bootstrapped Continuum about extended thought:
+
+- users can explore a Continuum around a person, topic, artefact, or intellectual tradition;
+- the app can capture feedback while users explore what Continuum could become;
+- public data keeps iteration easier, safer, and easier to demo;
+- private personal imports move behind public-data import, curation, feedback, and membrane learning.
+
+Example target:
+
+```text
+Import Ada Lovelace into this Continuum.
+Import everything Ada Lovelace said about computers.
+```
+
+That means import becomes **identity-first** and **topic-filtered** before parsing source records.
 
 ## Current Principles
 
@@ -26,10 +46,12 @@ This is a reversible digestion pipeline for external cognition, not just a file 
 - Bad records should be quarantined, not allowed to corrupt canonical events.
 - Membranes control disclosure to prompts, sync, exports, logs, docs, and people.
 - Storage-adapter first: do not bake SQLite/Postgres/Supabase into core contracts yet.
+- Identity-first: broad source dumps are secondary to explicit import scopes.
+- Public-first MVP: prefer public, licensed, inspectable data before private personal archives.
 
 ## Supported Sources
 
-Active/imported:
+Private/personal parser coverage:
 
 - Claude export: real local sample validates and imports.
 - ChatGPT export: fixture/import path exists, but real export is postponed.
@@ -42,6 +64,13 @@ Active/imported:
 - Google Chrome reading list: Takeout/Data Portability fixture imports one saved reference.
 - Google My Activity: fixture imports YouTube, Search, and Maps activity records.
 - Wikimedia/MediaWiki revision: public sample fixture exists.
+
+Public MVP direction:
+
+- Identity pages and aliases: Wikidata/Wikipedia/MediaWiki.
+- Public writings and letters: Wikisource, Project Gutenberg, Internet Archive, library/archive metadata.
+- Public collaboration and discussion: GitHub issues, pull requests, reviews, discussions.
+- Topic-specific corpora: source records filtered by identity plus subject before promotion.
 
 Catalogue targets:
 
@@ -57,7 +86,10 @@ Source ranking and evidence links live in `docs/source-catalogue.md`.
 ## Pipeline
 
 ```text
-raw file or archive
+import scope
+  -> identity candidates
+  -> topic/source filters
+  -> raw file, archive, or API page
   -> import batch
   -> source adapter
   -> Zod-validated source records
