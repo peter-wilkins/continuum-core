@@ -570,7 +570,9 @@ continuum-import dry-run public-document <document.json> --scope <scope.json> --
 continuum-import chatgpt <conversations.json> --out <events.jsonl>
 continuum-import claude <conversations.json> --out <events.jsonl>
 continuum-import git-log <git-log.txt> --out <events.jsonl>
+continuum-import github-issues <issues.json> --out <events.jsonl>
 continuum-import github-issue-comments <comments.json> --out <events.jsonl>
+continuum-import github-pulls <pulls.json> --out <events.jsonl>
 ```
 
 Current output:
@@ -723,6 +725,8 @@ Done:
 - CLI supports `git-log` files and routes `.gitlog` files inside folder/zip imports.
 - GitHub issue comments parse and import one or more public collaboration comments.
 - CLI supports `github-issue-comments` files and routes matching JSON files inside folder/zip imports by filename or schema.
+- GitHub issues and pull requests parse and import one or more public collaboration records.
+- CLI supports `github-issues` and `github-pulls` files and routes matching JSON files inside folder/zip imports by filename or schema.
 
 Next:
 

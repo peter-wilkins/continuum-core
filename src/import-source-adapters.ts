@@ -11,7 +11,9 @@ import {
   normalizeGoogleChromeReadingListRecord,
   normalizeGoogleMyActivityRecord,
   normalizeGitCommit,
+  normalizeGitHubIssue,
   normalizeGitHubIssueComment,
+  normalizeGitHubPullRequest,
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
   normalizeMediaWikiRevision,
@@ -24,7 +26,9 @@ import {
   parseGoogleChromeHistoryExport,
   parseGoogleChromeReadingListExport,
   parseGoogleMyActivityExport,
+  parseGitHubIssues,
   parseGitHubIssueComments,
+  parseGitHubPullRequests,
   parseICalendarEvents,
   parseMediaWikiRevision,
   parsePublicDocument,
@@ -43,7 +47,9 @@ export type SourceImportCommand =
   | "git-log"
   | "icalendar"
   | "markdown"
+  | "github-issues"
   | "github-issue-comments"
+  | "github-pulls"
   | "mediawiki-revisions"
   | "wikidata-entity"
   | "public-document";
@@ -497,6 +503,83 @@ const sourceAdapters: SourceAdapter[] = [
         "github-issue-comments",
         result.value,
         (comment) => normalizeGitHubIssueComment({ comment }),
+      );
+    },
+  },
+  {
+    source: "github-issues",
+    parseMode: "json",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".json") &&
+        !lowerPath.includes("comment") &&
+        !lowerPath.includes("pull") &&
+        ((lowerPath.includes("github") && lowerPath.includes("issue")) ||
+          lowerPath.includes("issues.json") ||
+          lowerPath.includes("issues_"))
+      );
+    },
+    parsedMatches: (parsed) => parseGitHubIssues(parsed).ok,
+    prepareInput: (parsed) => parsed,
+    normalize: (parsed) => {
+      const result = parseGitHubIssues(parsed);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine(
+            "github-issues",
+            result.errors,
+          ),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return normalizeRecordsWithQuarantine(
+        "github-issues",
+        result.value,
+        (issue) => normalizeGitHubIssue({ issue }),
+      );
+    },
+  },
+  {
+    source: "github-pulls",
+    parseMode: "json",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".json") &&
+        ((lowerPath.includes("github") && lowerPath.includes("pull")) ||
+          lowerPath.includes("pulls.json") ||
+          lowerPath.includes("pull-requests") ||
+          lowerPath.includes("pull_requests"))
+      );
+    },
+    parsedMatches: (parsed) => parseGitHubPullRequests(parsed).ok,
+    prepareInput: (parsed) => parsed,
+    normalize: (parsed) => {
+      const result = parseGitHubPullRequests(parsed);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine(
+            "github-pulls",
+            result.errors,
+          ),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return normalizeRecordsWithQuarantine(
+        "github-pulls",
+        result.value,
+        (pullRequest) => normalizeGitHubPullRequest({ pullRequest }),
       );
     },
   },

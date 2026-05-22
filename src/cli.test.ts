@@ -37,6 +37,12 @@ const gitFixturePath = fileURLToPath(
 const githubIssueCommentFixturePath = fileURLToPath(
   new URL("./fixtures/github-one-issue-comment.json", import.meta.url),
 );
+const githubIssueFixturePath = fileURLToPath(
+  new URL("./fixtures/github-one-issue.json", import.meta.url),
+);
+const githubPullRequestFixturePath = fileURLToPath(
+  new URL("./fixtures/github-one-pull-request.json", import.meta.url),
+);
 const mediawikiFixturePath = fileURLToPath(
   new URL("./fixtures/mediawiki-one-revision.json", import.meta.url),
 );
@@ -1812,6 +1818,168 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("imports GitHub issues and pull requests through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const issueResult = await runContinuumImportCli([
+        "github-issues",
+        githubIssueFixturePath,
+        "--out",
+        outputPath,
+      ]);
+      const pullResult = await runContinuumImportCli([
+        "github-pulls",
+        githubPullRequestFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(issueResult).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+      expect(pullResult).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(2);
+      expect(lines.map((line) => JSON.parse(line))).toMatchObject([
+        {
+          source: {
+            platform: "github",
+            externalConversationId: "octocat/Hello-World#9578",
+            externalMessageId: "4493366828:PR_kwDOABPHjc7d33VA",
+          },
+          content: {
+            subject: "octocat/Hello-World#9578 pull request",
+          },
+        },
+        {
+          source: {
+            platform: "github",
+            externalConversationId: "octocat/Hello-World#9578",
+            externalMessageId: "3722409280:PR_kwDOABPHjc7d33VA",
+          },
+          content: {
+            subject: "octocat/Hello-World#9578 pull request",
+          },
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs GitHub issues and pull requests through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const issuePreviewPath = join(dir, "issue-preview.json");
+    const pullPreviewPath = join(dir, "pull-preview.json");
+
+    try {
+      const issueResult = await runContinuumImportCli([
+        "dry-run",
+        "github-issues",
+        githubIssueFixturePath,
+        "--out",
+        issuePreviewPath,
+      ]);
+      const pullResult = await runContinuumImportCli([
+        "dry-run",
+        "github-pulls",
+        githubPullRequestFixturePath,
+        "--out",
+        pullPreviewPath,
+      ]);
+
+      expect(issueResult.command).toBe("dry-run");
+      expect(pullResult.command).toBe("dry-run");
+      if (issueResult.command !== "dry-run" || pullResult.command !== "dry-run") {
+        throw new Error("Expected dry-run results.");
+      }
+      expect(issueResult.batch.stats.eventsCreated).toBe(1);
+      expect(pullResult.batch.stats.eventsCreated).toBe(1);
+
+      const issuePreview = JSON.parse(await readFile(issuePreviewPath, "utf8"));
+      const pullPreview = JSON.parse(await readFile(pullPreviewPath, "utf8"));
+
+      expect(issuePreview.sourceFiles).toEqual([
+        {
+          path: "github-one-issue.json",
+          source: "github-issues",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+      expect(pullPreview.sourceFiles).toEqual([
+        {
+          path: "github-one-pull-request.json",
+          source: "github-pulls",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("quarantines malformed GitHub issue and pull JSON during dry-run", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const badIssuePath = join(dir, "issues.json");
+    const badPullPath = join(dir, "pulls.json");
+    const issuePreviewPath = join(dir, "bad-issue-preview.json");
+    const pullPreviewPath = join(dir, "bad-pull-preview.json");
+
+    try {
+      await writeFile(badIssuePath, "{}", "utf8");
+      await writeFile(badPullPath, "{}", "utf8");
+
+      const issueResult = await runContinuumImportCli([
+        "dry-run",
+        "github-issues",
+        badIssuePath,
+        "--out",
+        issuePreviewPath,
+      ]);
+      const pullResult = await runContinuumImportCli([
+        "dry-run",
+        "github-pulls",
+        badPullPath,
+        "--out",
+        pullPreviewPath,
+      ]);
+
+      expect(issueResult.command).toBe("dry-run");
+      expect(pullResult.command).toBe("dry-run");
+      if (issueResult.command !== "dry-run" || pullResult.command !== "dry-run") {
+        throw new Error("Expected dry-run results.");
+      }
+      expect(issueResult.batch.stats.recordsQuarantined).toBeGreaterThan(0);
+      expect(pullResult.batch.stats.recordsQuarantined).toBeGreaterThan(0);
+
+      const issuePreview = JSON.parse(await readFile(issuePreviewPath, "utf8"));
+      const pullPreview = JSON.parse(await readFile(pullPreviewPath, "utf8"));
+      expect(issuePreview.quarantine[0]).toMatchObject({
+        errorCode: "source_validation_failed",
+        recoverable: true,
+      });
+      expect(pullPreview.quarantine[0]).toMatchObject({
+        errorCode: "source_validation_failed",
+        recoverable: true,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("dry-runs GitHub issue comments through the CLI", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
     const previewPath = join(dir, "preview.json");
@@ -1925,6 +2093,112 @@ describe("continuum-import CLI", () => {
         {
           path: "Takeout/GitHub/issue-comments.json",
           source: "github-issue-comments",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes GitHub issues and pulls inside a Google Takeout folder by filename", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const githubDir = join(dir, "Takeout", "GitHub");
+      await mkdir(githubDir, { recursive: true });
+      await writeFile(
+        join(githubDir, "issues.json"),
+        await readFile(githubIssueFixturePath, "utf8"),
+        "utf8",
+      );
+      await writeFile(
+        join(githubDir, "pulls.json"),
+        await readFile(githubPullRequestFixturePath, "utf8"),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-folder",
+        dir,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(2);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/GitHub/issues.json",
+          source: "github-issues",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+        {
+          path: "Takeout/GitHub/pulls.json",
+          source: "github-pulls",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes GitHub issues and pulls inside a Google Takeout zip by schema", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Data/generic-a.json": strToU8(
+          await readFile(githubIssueFixturePath, "utf8"),
+        ),
+        "Takeout/Data/generic-b.json": strToU8(
+          await readFile(githubPullRequestFixturePath, "utf8"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(2);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Data/generic-a.json",
+          source: "github-issues",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+        {
+          path: "Takeout/Data/generic-b.json",
+          source: "github-pulls",
           status: "matched",
           eventsCreated: 1,
           quarantineRecords: 0,

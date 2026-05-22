@@ -1,6 +1,6 @@
 # 046: Wire GitHub Collaboration Sources Into CLI
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -16,13 +16,20 @@ Wire the GitHub issue and pull-request parsers into `continuum-import`, followin
 
 ## Acceptance Criteria
 
-- [ ] CLI accepts `github-issues`.
-- [ ] CLI accepts `github-pulls`.
-- [ ] CLI imports committed issue and pull fixtures into JSONL.
-- [ ] CLI dry-run previews both source types.
-- [ ] Malformed GitHub issue/pull JSON quarantines instead of throwing.
-- [ ] Folder/zip routing detects these files by filename and by schema where practical.
-- [ ] CLI usage docs mention `github-issues` and `github-pulls`.
+- [x] CLI accepts `github-issues`.
+- [x] CLI accepts `github-pulls`.
+- [x] CLI imports committed issue and pull fixtures into JSONL.
+- [x] CLI dry-run previews both source types.
+- [x] Malformed GitHub issue/pull JSON quarantines instead of throwing.
+- [x] Folder/zip routing detects these files by filename and by schema where practical.
+- [x] CLI usage docs mention `github-issues` and `github-pulls`.
+
+## What Was Built
+
+- Added `github-issues` and `github-pulls` source commands.
+- Allowed both commands to accept either one object or an array of objects.
+- Wired direct import, dry-run, validation quarantine, folder filename routing, and zip schema routing.
+- Updated README and import spec CLI docs.
 
 ## Blocked by
 

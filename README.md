@@ -143,7 +143,9 @@ Supported source names:
 - `icalendar`
 - `markdown`
 - `git-log`
+- `github-issues`
 - `github-issue-comments`
+- `github-pulls`
 - `mediawiki-revisions`
 - `google-takeout-folder`
 - `google-takeout-zip`

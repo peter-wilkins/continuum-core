@@ -1419,6 +1419,8 @@ export type GitHubIssueNormalizationInput = {
   issue: GitHubIssueRecord;
 };
 
+export type GitHubIssuesExport = GitHubIssueRecord[];
+
 export type GitHubPullRequestBranchRecord = {
   label: string;
   ref: string;
@@ -1453,6 +1455,8 @@ export type GitHubPullRequestRecord = {
 export type GitHubPullRequestNormalizationInput = {
   pullRequest: GitHubPullRequestRecord;
 };
+
+export type GitHubPullRequestsExport = GitHubPullRequestRecord[];
 
 export type ImportProfile = "everything" | "clean_default" | "intentional_context";
 
@@ -2259,6 +2263,10 @@ const githubIssueSchema = z
   })
   .passthrough();
 
+const githubIssuesSchema = z
+  .union([githubIssueSchema, z.array(githubIssueSchema)])
+  .transform((value) => (Array.isArray(value) ? value : [value]));
+
 const githubPullRequestBranchSchema = z
   .object({
     label: nonBlankStringSchema,
@@ -2293,6 +2301,10 @@ const githubPullRequestSchema = z
     base: githubPullRequestBranchSchema,
   })
   .passthrough();
+
+const githubPullRequestsSchema = z
+  .union([githubPullRequestSchema, z.array(githubPullRequestSchema)])
+  .transform((value) => (Array.isArray(value) ? value : [value]));
 
 const publicDocumentCreatorSchema = z.object({
   role: z.enum(["author", "translator", "editor"]),
@@ -2645,10 +2657,52 @@ export function parseGitHubIssue(
   };
 }
 
+export function parseGitHubIssues(
+  input: unknown,
+): SourceValidationResult<GitHubIssuesExport> {
+  const result = githubIssuesSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
 export function parseGitHubPullRequest(
   input: unknown,
 ): SourceValidationResult<GitHubPullRequestRecord> {
   const result = githubPullRequestSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parseGitHubPullRequests(
+  input: unknown,
+): SourceValidationResult<GitHubPullRequestsExport> {
+  const result = githubPullRequestsSchema.safeParse(input);
 
   if (result.success) {
     return {
