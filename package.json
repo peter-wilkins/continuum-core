@@ -15,7 +15,8 @@
     }
   },
   "bin": {
-    "continuum-import": "./dist/cli.js"
+    "continuum-import": "./dist/cli.js",
+    "continuum-audio-signals": "./dist/audio-signal-cli.js"
   },
   "files": [
     "dist",
@@ -25,7 +26,9 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && tsup src/cli.ts --format esm --dts --sourcemap",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && tsup src/cli.ts --format esm --dts --sourcemap && tsup src/audio-signal-cli.ts --format esm --dts --sourcemap",
+    "audio:signals": "node dist/audio-signal-cli.js",
+    "audio-datasets:fetch": "node scripts/fetch-audio-datasets.mjs",
     "schema:dev": "vite --config schema-workbench/vite.config.ts schema-workbench --host 127.0.0.1 --port 5173",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

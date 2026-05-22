@@ -55,3 +55,20 @@ The audio processing contract should support:
 - benchmark adapters mapping public dataset labels into the same observation shape
 
 Every processor output should be rebuildable from the Audio Artifact plus processor configuration.
+
+## Local Tooling
+
+Fetch direct public datasets into the gitignored data folder:
+
+```bash
+npm run audio-datasets:fetch -- --direct --max-gb 20
+```
+
+Run the first deterministic audio signal harness against a local PCM16 WAV file:
+
+```bash
+npm run build
+npm run audio:signals -- data/audio-datasets/fixtures/tiny.wav --out data/audio-datasets/fixtures/tiny-signals.json
+```
+
+The first harness intentionally produces acoustic signals only: duration, RMS amplitude, peak amplitude, and clipping ratio. It does not claim sentiment or tone. Tone and intent processors should come after benchmark labels are mapped and licence boundaries are clear.

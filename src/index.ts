@@ -16,6 +16,18 @@ type Brand<T, BrandName extends string> = T & {
 };
 
 export type CanonicalEventId = Brand<string, "CanonicalEventId">;
+export type AudioArtifactId = Brand<string, "AudioArtifactId">;
+export type AudioByteLength = Brand<number, "AudioByteLength">;
+export type AudioChannelCount = Brand<number, "AudioChannelCount">;
+export type AudioDurationSeconds = Brand<number, "AudioDurationSeconds">;
+export type AudioObservationId = Brand<string, "AudioObservationId">;
+export type AudioProcessingJobId = Brand<string, "AudioProcessingJobId">;
+export type AudioProcessorId = Brand<string, "AudioProcessorId">;
+export type AudioProcessorVersion = Brand<string, "AudioProcessorVersion">;
+export type AudioSampleRateHz = Brand<number, "AudioSampleRateHz">;
+export type AudioSegmentId = Brand<string, "AudioSegmentId">;
+export type AudioSegmentBoundarySeconds = Brand<number, "AudioSegmentBoundarySeconds">;
+export type AudioSignalValue = Brand<number, "AudioSignalValue">;
 export type Confidence = Brand<number, "Confidence">;
 export type HumanText = Brand<string, "HumanText">;
 export type KnowledgeTime = Brand<string, "KnowledgeTime">;
@@ -565,6 +577,251 @@ export type ThoughtCardInput = {
   generatedAt: string;
 };
 
+export type AudioArtifactLocationKind =
+  | "local_path"
+  | "content_address"
+  | "external_url";
+
+export type AudioArtifactLocation = {
+  kind: AudioArtifactLocationKind;
+  value: HumanText;
+};
+
+export type AudioArtifactFormat = {
+  mimeType: HumanText;
+  codec: HumanText;
+  sampleRateHz: AudioSampleRateHz;
+  channelCount: AudioChannelCount;
+  durationSeconds: AudioDurationSeconds;
+  byteLength: AudioByteLength;
+};
+
+export type AudioCaptureMembraneDecision =
+  | "accepted"
+  | "needs_review"
+  | "rejected";
+
+export type AudioContextClue = {
+  kind: HumanText;
+  text: HumanText;
+  confidence: Confidence;
+  observedAt: KnowledgeTime;
+};
+
+export type AudioCaptureContext = {
+  capturedAt: KnowledgeTime;
+  hostApp: HumanText;
+  captureInlet: HumanText;
+  captureTap: HumanText;
+  deviceLabel: HumanText;
+  membraneDecision: AudioCaptureMembraneDecision;
+  contextClues: AudioContextClue[];
+};
+
+export type AudioArtifactProvenance = {
+  sourceName: SourceName;
+  sourceRecordId: SourceRecordId;
+  sourceUrl: SourceUrl;
+  license: HumanText;
+  retrievedAt: KnowledgeTime;
+};
+
+export type AudioArtifact = {
+  id: AudioArtifactId;
+  location: AudioArtifactLocation;
+  format: AudioArtifactFormat;
+  captureContext: AudioCaptureContext;
+  provenance: AudioArtifactProvenance;
+};
+
+export type AudioArtifactInput = {
+  id: string;
+  location: {
+    kind: AudioArtifactLocationKind;
+    value: string;
+  };
+  format: {
+    mimeType: string;
+    codec: string;
+    sampleRateHz: number;
+    channelCount: number;
+    durationSeconds: number;
+    byteLength: number;
+  };
+  captureContext: {
+    capturedAt: string;
+    hostApp: string;
+    captureInlet: string;
+    captureTap: string;
+    deviceLabel: string;
+    membraneDecision: AudioCaptureMembraneDecision;
+    contextClues: Array<{
+      kind: string;
+      text: string;
+      confidence: number;
+      observedAt: string;
+    }>;
+  };
+  provenance: {
+    sourceName: string;
+    sourceRecordId: string;
+    sourceUrl: string;
+    license: string;
+    retrievedAt: string;
+  };
+};
+
+export type AudioProcessorKind =
+  | "transcription"
+  | "acoustic"
+  | "tone"
+  | "sentiment"
+  | "intent"
+  | "diarization"
+  | "benchmark_label";
+
+export type AudioProcessorProvenance = {
+  provider: HumanText;
+  processorId: AudioProcessorId;
+  processorVersion: AudioProcessorVersion;
+  processorKind: AudioProcessorKind;
+  configurationFingerprint: SourceFingerprint;
+  knowledgeTime: KnowledgeTime;
+};
+
+export type AudioProcessorProvenanceInput = {
+  provider: string;
+  processorId: string;
+  processorVersion: string;
+  processorKind: AudioProcessorKind;
+  configurationFingerprint: string;
+  knowledgeTime: string;
+};
+
+export type AudioSegmentRange = {
+  startSeconds: AudioSegmentBoundarySeconds;
+  endSeconds: AudioSegmentBoundarySeconds;
+};
+
+export type AudioProcessingJob = {
+  id: AudioProcessingJobId;
+  artifactId: AudioArtifactId;
+  segment: AudioSegmentRange | null;
+  processor: AudioProcessorProvenance;
+};
+
+export type AudioProcessingJobInput = {
+  id: string;
+  artifactId: string;
+  segment: {
+    startSeconds: number;
+    endSeconds: number;
+  } | null;
+  processor: AudioProcessorProvenanceInput;
+};
+
+export type AudioTranscriptSegment = {
+  id: AudioSegmentId;
+  startSeconds: AudioSegmentBoundarySeconds;
+  endSeconds: AudioSegmentBoundarySeconds;
+  text: HumanText;
+  confidence: Confidence;
+};
+
+export type AudioTranscriptObservation = {
+  id: AudioObservationId;
+  kind: "transcript";
+  jobId: AudioProcessingJobId;
+  artifactId: AudioArtifactId;
+  processor: AudioProcessorProvenance;
+  transcriptText: HumanText;
+  segments: AudioTranscriptSegment[];
+  confidence: Confidence;
+};
+
+export type AudioTranscriptObservationInput = {
+  id: string;
+  jobId: string;
+  artifactId: string;
+  processor: AudioProcessorProvenanceInput | AudioProcessorProvenance;
+  transcriptText: string;
+  segments: Array<{
+    id: string;
+    startSeconds: number;
+    endSeconds: number;
+    text: string;
+    confidence: number;
+  }>;
+  confidence: number;
+};
+
+export type AudioSignalKind =
+  | "acoustic"
+  | "tone"
+  | "sentiment"
+  | "intent"
+  | "diarization"
+  | "benchmark_label";
+
+export type AudioLabelScheme = {
+  id: HumanText;
+  version: AudioProcessorVersion;
+  labels: NonEmptyArray<HumanText>;
+};
+
+export type AudioSignal = {
+  label: HumanText;
+  value: AudioSignalValue;
+  confidence: Confidence;
+  evidence: HumanText;
+};
+
+export type AudioSignalObservation = {
+  id: AudioObservationId;
+  kind: "signals";
+  jobId: AudioProcessingJobId;
+  artifactId: AudioArtifactId;
+  processor: AudioProcessorProvenance;
+  signalKind: AudioSignalKind;
+  labelScheme: AudioLabelScheme;
+  signals: NonEmptyArray<AudioSignal>;
+};
+
+export type AudioSignalObservationInput = {
+  id: string;
+  jobId: string;
+  artifactId: string;
+  processor: AudioProcessorProvenanceInput | AudioProcessorProvenance;
+  signalKind: AudioSignalKind;
+  labelScheme: {
+    id: string;
+    version: string;
+    labels: string[];
+  };
+  signals: Array<{
+    label: string;
+    value: number;
+    confidence: number;
+    evidence: string;
+  }>;
+};
+
+export type Pcm16WavAudioSignalAnalysisInput = {
+  id: string;
+  artifact: AudioArtifact;
+  job: AudioProcessingJob;
+  wavBytes: Uint8Array;
+};
+
+export type Pcm16WavAudioFormatInspection = {
+  mimeType: "audio/wav";
+  codec: "pcm_s16le";
+  sampleRateHz: number;
+  channelCount: number;
+  durationSeconds: number;
+  byteLength: number;
+};
+
 export function createSourceParagraph(
   input: SourceParagraphInput,
 ): SourceParagraph {
@@ -599,6 +856,210 @@ export function createThoughtCard(input: ThoughtCardInput): ThoughtCard {
     sourceParagraphIds: nonEmptySourceParagraphIds(input.sourceParagraphIds),
     confidence: confidence(input.confidence),
     generatedAt: knowledgeTime("ThoughtCard generatedAt", input.generatedAt),
+  };
+}
+
+export function createAudioArtifact(input: AudioArtifactInput): AudioArtifact {
+  return {
+    id: audioArtifactId(input.id),
+    location: createAudioArtifactLocation(input.location),
+    format: {
+      mimeType: humanText("AudioArtifact format.mimeType", input.format.mimeType),
+      codec: humanText("AudioArtifact format.codec", input.format.codec),
+      sampleRateHz: audioSampleRateHz(input.format.sampleRateHz),
+      channelCount: audioChannelCount(input.format.channelCount),
+      durationSeconds: audioDurationSeconds(input.format.durationSeconds),
+      byteLength: audioByteLength(input.format.byteLength),
+    },
+    captureContext: {
+      capturedAt: knowledgeTime(
+        "AudioArtifact captureContext.capturedAt",
+        input.captureContext.capturedAt,
+      ),
+      hostApp: humanText("AudioArtifact captureContext.hostApp", input.captureContext.hostApp),
+      captureInlet: humanText(
+        "AudioArtifact captureContext.captureInlet",
+        input.captureContext.captureInlet,
+      ),
+      captureTap: humanText(
+        "AudioArtifact captureContext.captureTap",
+        input.captureContext.captureTap,
+      ),
+      deviceLabel: humanText(
+        "AudioArtifact captureContext.deviceLabel",
+        input.captureContext.deviceLabel,
+      ),
+      membraneDecision: input.captureContext.membraneDecision,
+      contextClues: input.captureContext.contextClues.map((clue) => ({
+        kind: humanText("AudioContextClue kind", clue.kind),
+        text: humanText("AudioContextClue text", clue.text),
+        confidence: confidence(clue.confidence),
+        observedAt: knowledgeTime("AudioContextClue observedAt", clue.observedAt),
+      })),
+    },
+    provenance: {
+      sourceName: sourceName(input.provenance.sourceName),
+      sourceRecordId: sourceRecordId(input.provenance.sourceRecordId),
+      sourceUrl: sourceUrl(input.provenance.sourceUrl),
+      license: humanText("AudioArtifact provenance.license", input.provenance.license),
+      retrievedAt: knowledgeTime(
+        "AudioArtifact provenance.retrievedAt",
+        input.provenance.retrievedAt,
+      ),
+    },
+  };
+}
+
+export function createAudioProcessingJob(
+  input: AudioProcessingJobInput,
+): AudioProcessingJob {
+  return {
+    id: audioProcessingJobId(input.id),
+    artifactId: audioArtifactId(input.artifactId),
+    segment:
+      input.segment === null
+        ? null
+        : createAudioSegmentRange(input.segment.startSeconds, input.segment.endSeconds),
+    processor: createAudioProcessorProvenance(input.processor),
+  };
+}
+
+export function createAudioTranscriptObservation(
+  input: AudioTranscriptObservationInput,
+): AudioTranscriptObservation {
+  return {
+    id: audioObservationId(input.id),
+    kind: "transcript",
+    jobId: audioProcessingJobId(input.jobId),
+    artifactId: audioArtifactId(input.artifactId),
+    processor: createAudioProcessorProvenance(input.processor),
+    transcriptText: humanText("AudioTranscriptObservation transcriptText", input.transcriptText),
+    segments: input.segments.map((segment) => ({
+      id: audioSegmentId(segment.id),
+      ...createAudioSegmentRange(segment.startSeconds, segment.endSeconds),
+      text: humanText("AudioTranscriptSegment text", segment.text),
+      confidence: confidence(segment.confidence),
+    })),
+    confidence: confidence(input.confidence),
+  };
+}
+
+export function createAudioSignalObservation(
+  input: AudioSignalObservationInput,
+): AudioSignalObservation {
+  if (input.signals.length === 0) {
+    throw new Error("AudioSignalObservation signals must contain at least one signal.");
+  }
+
+  return {
+    id: audioObservationId(input.id),
+    kind: "signals",
+    jobId: audioProcessingJobId(input.jobId),
+    artifactId: audioArtifactId(input.artifactId),
+    processor: createAudioProcessorProvenance(input.processor),
+    signalKind: input.signalKind,
+    labelScheme: {
+      id: humanText("AudioLabelScheme id", input.labelScheme.id),
+      version: audioProcessorVersion(input.labelScheme.version),
+      labels: nonEmptyHumanTexts(
+        "AudioLabelScheme labels",
+        input.labelScheme.labels,
+      ),
+    },
+    signals: input.signals.map((signal) => ({
+      label: humanText("AudioSignal label", signal.label),
+      value: audioSignalValue(signal.value),
+      confidence: confidence(signal.confidence),
+      evidence: humanText("AudioSignal evidence", signal.evidence),
+    })) as NonEmptyArray<AudioSignal>,
+  };
+}
+
+export function analyzePcm16WavAudioSignal(
+  input: Pcm16WavAudioSignalAnalysisInput,
+): AudioSignalObservation {
+  const wav = parsePcm16Wav(input.wavBytes);
+  const sampleCount = wav.dataSize / 2;
+  let peak = 0;
+  let squareSum = 0;
+  let clippedSamples = 0;
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const sample = readInt16Le(input.wavBytes, wav.dataOffset + index * 2);
+    const normalized = sample / 32768;
+    const abs = Math.abs(normalized);
+    peak = Math.max(peak, abs);
+    squareSum += normalized * normalized;
+
+    if (Math.abs(sample) >= 32767) {
+      clippedSamples += 1;
+    }
+  }
+
+  const frameCount = sampleCount / wav.channelCount;
+  const durationSeconds = frameCount / wav.sampleRateHz;
+  const rms = Math.sqrt(squareSum / sampleCount);
+  const clippingRatio = clippedSamples / sampleCount;
+
+  return createAudioSignalObservation({
+    id: input.id,
+    jobId: input.job.id,
+    artifactId: input.artifact.id,
+    processor: input.job.processor,
+    signalKind: "acoustic",
+    labelScheme: {
+      id: "continuum.audio.acoustic.basic",
+      version: "1.0.0",
+      labels: [
+        "duration_seconds",
+        "rms_amplitude",
+        "peak_amplitude",
+        "clipping_ratio",
+      ],
+    },
+    signals: [
+      {
+        label: "duration_seconds",
+        value: durationSeconds,
+        confidence: 1,
+        evidence: "Computed from PCM16 WAV data chunk length and sample rate.",
+      },
+      {
+        label: "rms_amplitude",
+        value: roundTo(rms, 3),
+        confidence: 1,
+        evidence: "Root mean square amplitude normalized to full-scale PCM16.",
+      },
+      {
+        label: "peak_amplitude",
+        value: roundTo(peak, 3),
+        confidence: 1,
+        evidence: "Maximum absolute sample amplitude normalized to full-scale PCM16.",
+      },
+      {
+        label: "clipping_ratio",
+        value: roundTo(clippingRatio, 3),
+        confidence: 1,
+        evidence: "Share of samples at PCM16 full-scale limits.",
+      },
+    ],
+  });
+}
+
+export function inspectPcm16WavAudioFormat(
+  wavBytes: Uint8Array,
+): Pcm16WavAudioFormatInspection {
+  const wav = parsePcm16Wav(wavBytes);
+  const sampleCount = wav.dataSize / 2;
+  const frameCount = sampleCount / wav.channelCount;
+
+  return {
+    mimeType: "audio/wav",
+    codec: "pcm_s16le",
+    sampleRateHz: wav.sampleRateHz,
+    channelCount: wav.channelCount,
+    durationSeconds: frameCount / wav.sampleRateHz,
+    byteLength: wavBytes.byteLength,
   };
 }
 
@@ -1019,6 +1480,84 @@ function validateNonBlank(fieldName: string, value: string): void {
   }
 }
 
+function audioArtifactId(value: string): AudioArtifactId {
+  validateNonBlank("AudioArtifactId", value);
+  return value as AudioArtifactId;
+}
+
+function audioByteLength(value: number): AudioByteLength {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error("AudioArtifact format.byteLength must be a positive integer.");
+  }
+
+  return value as AudioByteLength;
+}
+
+function audioChannelCount(value: number): AudioChannelCount {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error("AudioArtifact format.channelCount must be a positive integer.");
+  }
+
+  return value as AudioChannelCount;
+}
+
+function audioDurationSeconds(value: number): AudioDurationSeconds {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error("AudioArtifact format.durationSeconds must be a finite non-negative number.");
+  }
+
+  return value as AudioDurationSeconds;
+}
+
+function audioObservationId(value: string): AudioObservationId {
+  validateNonBlank("AudioObservationId", value);
+  return value as AudioObservationId;
+}
+
+function audioProcessingJobId(value: string): AudioProcessingJobId {
+  validateNonBlank("AudioProcessingJobId", value);
+  return value as AudioProcessingJobId;
+}
+
+function audioProcessorId(value: string): AudioProcessorId {
+  validateNonBlank("AudioProcessorId", value);
+  return value as AudioProcessorId;
+}
+
+function audioProcessorVersion(value: string): AudioProcessorVersion {
+  validateNonBlank("AudioProcessorVersion", value);
+  return value as AudioProcessorVersion;
+}
+
+function audioSampleRateHz(value: number): AudioSampleRateHz {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error("AudioArtifact format.sampleRateHz must be a positive integer.");
+  }
+
+  return value as AudioSampleRateHz;
+}
+
+function audioSegmentBoundarySeconds(value: number): AudioSegmentBoundarySeconds {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error("Audio segment boundary must be a finite non-negative number.");
+  }
+
+  return value as AudioSegmentBoundarySeconds;
+}
+
+function audioSegmentId(value: string): AudioSegmentId {
+  validateNonBlank("AudioSegmentId", value);
+  return value as AudioSegmentId;
+}
+
+function audioSignalValue(value: number): AudioSignalValue {
+  if (!Number.isFinite(value)) {
+    throw new Error("AudioSignal value must be finite.");
+  }
+
+  return value as AudioSignalValue;
+}
+
 function canonicalEventId(value: string): CanonicalEventId {
   validateNonBlank("CanonicalEventId", value);
   return value as CanonicalEventId;
@@ -1035,6 +1574,55 @@ function confidence(value: number): Confidence {
 function humanText(fieldName: string, value: string): HumanText {
   validateNonBlank(fieldName, value);
   return value as HumanText;
+}
+
+function createAudioArtifactLocation(
+  input: AudioArtifactInput["location"],
+): AudioArtifactLocation {
+  validateNonBlank("AudioArtifact location.value", input.value);
+
+  if (input.kind === "external_url") {
+    try {
+      new URL(input.value);
+    } catch {
+      throw new Error("AudioArtifact external_url location must be a valid URL.");
+    }
+  }
+
+  return {
+    kind: input.kind,
+    value: humanText("AudioArtifact location.value", input.value),
+  };
+}
+
+function createAudioProcessorProvenance(
+  input: AudioProcessorProvenanceInput | AudioProcessorProvenance,
+): AudioProcessorProvenance {
+  return {
+    provider: humanText("AudioProcessorProvenance provider", input.provider),
+    processorId: audioProcessorId(input.processorId),
+    processorVersion: audioProcessorVersion(input.processorVersion),
+    processorKind: input.processorKind,
+    configurationFingerprint: sourceFingerprint(input.configurationFingerprint),
+    knowledgeTime: knowledgeTime(
+      "AudioProcessorProvenance knowledgeTime",
+      input.knowledgeTime,
+    ),
+  };
+}
+
+function createAudioSegmentRange(
+  startSeconds: number,
+  endSeconds: number,
+): AudioSegmentRange {
+  if (endSeconds < startSeconds) {
+    throw new Error("Audio segment endSeconds must be greater than or equal to startSeconds.");
+  }
+
+  return {
+    startSeconds: audioSegmentBoundarySeconds(startSeconds),
+    endSeconds: audioSegmentBoundarySeconds(endSeconds),
+  };
 }
 
 function knowledgeTime(fieldName: string, value: string): KnowledgeTime {
@@ -1060,6 +1648,17 @@ function nonEmptySourceParagraphIds(
   }
 
   return values.map(sourceParagraphId) as NonEmptyArray<SourceParagraphId>;
+}
+
+function nonEmptyHumanTexts(
+  fieldName: string,
+  values: string[],
+): NonEmptyArray<HumanText> {
+  if (values.length === 0) {
+    throw new Error(`${fieldName} must contain at least one value.`);
+  }
+
+  return values.map((value) => humanText(fieldName, value)) as NonEmptyArray<HumanText>;
 }
 
 function paragraphIndex(value: number): ParagraphIndex {
@@ -1127,6 +1726,107 @@ function splitSourceParagraphText(text: string): string[] {
 function thoughtCardId(value: string): ThoughtCardId {
   validateNonBlank("ThoughtCardId", value);
   return value as ThoughtCardId;
+}
+
+type ParsedPcm16Wav = {
+  sampleRateHz: number;
+  channelCount: number;
+  dataOffset: number;
+  dataSize: number;
+};
+
+function parsePcm16Wav(bytes: Uint8Array): ParsedPcm16Wav {
+  if (bytes.length < 44) {
+    throw new Error("PCM16 WAV input must contain a complete WAV header.");
+  }
+
+  if (readAscii(bytes, 0, 4) !== "RIFF" || readAscii(bytes, 8, 4) !== "WAVE") {
+    throw new Error("PCM16 WAV input must be a RIFF/WAVE file.");
+  }
+
+  let offset = 12;
+  let audioFormat = 0;
+  let channelCount = 0;
+  let sampleRateHz = 0;
+  let bitsPerSample = 0;
+  let dataOffset = -1;
+  let dataSize = 0;
+
+  while (offset + 8 <= bytes.length) {
+    const chunkId = readAscii(bytes, offset, 4);
+    const chunkSize = readUint32Le(bytes, offset + 4);
+    const chunkDataOffset = offset + 8;
+
+    if (chunkDataOffset + chunkSize > bytes.length) {
+      throw new Error("PCM16 WAV chunk extends beyond input length.");
+    }
+
+    if (chunkId === "fmt ") {
+      audioFormat = readUint16Le(bytes, chunkDataOffset);
+      channelCount = readUint16Le(bytes, chunkDataOffset + 2);
+      sampleRateHz = readUint32Le(bytes, chunkDataOffset + 4);
+      bitsPerSample = readUint16Le(bytes, chunkDataOffset + 14);
+    }
+
+    if (chunkId === "data") {
+      dataOffset = chunkDataOffset;
+      dataSize = chunkSize;
+    }
+
+    offset = chunkDataOffset + chunkSize + (chunkSize % 2);
+  }
+
+  if (audioFormat !== 1 || bitsPerSample !== 16) {
+    throw new Error("Audio signal harness currently supports only PCM16 WAV input.");
+  }
+
+  if (channelCount <= 0 || sampleRateHz <= 0 || dataOffset < 0 || dataSize <= 0) {
+    throw new Error("PCM16 WAV input must contain fmt and data chunks.");
+  }
+
+  if (dataSize % 2 !== 0) {
+    throw new Error("PCM16 WAV data chunk must contain whole 16-bit samples.");
+  }
+
+  return {
+    sampleRateHz,
+    channelCount,
+    dataOffset,
+    dataSize,
+  };
+}
+
+function readAscii(bytes: Uint8Array, offset: number, length: number): string {
+  let value = "";
+
+  for (let index = 0; index < length; index += 1) {
+    value += String.fromCharCode(bytes[offset + index] ?? 0);
+  }
+
+  return value;
+}
+
+function readInt16Le(bytes: Uint8Array, offset: number): number {
+  const value = readUint16Le(bytes, offset);
+  return value >= 0x8000 ? value - 0x10000 : value;
+}
+
+function readUint16Le(bytes: Uint8Array, offset: number): number {
+  return (bytes[offset] ?? 0) | ((bytes[offset + 1] ?? 0) << 8);
+}
+
+function readUint32Le(bytes: Uint8Array, offset: number): number {
+  return (
+    (bytes[offset] ?? 0) |
+    ((bytes[offset + 1] ?? 0) << 8) |
+    ((bytes[offset + 2] ?? 0) << 16) |
+    ((bytes[offset + 3] ?? 0) << 24)
+  ) >>> 0;
+}
+
+function roundTo(value: number, decimals: number): number {
+  const scale = 10 ** decimals;
+  return Math.round(value * scale) / scale;
 }
 
 function validateLensOutput(output: LensOutput): void {
