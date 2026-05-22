@@ -41,20 +41,45 @@ function parseInspectCommand(args: string[]): ImportRunnerCommand {
 }
 
 function parseDryRunCommand(args: string[]): ImportRunnerCommand {
-  const [, source, inputPath, outFlag, previewPath] = args;
+  const [, source, inputPath, firstFlag, firstValue, secondFlag, secondValue] = args;
 
   if (
     !isImportCommand(source) ||
-    !inputPath ||
-    outFlag !== "--out" ||
-    !previewPath
+    !inputPath
   ) {
     throw new Error(
-      `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> --out <preview.json>`,
+      `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] --out <preview.json>`,
     );
   }
 
-  return { kind: "dry-run", source, inputPath, previewPath };
+  if (firstFlag === "--out" && firstValue && secondFlag === undefined) {
+    return {
+      kind: "dry-run",
+      source,
+      inputPath,
+      importScopePath: null,
+      previewPath: firstValue,
+    };
+  }
+
+  if (
+    firstFlag === "--scope" &&
+    firstValue &&
+    secondFlag === "--out" &&
+    secondValue
+  ) {
+    return {
+      kind: "dry-run",
+      source,
+      inputPath,
+      importScopePath: firstValue,
+      previewPath: secondValue,
+    };
+  }
+
+  throw new Error(
+    `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] --out <preview.json>`,
+  );
 }
 
 function parseCommand(args: string[]): ImportRunnerCommand {

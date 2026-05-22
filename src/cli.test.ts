@@ -46,6 +46,9 @@ const publicDocumentFixturePath = fileURLToPath(
     import.meta.url,
   ),
 );
+const adaImportScopeFixturePath = fileURLToPath(
+  new URL("./fixtures/import-scope-ada-lovelace-computing.json", import.meta.url),
+);
 const emailMboxFixturePath = fileURLToPath(
   new URL("./fixtures/email-one-message.mbox", import.meta.url),
 );
@@ -1487,6 +1490,44 @@ describe("continuum-import CLI", () => {
           subject: "Sketch of the Analytical Engine invented by Charles Babbage, Esq.",
         },
       });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs a public document with an explicit Import Scope", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "public-document",
+        publicDocumentFixturePath,
+        "--scope",
+        adaImportScopeFixturePath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.importScope).toMatchObject({
+        id: "scope:ada-lovelace-through-computing",
+        primaryEntity: {
+          label: "Ada Lovelace",
+        },
+        focusEntity: {
+          label: "computing",
+        },
+      });
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.batch.importScope.id).toBe(
+        "scope:ada-lovelace-through-computing",
+      );
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

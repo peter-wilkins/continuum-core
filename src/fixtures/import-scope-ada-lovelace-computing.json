@@ -1,0 +1,30 @@
+{
+  "id": "scope:ada-lovelace-through-computing",
+  "primaryEntity": {
+    "kind": "person",
+    "label": "Ada Lovelace",
+    "aliases": ["Augusta Ada Byron", "Ada King"],
+    "sourceIds": [
+      {
+        "sourceFamily": "wikimedia",
+        "id": "Q7259",
+        "url": "https://www.wikidata.org/wiki/Q7259"
+      }
+    ]
+  },
+  "focusEntity": {
+    "kind": "topic",
+    "label": "computing",
+    "aliases": ["Analytical Engine", "programming"],
+    "sourceIds": []
+  },
+  "sourceFamilies": ["wikimedia", "public_archive"],
+  "publicness": {
+    "access": "public_only",
+    "licenseIntent": "respect_source_license"
+  },
+  "provenancePolicy": {
+    "sourceFamiliesCountAsIndependentEvidence": false
+  },
+  "createdAt": "2026-05-22T12:00:00.000Z"
+}

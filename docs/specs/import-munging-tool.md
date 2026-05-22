@@ -527,6 +527,7 @@ Current MVP:
 ```bash
 continuum-import inspect claude <conversations.json>
 continuum-import dry-run claude <conversations.json> --out <preview.json>
+continuum-import dry-run public-document <document.json> --scope <scope.json> --out <preview.json>
 continuum-import chatgpt <conversations.json> --out <events.jsonl>
 continuum-import claude <conversations.json> --out <events.jsonl>
 continuum-import git-log <git-log.txt> --out <events.jsonl>

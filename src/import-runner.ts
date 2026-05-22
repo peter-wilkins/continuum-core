@@ -3,6 +3,7 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 import {
+  createImportScope,
   evaluateCanonicalEventImportProfile,
   inspectMboxFile,
   type ImportFilterDecision,
@@ -123,6 +124,7 @@ export type ImportRunnerCommand =
       kind: "dry-run";
       source: ImportCommand;
       inputPath: string;
+      importScopePath: string | null;
       previewPath: string;
     };
 
@@ -372,11 +374,12 @@ async function dryRunImport(
   );
   const filterSummary = summarizeImportFilterDecisions(filterDecisions);
   const { report } = mergeCanonicalEvents([], incomingEvents);
+  const importScope = await readImportScope(command.importScopePath);
   const batch = createImportBatch({
     source: command.source,
     inputPath: command.inputPath,
     inputHash: input.hash,
-    importScope: null,
+    importScope,
     filesSeen: input.filesSeen,
     recordsSeen: incomingEvents.length + quarantine.length,
     report,
@@ -419,6 +422,18 @@ async function dryRunImport(
     quarantine,
     filterSummary,
   };
+}
+
+async function readImportScope(
+  importScopePath: string | null,
+): Promise<ImportScope | null> {
+  if (importScopePath === null) {
+    return null;
+  }
+
+  return createImportScope(
+    JSON.parse(await readFile(importScopePath, "utf8")) as ImportScope,
+  );
 }
 
 function sourceFilesForPreview(

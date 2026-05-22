@@ -119,6 +119,12 @@ Write a local dry-run preview:
 node dist/cli.js dry-run google-takeout-zip data/google/takeout.zip --out data/google/preview.json
 ```
 
+Write a public dry-run preview with an explicit Import Scope:
+
+```bash
+node dist/cli.js dry-run public-document src/fixtures/project-gutenberg-analytical-engine-public-document.json --scope src/fixtures/import-scope-ada-lovelace-computing.json --out data/public-preview.json
+```
+
 Import into local JSONL:
 
 ```bash
