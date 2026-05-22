@@ -171,11 +171,11 @@ Pipeline:
 ```text
 Raw Capture
 → Candidate Insight
-→ Curated Entry
+→ Memory-active evidence
 → Goal / Project / Task / Reference
 ```
 
-Most captured material should never become a permanent structured entry.
+Most captured material should never become memory-active.
 
 That is healthy.
 
