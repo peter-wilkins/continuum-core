@@ -109,6 +109,8 @@ Capture new cognition directly into the living continuum.
 ## Post-MVP Priority
 Start with audio capture and correction feedback because it directly improves the dogfooding workflow and the quality of daily Continuum input.
 
+Platform capture should stay host-owned. Android, Linux, browser, and future native shells should capture audio using their local mechanisms. Continuum should define the shared processing boundary after audio exists: Audio Artifacts, Audio Processing Jobs, Raw Transcript Text, tone/prosody/intent observations, and membranes around raw recordings.
+
 ## Inputs
 
 - voice

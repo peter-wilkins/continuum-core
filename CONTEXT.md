@@ -40,6 +40,18 @@ _Avoid_: silent drop, hidden eviction, best-effort capture without notice
 A durable reference from an **Entry** or **Canonical Event** to a raw captured artifact such as a WAV file, image, screenshot, or source file. Artifact References preserve origin material without making the artifact itself the searchable Entry text.
 _Avoid_: blob as Entry, hidden file path, copied payload without provenance
 
+**Audio Artifact**:
+A kind of **Artifact Reference** for raw captured audio, such as a WAV file from a Host App, Capture Tap, or import. Audio Artifacts should preserve format, sample rate, duration, channel count, capture context, file-system membrane decision, and provenance before any transcription, cleanup, or tone analysis runs over them.
+_Avoid_: transcript as audio source truth, microphone capture hidden inside core, unlabeled recording blob
+
+**Audio Processing Job**:
+A bounded request to run one audio processor over an **Audio Artifact** or segment. An Audio Processing Job names the processor, processor version, configuration fingerprint, input artifact or segment, and Knowledge Time so outputs can be rebuilt or compared later.
+_Avoid_: hidden background inference, provider call without provenance, processor output detached from input
+
+**Audio Observation**:
+An evidence record produced by an **Audio Processing Job**, such as Raw Transcript Text, transcript segments, acoustic features, prosodic features, diarization, sentiment, tone, or spoken intent. Audio Observations are uncertain processor outputs and must keep label scheme, Confidence, processor provenance, and source artifact references.
+_Avoid_: tone as truth, emotion diagnosis, overwriting transcript, ungrounded inference
+
 **Source Paragraph**:
 A paragraph-sized, referenceable segment of source text preserved for provenance during import. A Source Paragraph may ground a **Thought Card**, but importing Source Paragraphs is not the same as creating Thought Cards. A Source Paragraph should preserve a stable document reference, paragraph index, source fingerprint, and any unavoidable source context needed to interpret that locator.
 _Avoid_: card at import, whole-page pointer when a paragraph is known, arbitrary chunk without source position, hidden out-of-band context
