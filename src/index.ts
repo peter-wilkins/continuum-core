@@ -149,6 +149,134 @@ export type ImportScope = {
   createdAt: string;
 };
 
+export type LensDefinition = {
+  id: string;
+  name: string;
+  version: string;
+  userBlurb: string;
+  technicalBlurb: string;
+};
+
+export type LensGenerationParameter = {
+  key: string;
+  value: string;
+};
+
+export type LensOutputSection = {
+  id: string;
+  title: string;
+  eventIds: string[];
+};
+
+export type LensOutput = {
+  id: string;
+  scopeId: string;
+  queryId: string;
+  lensId: string;
+  lensVersion: string;
+  generatedAt: string;
+  sourceEventIds: string[];
+  sections: LensOutputSection[];
+  generation: {
+    strategy: string;
+    model: string | null;
+    parameters: LensGenerationParameter[];
+  };
+};
+
+export const defaultPublicLensDefinitions: LensDefinition[] = [
+  {
+    id: "atlas",
+    name: "Atlas",
+    version: "1.0.0",
+    userBlurb: "A map-like view that starts with the main landmarks and source trail.",
+    technicalBlurb:
+      "Deterministic source ordering: identity records first, then primary text and supporting evidence grouped by section.",
+  },
+  {
+    id: "loom",
+    name: "Loom",
+    version: "1.0.0",
+    userBlurb: "A woven view that emphasises how people, works, and ideas connect.",
+    technicalBlurb:
+      "Graph-biased projection: groups source event ids by shared identities, creators, works, and provenance lineage.",
+  },
+  {
+    id: "beacon",
+    name: "Beacon",
+    version: "1.0.0",
+    userBlurb: "A direct view that points at the clearest source records first.",
+    technicalBlurb:
+      "Signal-biased projection: ranks source event ids by focus-identity overlap and concise explainability.",
+  },
+];
+
+export function createLensOutput(input: LensOutput): LensOutput {
+  validateLensOutput(input);
+
+  return input;
+}
+
+function validateNonBlank(fieldName: string, value: string): void {
+  if (value.trim().length === 0) {
+    throw new Error(`${fieldName} must not be blank.`);
+  }
+}
+
+function validateLensOutput(output: LensOutput): void {
+  validateNonBlank("LensOutput id", output.id);
+  validateNonBlank("LensOutput scopeId", output.scopeId);
+  validateNonBlank("LensOutput queryId", output.queryId);
+  validateNonBlank("LensOutput lensId", output.lensId);
+  validateNonBlank("LensOutput lensVersion", output.lensVersion);
+
+  if (Number.isNaN(new Date(output.generatedAt).getTime())) {
+    throw new Error("LensOutput generatedAt must be an ISO-compatible date.");
+  }
+
+  if (output.sourceEventIds.length === 0) {
+    throw new Error("LensOutput sourceEventIds must contain at least one event id.");
+  }
+
+  for (const sourceEventId of output.sourceEventIds) {
+    validateNonBlank("LensOutput sourceEventIds", sourceEventId);
+  }
+
+  if (output.sections.length === 0) {
+    throw new Error("LensOutput sections must contain at least one section.");
+  }
+
+  const sourceEventIds = new Set(output.sourceEventIds);
+
+  for (const section of output.sections) {
+    validateNonBlank("LensOutput section id", section.id);
+    validateNonBlank("LensOutput section title", section.title);
+
+    if (section.eventIds.length === 0) {
+      throw new Error("LensOutput section eventIds must contain at least one event id.");
+    }
+
+    for (const eventId of section.eventIds) {
+      validateNonBlank("LensOutput section eventIds", eventId);
+
+      if (!sourceEventIds.has(eventId)) {
+        throw new Error("LensOutput section eventIds must come from sourceEventIds.");
+      }
+    }
+  }
+
+  validateNonBlank("LensOutput generation.strategy", output.generation.strategy);
+
+  if (output.generation.model !== null) {
+    validateNonBlank("LensOutput generation.model", output.generation.model);
+  }
+
+  for (const parameter of output.generation.parameters) {
+    validateNonBlank("LensOutput generation parameter key", parameter.key);
+    validateNonBlank("LensOutput generation parameter value", parameter.value);
+  }
+}
+
 export type TimeConfidence = "exact" | "inferred" | "unknown";
 
 export type CanonicalEvent = {
