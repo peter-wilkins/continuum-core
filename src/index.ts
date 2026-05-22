@@ -93,6 +93,7 @@ export type CanonicalSourcePlatform =
   | "claude"
   | "email"
   | "git"
+  | "github"
   | "google_activity"
   | "google_chrome"
   | "icalendar"
@@ -1359,6 +1360,29 @@ export type GitCommitNormalizationInput = {
   commit: GitCommitRecord;
 };
 
+export type GitHubIssueCommentRecord = {
+  url: string;
+  html_url: string;
+  issue_url: string;
+  id: number;
+  node_id: string;
+  user: {
+    login: string;
+    id: number;
+    node_id: string;
+    html_url: string;
+    type: string;
+  };
+  created_at: string;
+  updated_at: string;
+  body: string;
+  author_association: string;
+};
+
+export type GitHubIssueCommentNormalizationInput = {
+  comment: GitHubIssueCommentRecord;
+};
+
 export type ImportProfile = "everything" | "clean_default" | "intentional_context";
 
 export type ImportFilterAction = "include" | "exclude" | "needs_review";
@@ -2095,6 +2119,31 @@ const wikidataEntityExportSchema = z
 
 const nonBlankStringSchema = z.string().min(1);
 
+const githubIssueCommentUserSchema = z
+  .object({
+    login: nonBlankStringSchema,
+    id: z.number(),
+    node_id: nonBlankStringSchema,
+    html_url: nonBlankStringSchema,
+    type: nonBlankStringSchema,
+  })
+  .passthrough();
+
+const githubIssueCommentSchema = z
+  .object({
+    url: nonBlankStringSchema,
+    html_url: nonBlankStringSchema,
+    issue_url: nonBlankStringSchema,
+    id: z.number(),
+    node_id: nonBlankStringSchema,
+    user: githubIssueCommentUserSchema,
+    created_at: isoDatetimeSchema,
+    updated_at: isoDatetimeSchema,
+    body: z.string(),
+    author_association: nonBlankStringSchema,
+  })
+  .passthrough();
+
 const publicDocumentCreatorSchema = z.object({
   role: z.enum(["author", "translator", "editor"]),
   name: nonBlankStringSchema,
@@ -2366,6 +2415,27 @@ export function parsePublicDocument(
   input: unknown,
 ): SourceValidationResult<PublicDocumentNormalizationInput> {
   const result = publicDocumentSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parseGitHubIssueComment(
+  input: unknown,
+): SourceValidationResult<GitHubIssueCommentRecord> {
+  const result = githubIssueCommentSchema.safeParse(input);
 
   if (result.success) {
     return {
@@ -2925,6 +2995,78 @@ function gitCommitText(input: GitCommitNormalizationInput): string {
     input.commit.statsSummary,
   ]
     .filter((value): value is string => value !== null && value.length > 0)
+    .join("\n");
+}
+
+function gitHubIssueCommentIssueId(
+  input: GitHubIssueCommentNormalizationInput,
+): string {
+  const issueUrl = new URL(input.comment.issue_url);
+  const parts = issueUrl.pathname.split("/").filter((part) => part.length > 0);
+  const owner = parts[1] ?? "";
+  const repo = parts[2] ?? "";
+  const issueNumber = parts[4] ?? "";
+
+  if (
+    parts[0] !== "repos" ||
+    parts[3] !== "issues" ||
+    owner.length === 0 ||
+    repo.length === 0 ||
+    !/^\d+$/.test(issueNumber)
+  ) {
+    throw new Error(
+      "GitHub issue comment issue_url must use /repos/:owner/:repo/issues/:number.",
+    );
+  }
+
+  return `${owner}/${repo}#${issueNumber}`;
+}
+
+function gitHubIssueCommentExternalMessageId(
+  input: GitHubIssueCommentNormalizationInput,
+): string {
+  return `${input.comment.id}:${input.comment.node_id}`;
+}
+
+function gitHubIssueCommentSourceKey(
+  input: GitHubIssueCommentNormalizationInput,
+): string {
+  return `github_issue_comment:${gitHubIssueCommentIssueId(input)}:${gitHubIssueCommentExternalMessageId(input)}`;
+}
+
+function gitHubIssueCommentSourceFingerprint(
+  input: GitHubIssueCommentNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "github",
+      url: input.comment.url,
+      html_url: input.comment.html_url,
+      issue_url: input.comment.issue_url,
+      id: input.comment.id,
+      node_id: input.comment.node_id,
+      user: input.comment.user,
+      created_at: input.comment.created_at,
+      updated_at: input.comment.updated_at,
+      body: input.comment.body,
+      author_association: input.comment.author_association,
+    }),
+  );
+}
+
+function gitHubIssueCommentText(
+  input: GitHubIssueCommentNormalizationInput,
+): string {
+  const issueId = gitHubIssueCommentIssueId(input);
+
+  return [
+    input.comment.body.trim(),
+    `Issue: ${issueId}`,
+    `Comment: ${input.comment.html_url}`,
+    `Author: ${input.comment.user.login}`,
+    `Association: ${input.comment.author_association}`,
+  ]
+    .filter((value) => value.length > 0)
     .join("\n");
 }
 
@@ -4064,6 +4206,53 @@ export function normalizeGitCommit(
       kind: "text",
       subject: input.commit.subject,
       text: gitCommitText(input),
+    },
+  });
+}
+
+export function normalizeGitHubIssueComment(
+  input: GitHubIssueCommentNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = gitHubIssueCommentSourceKey(input);
+  const issueId = gitHubIssueCommentIssueId(input);
+
+  return buildCanonicalEvent({
+    source: {
+      platform: "github",
+      key: sourceKey,
+      fingerprint: gitHubIssueCommentSourceFingerprint(input),
+      externalConversationId: issueId,
+      externalMessageId: gitHubIssueCommentExternalMessageId(input),
+      artifactId: input.comment.html_url,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "software_development",
+      sourceName: "github",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: new Date(input.comment.created_at).toISOString(),
+      license: null,
+    },
+    time: {
+      createdAt: new Date(input.comment.created_at).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [
+      {
+        role: "author",
+        name: input.comment.user.login,
+        address: input.comment.user.html_url,
+      },
+    ],
+    content: {
+      kind: "text",
+      subject: `${issueId} issue comment`,
+      text: gitHubIssueCommentText(input),
     },
   });
 }

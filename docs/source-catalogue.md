@@ -26,7 +26,7 @@ Public-first source queue:
 | 1 | Claude export | implemented fixture | high | medium | high | Claude chat message | `src/fixtures/claude-one-conversation.json` |
 | 2 | Email / MBOX | implemented fixture | high | high | high | RFC 5322 email message | `src/fixtures/email-one-message.mbox` |
 | 3 | Git commits | implemented fixture | high | high | medium | Git commit | `src/fixtures/git-one-commit.txt` |
-| 4 | GitHub issues, pull requests, reviews, commits, discussions | sample available | high | high | medium | GitHub issue comment | `data/github/octocat-hello-world-issue-comments.json` |
+| 4 | GitHub issues, pull requests, reviews, commits, discussions | implemented fixture | high | high | medium | GitHub issue comment | `src/fixtures/github-one-issue-comment.json` |
 | 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | Wikidata entity snapshot | `src/fixtures/wikidata-ada-lovelace-entity.json` |
 | 6 | Calendar / iCalendar | implemented fixture | high | medium | high | Calendar event | `src/fixtures/calendar-one-event.ics` |
 | 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |

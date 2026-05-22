@@ -123,7 +123,7 @@ type CanonicalEvent = {
   id: string;
 
   source: {
-    platform: "chatgpt" | "claude" | "email" | "git" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "public_archive" | "wikimedia";
+    platform: "chatgpt" | "claude" | "email" | "git" | "github" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "public_archive" | "wikimedia";
     key: string;
     fingerprint: string;
     externalConversationId: string;
