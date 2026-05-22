@@ -1383,6 +1383,8 @@ export type GitHubIssueCommentNormalizationInput = {
   comment: GitHubIssueCommentRecord;
 };
 
+export type GitHubIssueCommentsExport = GitHubIssueCommentRecord[];
+
 export type ImportProfile = "everything" | "clean_default" | "intentional_context";
 
 export type ImportFilterAction = "include" | "exclude" | "needs_review";
@@ -2144,6 +2146,10 @@ const githubIssueCommentSchema = z
   })
   .passthrough();
 
+const githubIssueCommentsSchema = z
+  .union([githubIssueCommentSchema, z.array(githubIssueCommentSchema)])
+  .transform((value) => (Array.isArray(value) ? value : [value]));
+
 const publicDocumentCreatorSchema = z.object({
   role: z.enum(["author", "translator", "editor"]),
   name: nonBlankStringSchema,
@@ -2436,6 +2442,27 @@ export function parseGitHubIssueComment(
   input: unknown,
 ): SourceValidationResult<GitHubIssueCommentRecord> {
   const result = githubIssueCommentSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parseGitHubIssueComments(
+  input: unknown,
+): SourceValidationResult<GitHubIssueCommentsExport> {
+  const result = githubIssueCommentsSchema.safeParse(input);
 
   if (result.success) {
     return {

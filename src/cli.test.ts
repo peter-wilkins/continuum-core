@@ -34,6 +34,9 @@ const markdownFixturePath = fileURLToPath(
 const gitFixturePath = fileURLToPath(
   new URL("./fixtures/git-one-commit.txt", import.meta.url),
 );
+const githubIssueCommentFixturePath = fileURLToPath(
+  new URL("./fixtures/github-one-issue-comment.json", import.meta.url),
+);
 const mediawikiFixturePath = fileURLToPath(
   new URL("./fixtures/mediawiki-one-revision.json", import.meta.url),
 );
@@ -1763,6 +1766,212 @@ describe("continuum-import CLI", () => {
           subject: "Pressure test model with Wikimedia",
         },
       });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports GitHub issue comments through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "github-issue-comments",
+        githubIssueCommentFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "github",
+          externalConversationId: "octocat/Hello-World#2",
+          externalMessageId: "1146825:MDEyOklzc3VlQ29tbWVudDExNDY4MjU=",
+        },
+        participants: [
+          {
+            role: "author",
+            name: "mattstifanelli",
+          },
+        ],
+        content: {
+          subject: "octocat/Hello-World#2 issue comment",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs GitHub issue comments through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "github-issue-comments",
+        githubIssueCommentFixturePath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+      expect(result.batch.stats.recordsQuarantined).toBe(0);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.events).toHaveLength(1);
+      expect(preview.events[0]).toMatchObject({
+        platform: "github",
+        subject: "octocat/Hello-World#2 issue comment",
+      });
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "github-one-issue-comment.json",
+          source: "github-issue-comments",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("quarantines a malformed GitHub issue comment during dry-run", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const badPath = join(dir, "issue-comments.json");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(badPath, "{}", "utf8");
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "github-issue-comments",
+        badPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsQuarantined).toBeGreaterThan(0);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.quarantine[0]).toMatchObject({
+        errorCode: "source_validation_failed",
+        recoverable: true,
+      });
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "issue-comments.json",
+          source: "github-issue-comments",
+          status: "invalid",
+          eventsCreated: 0,
+          quarantineRecords: preview.quarantine.length,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes GitHub issue comments inside a Google Takeout folder by filename", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const githubDir = join(dir, "Takeout", "GitHub");
+      await mkdir(githubDir, { recursive: true });
+      await writeFile(
+        join(githubDir, "issue-comments.json"),
+        await readFile(githubIssueCommentFixturePath, "utf8"),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-folder",
+        dir,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/GitHub/issue-comments.json",
+          source: "github-issue-comments",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes GitHub issue comments inside a Google Takeout zip by schema", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Data/generic.json": strToU8(
+          await readFile(githubIssueCommentFixturePath, "utf8"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Data/generic.json",
+          source: "github-issue-comments",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

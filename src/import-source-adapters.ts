@@ -11,6 +11,7 @@ import {
   normalizeGoogleChromeReadingListRecord,
   normalizeGoogleMyActivityRecord,
   normalizeGitCommit,
+  normalizeGitHubIssueComment,
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
   normalizeMediaWikiRevision,
@@ -23,6 +24,7 @@ import {
   parseGoogleChromeHistoryExport,
   parseGoogleChromeReadingListExport,
   parseGoogleMyActivityExport,
+  parseGitHubIssueComments,
   parseICalendarEvents,
   parseMediaWikiRevision,
   parsePublicDocument,
@@ -41,6 +43,7 @@ export type SourceImportCommand =
   | "git-log"
   | "icalendar"
   | "markdown"
+  | "github-issue-comments"
   | "mediawiki-revisions"
   | "wikidata-entity"
   | "public-document";
@@ -458,6 +461,43 @@ const sourceAdapters: SourceAdapter[] = [
       }
 
       return emptyNormalizedInput([normalizePublicDocument(result.value)]);
+    },
+  },
+  {
+    source: "github-issue-comments",
+    parseMode: "json",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".json") &&
+        ((lowerPath.includes("github") && lowerPath.includes("comment")) ||
+          lowerPath.includes("issue-comments") ||
+          lowerPath.includes("issue_comments"))
+      );
+    },
+    parsedMatches: (parsed) => parseGitHubIssueComments(parsed).ok,
+    prepareInput: (parsed) => parsed,
+    normalize: (parsed) => {
+      const result = parseGitHubIssueComments(parsed);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine(
+            "github-issue-comments",
+            result.errors,
+          ),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return normalizeRecordsWithQuarantine(
+        "github-issue-comments",
+        result.value,
+        (comment) => normalizeGitHubIssueComment({ comment }),
+      );
     },
   },
   {
