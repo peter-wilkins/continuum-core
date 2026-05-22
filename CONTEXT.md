@@ -32,6 +32,10 @@ _Avoid_: sync, importer, direct write, hidden listener
 A durable, bounded staging area where material accepted through a **Capture Inlet** waits before becoming **Source Log** entries or **Artifact References**. Source tools may push into a Landing Queue, while Continuum processors pull from it at their own pace; queued material is not silently disposable.
 _Avoid_: landing cache, hidden buffer, lossy queue, unbounded inbox
 
+**Backpressure**:
+The response when a **Landing Queue** or membrane cannot safely accept more material. Backpressure slows, blocks, or rejects new capture with an explicit reason rather than silently dropping queued or incoming material.
+_Avoid_: silent drop, hidden eviction, best-effort capture without notice
+
 **Artifact Reference**:
 A durable reference from an **Entry** or **Canonical Event** to a raw captured artifact such as a WAV file, image, screenshot, or source file. Artifact References preserve origin material without making the artifact itself the searchable Entry text.
 _Avoid_: blob as Entry, hidden file path, copied payload without provenance
