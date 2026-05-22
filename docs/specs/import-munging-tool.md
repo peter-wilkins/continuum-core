@@ -292,6 +292,8 @@ Public scope evaluation is a deterministic first pass:
 
 Excluded and needs-review records must remain inspectable in previews; evaluation is not silent deletion.
 
+When a dry-run command includes `--scope`, preview filter decisions use public scope evaluation rather than the generic personal import profile.
+
 Avoid copying whole event payloads or treating generated text as durable truth. If generated text is stored for page-load stability or release repeatability, mark it as rebuildable and keep the source ids needed to regenerate it.
 
 Import batch provenance should use a link table rather than an `import_batch_id` column on events. A Canonical Event can be observed by multiple imports over time, especially during reimport, so batches observe events; they do not own them.

@@ -962,7 +962,11 @@ export type ImportFilterReason =
   | "replied_contact"
   | "thread_participated"
   | "promotional_or_bulk"
-  | "no_prior_engagement";
+  | "no_prior_engagement"
+  | "primary_and_focus_match"
+  | "primary_match_focus_uncertain"
+  | "primary_identity_missing"
+  | "source_family_not_allowed";
 
 export type ImportFilterDecision = {
   action: ImportFilterAction;

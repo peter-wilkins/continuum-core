@@ -1523,11 +1523,25 @@ describe("continuum-import CLI", () => {
           label: "computing",
         },
       });
+      expect(result.filterSummary).toMatchObject({
+        included: 1,
+        excluded: 0,
+        needsReview: 0,
+        reasons: {
+          primary_and_focus_match: 1,
+        },
+      });
 
       const preview = JSON.parse(await readFile(previewPath, "utf8"));
       expect(preview.batch.importScope.id).toBe(
         "scope:ada-lovelace-through-computing",
       );
+      expect(preview.events[0].filterDecision).toMatchObject({
+        action: "include",
+        reason: "primary_and_focus_match",
+        confidence: 1,
+      });
+      expect(preview.events[0].memoryActive).toBe(true);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

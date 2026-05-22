@@ -5,6 +5,7 @@ import { basename } from "node:path";
 import {
   createImportScope,
   evaluateCanonicalEventImportProfile,
+  evaluatePublicScopeEvent,
   inspectMboxFile,
   type ImportFilterDecision,
   type ImportErrorRecord,
@@ -366,15 +367,17 @@ async function dryRunImport(
   const { incomingEvents, quarantine, sourceFiles, warnings } =
     normalizeCommandInput(command.source, command.inputPath, input);
   const importProfile: ImportProfile = "intentional_context";
+  const importScope = await readImportScope(command.importScopePath);
   const filterDecisions = incomingEvents.map((event) =>
-    evaluateCanonicalEventImportProfile({
-      profile: importProfile,
-      event,
-    }),
+    importScope === null
+      ? evaluateCanonicalEventImportProfile({
+          profile: importProfile,
+          event,
+        })
+      : evaluatePublicScopeEvent(importScope, event),
   );
   const filterSummary = summarizeImportFilterDecisions(filterDecisions);
   const { report } = mergeCanonicalEvents([], incomingEvents);
-  const importScope = await readImportScope(command.importScopePath);
   const batch = createImportBatch({
     source: command.source,
     inputPath: command.inputPath,
