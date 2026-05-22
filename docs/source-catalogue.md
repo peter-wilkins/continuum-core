@@ -17,7 +17,7 @@ Public-first source queue:
 | 1 | Wikidata identity/entity records | Stable identity ids, aliases, dates, relationships, and source links. |
 | 2 | Wikipedia/MediaWiki revisions and page metadata | Public narrative plus revision history for how shared understanding changed. |
 | 3 | Wikisource/public-domain texts and letters | Primary public writings where available. |
-| 4 | Project Gutenberg / Internet Archive public texts | Public-domain books and scans for historical thought corpora. |
+| 4 | Project Gutenberg / Internet Archive public texts | Public-domain books and scans for historical thought corpora. Implemented first as an explicit public-document source record. |
 | 5 | GitHub public issues, pull requests, reviews, discussions | Modern extended thought around software projects. |
 | 6 | Crossref/OpenAlex-style publication metadata | Public scholarly graph pressure without importing private material. |
 

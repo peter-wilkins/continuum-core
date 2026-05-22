@@ -40,6 +40,12 @@ const mediawikiFixturePath = fileURLToPath(
 const wikidataFixturePath = fileURLToPath(
   new URL("./fixtures/wikidata-ada-lovelace-entity.json", import.meta.url),
 );
+const publicDocumentFixturePath = fileURLToPath(
+  new URL(
+    "./fixtures/project-gutenberg-analytical-engine-public-document.json",
+    import.meta.url,
+  ),
+);
 const emailMboxFixturePath = fileURLToPath(
   new URL("./fixtures/email-one-message.mbox", import.meta.url),
 );
@@ -1440,6 +1446,45 @@ describe("continuum-import CLI", () => {
         },
         content: {
           subject: "Ada Lovelace",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports a public document through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "public-document",
+        publicDocumentFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "public_archive",
+          externalConversationId: "project_gutenberg:75107",
+          externalMessageId: "75107",
+        },
+        provenance: {
+          sourceFamily: "public_archive",
+          sourceName: "project_gutenberg",
+        },
+        content: {
+          subject: "Sketch of the Analytical Engine invented by Charles Babbage, Esq.",
         },
       });
     } finally {

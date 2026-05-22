@@ -77,6 +77,7 @@ export type CanonicalSourcePlatform =
   | "google_chrome"
   | "icalendar"
   | "markdown"
+  | "public_archive"
   | "wikimedia";
 
 export type CanonicalParticipantRole =
@@ -86,7 +87,9 @@ export type CanonicalParticipantRole =
   | "bcc"
   | "reply_to"
   | "attendee"
-  | "author";
+  | "author"
+  | "translator"
+  | "editor";
 
 export type CanonicalParticipant = {
   role: CanonicalParticipantRole;
@@ -722,6 +725,34 @@ export type WikidataEntityNormalizationInput = {
   >;
 };
 
+export type PublicDocumentCreatorRole = "author" | "translator" | "editor";
+
+export type PublicDocumentNormalizationInput = {
+  source: {
+    platform: "public_archive" | "wikimedia";
+    sourceFamily: string;
+    sourceName: string;
+    sourceId: string;
+    sourceUrl: string;
+    retrievedAt: string;
+    license: string;
+    upstreamSources: string[];
+    derivedFrom: string[];
+  };
+  document: {
+    title: string;
+    language: string;
+    publishedAt: string;
+    publishedAtConfidence: TimeConfidence;
+    creators: Array<{
+      role: PublicDocumentCreatorRole;
+      name: string;
+    }>;
+    subjectTags: string[];
+    text: string;
+  };
+};
+
 export type ImportReport = {
   new: number;
   known: number;
@@ -1333,6 +1364,36 @@ const wikidataEntityExportSchema = z
   })
   .passthrough();
 
+const nonBlankStringSchema = z.string().min(1);
+
+const publicDocumentCreatorSchema = z.object({
+  role: z.enum(["author", "translator", "editor"]),
+  name: nonBlankStringSchema,
+});
+
+const publicDocumentSchema = z.object({
+  source: z.object({
+    platform: z.enum(["public_archive", "wikimedia"]),
+    sourceFamily: nonBlankStringSchema,
+    sourceName: nonBlankStringSchema,
+    sourceId: nonBlankStringSchema,
+    sourceUrl: nonBlankStringSchema,
+    retrievedAt: isoDatetimeSchema,
+    license: nonBlankStringSchema,
+    upstreamSources: z.array(nonBlankStringSchema),
+    derivedFrom: z.array(nonBlankStringSchema),
+  }),
+  document: z.object({
+    title: nonBlankStringSchema,
+    language: nonBlankStringSchema,
+    publishedAt: isoDatetimeSchema,
+    publishedAtConfidence: z.enum(["exact", "inferred", "unknown"]),
+    creators: z.array(publicDocumentCreatorSchema),
+    subjectTags: z.array(nonBlankStringSchema),
+    text: nonBlankStringSchema,
+  }),
+});
+
 const googleMyActivityExportSchema = z.array(googleMyActivityRecordSchema);
 
 function validationPath(path: PropertyKey[]): string {
@@ -1555,6 +1616,27 @@ export function parseWikidataEntity(
   input: unknown,
 ): SourceValidationResult<WikidataEntityNormalizationInput> {
   const result = wikidataEntityExportSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parsePublicDocument(
+  input: unknown,
+): SourceValidationResult<PublicDocumentNormalizationInput> {
+  const result = publicDocumentSchema.safeParse(input);
 
   if (result.success) {
     return {
@@ -2203,6 +2285,35 @@ function wikidataSourceFingerprint(
       aliases: entity.aliases,
       claims: entity.claims,
       sitelinks: entity.sitelinks,
+    }),
+  );
+}
+
+function publicDocumentSourceKey(input: PublicDocumentNormalizationInput): string {
+  return `${input.source.platform}:${input.source.sourceName}:${input.source.sourceId}`;
+}
+
+function publicDocumentSourceFingerprint(
+  input: PublicDocumentNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: input.source.platform,
+      sourceFamily: input.source.sourceFamily,
+      sourceName: input.source.sourceName,
+      sourceId: input.source.sourceId,
+      sourceUrl: input.source.sourceUrl,
+      retrievedAt: input.source.retrievedAt,
+      license: input.source.license,
+      upstreamSources: input.source.upstreamSources,
+      derivedFrom: input.source.derivedFrom,
+      title: input.document.title,
+      language: input.document.language,
+      publishedAt: input.document.publishedAt,
+      publishedAtConfidence: input.document.publishedAtConfidence,
+      creators: input.document.creators,
+      subjectTags: input.document.subjectTags,
+      text: input.document.text,
     }),
   );
 }
@@ -3306,6 +3417,50 @@ export function normalizeWikidataEntity(
       kind: "text",
       subject: entity.labels.en.value,
       text: wikidataEntityText(entity),
+    },
+  });
+}
+
+export function normalizePublicDocument(
+  input: PublicDocumentNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = publicDocumentSourceKey(input);
+
+  return buildCanonicalEvent({
+    source: {
+      platform: input.source.platform,
+      key: sourceKey,
+      fingerprint: publicDocumentSourceFingerprint(input),
+      externalConversationId: `${input.source.sourceName}:${input.source.sourceId}`,
+      externalMessageId: input.source.sourceId,
+      artifactId: input.source.sourceUrl,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: input.source.sourceFamily,
+      sourceName: input.source.sourceName,
+      upstreamSources: input.source.upstreamSources,
+      derivedFrom: input.source.derivedFrom,
+      retrievedAt: input.source.retrievedAt,
+      license: input.source.license,
+    },
+    time: {
+      createdAt: new Date(input.document.publishedAt).toISOString(),
+      createdAtConfidence: input.document.publishedAtConfidence,
+    },
+    actor: {
+      role: "other",
+    },
+    participants: input.document.creators.map((creator) => ({
+      role: creator.role,
+      name: creator.name,
+      address: creator.name,
+    })),
+    content: {
+      kind: "text",
+      subject: input.document.title,
+      text: input.document.text,
     },
   });
 }

@@ -14,6 +14,7 @@ import {
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
   normalizeMediaWikiRevision,
+  normalizePublicDocument,
   normalizeWikidataEntity,
   normalizeEmailMessage,
   parseClaudeConversationsWithQuarantine,
@@ -24,6 +25,7 @@ import {
   parseGoogleMyActivityExport,
   parseICalendarEvents,
   parseMediaWikiRevision,
+  parsePublicDocument,
   parseWikidataEntity,
   type MboxParseResult,
 } from "./index";
@@ -40,7 +42,8 @@ export type SourceImportCommand =
   | "icalendar"
   | "markdown"
   | "mediawiki-revisions"
-  | "wikidata-entity";
+  | "wikidata-entity"
+  | "public-document";
 
 export type ArchiveImportCommand = "google-takeout-folder" | "google-takeout-zip";
 
@@ -423,6 +426,38 @@ const sourceAdapters: SourceAdapter[] = [
       }
 
       return emptyNormalizedInput([normalizeWikidataEntity(result.value)]);
+    },
+  },
+  {
+    source: "public-document",
+    parseMode: "json",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".json") &&
+        (lowerPath.includes("public-document") ||
+          lowerPath.includes("project-gutenberg"))
+      );
+    },
+    parsedMatches: (parsed) => parsePublicDocument(parsed).ok,
+    prepareInput: (parsed) => parsed,
+    normalize: (parsed) => {
+      const result = parsePublicDocument(parsed);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine(
+            "public-document",
+            result.errors,
+          ),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return emptyNormalizedInput([normalizePublicDocument(result.value)]);
     },
   },
   {

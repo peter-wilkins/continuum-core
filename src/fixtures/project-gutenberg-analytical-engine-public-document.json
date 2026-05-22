@@ -1,0 +1,31 @@
+{
+  "source": {
+    "platform": "public_archive",
+    "sourceFamily": "public_archive",
+    "sourceName": "project_gutenberg",
+    "sourceId": "75107",
+    "sourceUrl": "https://www.gutenberg.org/files/75107/75107-h/75107-h.htm",
+    "retrievedAt": "2026-05-22T11:55:00.000Z",
+    "license": "Public domain in the USA.",
+    "upstreamSources": ["scientific_memoirs_volume_3_1843"],
+    "derivedFrom": []
+  },
+  "document": {
+    "title": "Sketch of the Analytical Engine invented by Charles Babbage, Esq.",
+    "language": "en",
+    "publishedAt": "1843-01-01T00:00:00.000Z",
+    "publishedAtConfidence": "inferred",
+    "creators": [
+      {
+        "role": "author",
+        "name": "Luigi Federico Menabrea"
+      },
+      {
+        "role": "translator",
+        "name": "Ada Lovelace"
+      }
+    ],
+    "subjectTags": ["Analytical Engine", "computing", "Ada Lovelace"],
+    "text": "In studying the action of the Analytical Engine, operations are distinguished from the objects operated upon."
+  }
+}

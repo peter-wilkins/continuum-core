@@ -64,6 +64,7 @@ Private/personal parser coverage:
 - Google Chrome reading list: Takeout/Data Portability fixture imports one saved reference.
 - Google My Activity: fixture imports YouTube, Search, and Maps activity records.
 - Wikimedia/Wikidata entity: Ada Lovelace public fixture imports as one canonical event.
+- Public document: Project Gutenberg Analytical Engine fixture imports as one canonical event with explicit license/provenance metadata.
 - Wikimedia/MediaWiki revision: public sample fixture exists.
 
 Public MVP direction:
@@ -120,7 +121,7 @@ type CanonicalEvent = {
   id: string;
 
   source: {
-    platform: "chatgpt" | "claude" | "email" | "git" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "wikimedia";
+    platform: "chatgpt" | "claude" | "email" | "git" | "google_activity" | "google_chrome" | "icalendar" | "markdown" | "public_archive" | "wikimedia";
     key: string;
     fingerprint: string;
     externalConversationId: string;
