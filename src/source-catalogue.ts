@@ -110,7 +110,7 @@ export const sourceCatalogue = [
       sourceName: "github",
       upstreamSources: ["git"],
       derivedFrom: [],
-      overlapWarning: "GitHub commits can duplicate Git data; issues/PR comments are separate collaboration records.",
+      overlapWarning: "GitHub PR metadata can point at Git commits; preserve head/base/merge shas as references, not independent commit evidence.",
     },
   },
   {

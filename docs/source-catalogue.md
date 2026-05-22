@@ -56,6 +56,8 @@ Consensus rule:
 
 This means content-hash dedupe is not the main tool. Similar evidence can be phrased differently, and exact text can be copied through many channels.
 
+GitHub pull-request metadata can point at Git commits through head/base/merge SHAs. Preserve those SHAs as references, but do not count the PR metadata as independent Git commit evidence.
+
 ## Postponed
 
 | Rank | Source | Reason |

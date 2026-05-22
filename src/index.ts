@@ -1419,6 +1419,41 @@ export type GitHubIssueNormalizationInput = {
   issue: GitHubIssueRecord;
 };
 
+export type GitHubPullRequestBranchRecord = {
+  label: string;
+  ref: string;
+  sha: string;
+  user: GitHubUserRecord;
+};
+
+export type GitHubPullRequestRecord = {
+  url: string;
+  id: number;
+  node_id: string;
+  html_url: string;
+  diff_url: string;
+  patch_url: string;
+  issue_url: string;
+  number: number;
+  state: string;
+  locked: boolean;
+  title: string;
+  user: GitHubUserRecord;
+  body: string | null;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  merge_commit_sha: string | null;
+  draft: boolean;
+  head: GitHubPullRequestBranchRecord;
+  base: GitHubPullRequestBranchRecord;
+};
+
+export type GitHubPullRequestNormalizationInput = {
+  pullRequest: GitHubPullRequestRecord;
+};
+
 export type ImportProfile = "everything" | "clean_default" | "intentional_context";
 
 export type ImportFilterAction = "include" | "exclude" | "needs_review";
@@ -2224,6 +2259,41 @@ const githubIssueSchema = z
   })
   .passthrough();
 
+const githubPullRequestBranchSchema = z
+  .object({
+    label: nonBlankStringSchema,
+    ref: nonBlankStringSchema,
+    sha: nonBlankStringSchema,
+    user: githubUserSchema,
+  })
+  .passthrough();
+
+const githubPullRequestSchema = z
+  .object({
+    url: nonBlankStringSchema,
+    id: z.number(),
+    node_id: nonBlankStringSchema,
+    html_url: nonBlankStringSchema,
+    diff_url: nonBlankStringSchema,
+    patch_url: nonBlankStringSchema,
+    issue_url: nonBlankStringSchema,
+    number: z.number(),
+    state: nonBlankStringSchema,
+    locked: z.boolean(),
+    title: nonBlankStringSchema,
+    user: githubUserSchema,
+    body: nullableStringFromMissingSchema,
+    created_at: isoDatetimeSchema,
+    updated_at: isoDatetimeSchema,
+    closed_at: nullableIsoDatetimeFromMissingSchema,
+    merged_at: nullableIsoDatetimeFromMissingSchema,
+    merge_commit_sha: nullableStringFromMissingSchema,
+    draft: z.boolean(),
+    head: githubPullRequestBranchSchema,
+    base: githubPullRequestBranchSchema,
+  })
+  .passthrough();
+
 const publicDocumentCreatorSchema = z.object({
   role: z.enum(["author", "translator", "editor"]),
   name: nonBlankStringSchema,
@@ -2558,6 +2628,27 @@ export function parseGitHubIssue(
   input: unknown,
 ): SourceValidationResult<GitHubIssueRecord> {
   const result = githubIssueSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parseGitHubPullRequest(
+  input: unknown,
+): SourceValidationResult<GitHubPullRequestRecord> {
+  const result = githubPullRequestSchema.safeParse(input);
 
   if (result.success) {
     return {
@@ -3207,6 +3298,119 @@ function gitHubIssueText(input: GitHubIssueNormalizationInput): string {
     `Author: ${input.issue.user.login}`,
     `Association: ${input.issue.author_association}`,
     `Comments: ${input.issue.comments}`,
+    closedAt,
+  ]
+    .filter((value): value is string => value !== null && value.length > 0)
+    .join("\n");
+}
+
+function gitHubPullRequestId(input: GitHubPullRequestNormalizationInput): string {
+  const pullRequestUrl = new URL(input.pullRequest.url);
+  const parts = pullRequestUrl.pathname.split("/").filter((part) => part.length > 0);
+  const owner = parts[1] ?? "";
+  const repo = parts[2] ?? "";
+  const pullNumber = parts[4] ?? "";
+
+  if (
+    parts[0] !== "repos" ||
+    parts[3] !== "pulls" ||
+    owner.length === 0 ||
+    repo.length === 0 ||
+    !/^\d+$/.test(pullNumber)
+  ) {
+    throw new Error(
+      "GitHub pull request url must use /repos/:owner/:repo/pulls/:number.",
+    );
+  }
+
+  return `${owner}/${repo}#${pullNumber}`;
+}
+
+function gitHubPullRequestRepositoryId(
+  input: GitHubPullRequestNormalizationInput,
+): string {
+  const [repositoryId] = gitHubPullRequestId(input).split("#");
+
+  if (!repositoryId) {
+    throw new Error("GitHub pull request id must include a repository id.");
+  }
+
+  return repositoryId;
+}
+
+function gitHubPullRequestExternalMessageId(
+  input: GitHubPullRequestNormalizationInput,
+): string {
+  return `${input.pullRequest.id}:${input.pullRequest.node_id}`;
+}
+
+function gitHubPullRequestSourceKey(
+  input: GitHubPullRequestNormalizationInput,
+): string {
+  return `github_pull_request:${gitHubPullRequestId(input)}:${gitHubPullRequestExternalMessageId(input)}`;
+}
+
+function gitHubPullRequestSourceFingerprint(
+  input: GitHubPullRequestNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "github",
+      url: input.pullRequest.url,
+      id: input.pullRequest.id,
+      node_id: input.pullRequest.node_id,
+      html_url: input.pullRequest.html_url,
+      diff_url: input.pullRequest.diff_url,
+      patch_url: input.pullRequest.patch_url,
+      issue_url: input.pullRequest.issue_url,
+      number: input.pullRequest.number,
+      state: input.pullRequest.state,
+      locked: input.pullRequest.locked,
+      title: input.pullRequest.title,
+      user: input.pullRequest.user,
+      body: input.pullRequest.body,
+      created_at: input.pullRequest.created_at,
+      updated_at: input.pullRequest.updated_at,
+      closed_at: input.pullRequest.closed_at,
+      merged_at: input.pullRequest.merged_at,
+      merge_commit_sha: input.pullRequest.merge_commit_sha,
+      draft: input.pullRequest.draft,
+      head: input.pullRequest.head,
+      base: input.pullRequest.base,
+    }),
+  );
+}
+
+function gitHubPullRequestText(
+  input: GitHubPullRequestNormalizationInput,
+): string {
+  const repositoryId = gitHubPullRequestRepositoryId(input);
+  const mergeCommit =
+    input.pullRequest.merge_commit_sha === null
+      ? null
+      : `Merge Commit: ${input.pullRequest.merge_commit_sha}`;
+  const mergedAt =
+    input.pullRequest.merged_at === null
+      ? null
+      : `Merged: ${new Date(input.pullRequest.merged_at).toISOString()}`;
+  const closedAt =
+    input.pullRequest.closed_at === null
+      ? null
+      : `Closed: ${new Date(input.pullRequest.closed_at).toISOString()}`;
+
+  return [
+    input.pullRequest.title,
+    input.pullRequest.body?.trim() ?? null,
+    `Repository: ${repositoryId}`,
+    `Number: ${input.pullRequest.number}`,
+    `State: ${input.pullRequest.state}`,
+    `Draft: ${input.pullRequest.draft}`,
+    `Head: ${input.pullRequest.head.label} (${input.pullRequest.head.ref} @ ${input.pullRequest.head.sha})`,
+    `Base: ${input.pullRequest.base.label} (${input.pullRequest.base.ref} @ ${input.pullRequest.base.sha})`,
+    mergeCommit,
+    `Issue: ${input.pullRequest.issue_url}`,
+    `Author: ${input.pullRequest.user.login}`,
+    mergedAt,
     closedAt,
   ]
     .filter((value): value is string => value !== null && value.length > 0)
@@ -4469,6 +4673,53 @@ export function normalizeGitHubIssue(
       kind: "text",
       subject: `${issueId} ${kind === "pull_request" ? "pull request" : "issue"}`,
       text: gitHubIssueText(input),
+    },
+  });
+}
+
+export function normalizeGitHubPullRequest(
+  input: GitHubPullRequestNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = gitHubPullRequestSourceKey(input);
+  const pullRequestId = gitHubPullRequestId(input);
+
+  return buildCanonicalEvent({
+    source: {
+      platform: "github",
+      key: sourceKey,
+      fingerprint: gitHubPullRequestSourceFingerprint(input),
+      externalConversationId: pullRequestId,
+      externalMessageId: gitHubPullRequestExternalMessageId(input),
+      artifactId: input.pullRequest.html_url,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "software_development",
+      sourceName: "github",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: new Date(input.pullRequest.created_at).toISOString(),
+      license: null,
+    },
+    time: {
+      createdAt: new Date(input.pullRequest.created_at).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [
+      {
+        role: "author",
+        name: input.pullRequest.user.login,
+        address: input.pullRequest.user.html_url,
+      },
+    ],
+    content: {
+      kind: "text",
+      subject: `${pullRequestId} pull request`,
+      text: gitHubPullRequestText(input),
     },
   });
 }
