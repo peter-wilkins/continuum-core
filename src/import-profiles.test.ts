@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildEmailEngagementIndex,
+  createMemoryActiveImportedEntries,
+  debugRankingProfiles,
+  evaluateCanonicalEventImportProfile,
   evaluateEmailImportProfile,
+  normalizeChatGptMessage,
+  retrieveContinuationCandidates,
   summarizeImportFilterDecisions,
   type EmailMessageNormalizationInput,
+  type ImportFilterDecision,
 } from "./index";
 
 const myAddresses = ["peter@example.com"];
@@ -42,6 +48,158 @@ function email(input: {
 }
 
 describe("import profiles", () => {
+  it("routes uncertain canonical events to needs review in intentional context", () => {
+    const event = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_uncertain",
+        title: "Unknown import",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_uncertain",
+        parent: "root",
+        children: [],
+        message: {
+          id: "msg_uncertain",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["This event has no source-specific curation rule yet."],
+          },
+        },
+      },
+    });
+
+    expect(
+      evaluateCanonicalEventImportProfile({
+        profile: "intentional_context",
+        event,
+      }),
+    ).toEqual({
+      action: "needs_review",
+      reason: "uncertain_intent",
+      confidence: 0.6,
+    });
+  });
+
+  it("keeps needs-review import records local but inactive for retrieval", () => {
+    const included = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Boiler quote",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_boiler",
+        parent: "root",
+        children: [],
+        message: {
+          id: "msg_boiler",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Need to quote Bob for the boiler."],
+          },
+        },
+      },
+    });
+    const needsReview = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_456",
+        title: "Sea turtles",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_turtles",
+        parent: "root",
+        children: [],
+        message: {
+          id: "msg_turtles",
+          create_time: 1779360180,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Watched another sea turtle video."],
+          },
+        },
+      },
+    });
+    const excluded = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_789",
+        title: "Promotions",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_promo",
+        parent: "root",
+        children: [],
+        message: {
+          id: "msg_promo",
+          create_time: 1779360240,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: ["Bulk promotional noise."],
+          },
+        },
+      },
+    });
+    const decisions: ImportFilterDecision[] = [
+      {
+        action: "include",
+        reason: "profile_everything",
+        confidence: 1,
+      },
+      {
+        action: "needs_review",
+        reason: "weak_passive_activity",
+        confidence: 0.8,
+      },
+      {
+        action: "exclude",
+        reason: "no_prior_engagement",
+        confidence: 0.8,
+      },
+    ];
+
+    const entries = createMemoryActiveImportedEntries({
+      events: [included, needsReview, excluded],
+      decisions,
+    });
+    const candidates = retrieveContinuationCandidates({
+      resumeRequest: {
+        text: "sea turtles",
+        requestedAt: "2026-05-21T12:00:00.000Z",
+      },
+      rankingProfile: debugRankingProfiles.balanced,
+      entries,
+    });
+
+    expect(entries.map((entry) => entry.canonicalEventId)).toEqual([included.id]);
+    const supportingEntryIds = candidates.flatMap(
+      (candidate) => candidate.supportingEntryIds,
+    );
+    expect(supportingEntryIds).not.toContain(`entry:${needsReview.id}`);
+    expect(supportingEntryIds).not.toContain(`entry:${excluded.id}`);
+    expect(summarizeImportFilterDecisions(decisions)).toEqual({
+      included: 1,
+      excluded: 1,
+      needsReview: 1,
+      reasons: {
+        no_prior_engagement: 1,
+        profile_everything: 1,
+        weak_passive_activity: 1,
+      },
+    });
+  });
+
   it("imports engaged-contact email and excludes unreplied or promotional email", () => {
     const messages = [
       email({

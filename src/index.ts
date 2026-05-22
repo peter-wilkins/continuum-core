@@ -538,6 +538,9 @@ export type ImportFilterAction = "include" | "exclude" | "needs_review";
 export type ImportFilterReason =
   | "profile_everything"
   | "not_promotional_or_bulk"
+  | "strong_user_intent"
+  | "weak_passive_activity"
+  | "uncertain_intent"
   | "sent_by_user"
   | "replied_contact"
   | "thread_participated"
@@ -2165,6 +2168,91 @@ export function summarizeImportFilterDecisions(
   }
 
   return summary;
+}
+
+function includeDecision(reason: ImportFilterReason, confidence: number): ImportFilterDecision {
+  return {
+    action: "include",
+    reason,
+    confidence,
+  };
+}
+
+function needsReviewDecision(
+  reason: ImportFilterReason,
+  confidence: number,
+): ImportFilterDecision {
+  return {
+    action: "needs_review",
+    reason,
+    confidence,
+  };
+}
+
+function isGoogleStrongIntentEvent(event: CanonicalEvent): boolean {
+  if (event.provenance.sourceName === "google_chrome_bookmarks") {
+    return true;
+  }
+
+  if (event.provenance.sourceName === "google_chrome_reading_list") {
+    return true;
+  }
+
+  if (event.provenance.sourceName !== "google_my_activity") {
+    return false;
+  }
+
+  return event.source.externalConversationId === "Search" ||
+    event.source.externalConversationId === "Maps";
+}
+
+function isGoogleWeakPassiveEvent(event: CanonicalEvent): boolean {
+  if (event.provenance.sourceName === "google_chrome_history") {
+    return true;
+  }
+
+  if (event.provenance.sourceName !== "google_my_activity") {
+    return false;
+  }
+
+  return event.source.externalConversationId === "YouTube" &&
+    event.content.text.toLowerCase().includes("watch history");
+}
+
+export function evaluateCanonicalEventImportProfile(input: {
+  profile: ImportProfile;
+  event: CanonicalEvent;
+}): ImportFilterDecision {
+  if (input.profile === "everything") {
+    return includeDecision("profile_everything", 1);
+  }
+
+  if (input.profile === "clean_default") {
+    return includeDecision("not_promotional_or_bulk", 0.85);
+  }
+
+  if (isGoogleStrongIntentEvent(input.event)) {
+    return includeDecision("strong_user_intent", 0.9);
+  }
+
+  if (isGoogleWeakPassiveEvent(input.event)) {
+    return needsReviewDecision("weak_passive_activity", 0.8);
+  }
+
+  return needsReviewDecision("uncertain_intent", 0.6);
+}
+
+export function createMemoryActiveImportedEntries(input: {
+  events: CanonicalEvent[];
+  decisions: ImportFilterDecision[];
+}): ImportedEntry[] {
+  if (input.events.length !== input.decisions.length) {
+    throw new Error("events and decisions must have the same length.");
+  }
+
+  return input.events
+    .filter((_, index) => input.decisions[index]?.action === "include")
+    .map((event) => createImportedEntryFromCanonicalEvent(event));
 }
 
 export function createImportedEntryFromCanonicalEvent(

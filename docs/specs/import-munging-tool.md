@@ -526,13 +526,12 @@ Current dry-run preview includes:
 - source file summaries
 - event summaries
 - warning counts for skipped unsupported files
-
-Later previews should include import profile summaries:
-
-- included
-- excluded
-- needs review
-- reasons such as `promotional_or_bulk` and `no_prior_engagement`
+- import profile summaries:
+  - included
+  - excluded
+  - needs review
+  - reasons such as `strong_user_intent`, `weak_passive_activity`, `promotional_or_bulk`, and `no_prior_engagement`
+- event-level filter decisions and memory-active flags
 
 User actions:
 

@@ -1,6 +1,6 @@
 # 058: Keep Needs Review Imports Inactive
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -18,12 +18,12 @@ This is deliberately not an interactive curator. It is a conservative gate betwe
 
 ## Acceptance Criteria
 
-- [ ] Import profile decisions can represent `include`, `exclude`, and `needs_review` in preview/report output.
-- [ ] `needs_review` records remain inspectable locally with reason and confidence.
-- [ ] `needs_review` records are not converted into retrieval-active Imported Entries or Continuation Candidates.
-- [ ] `include` records still flow through the existing imported-entry and retrieval path.
-- [ ] `exclude` records do not become retrieval-active and are counted separately from `needs_review`.
-- [ ] Conservative default is documented or tested: uncertainty routes to `needs_review`, not `include`.
+- [x] Import profile decisions can represent `include`, `exclude`, and `needs_review` in preview/report output.
+- [x] `needs_review` records remain inspectable locally with reason and confidence.
+- [x] `needs_review` records are not converted into retrieval-active Imported Entries or Continuation Candidates.
+- [x] `include` records still flow through the existing imported-entry and retrieval path.
+- [x] `exclude` records do not become retrieval-active and are counted separately from `needs_review`.
+- [x] Conservative default is documented or tested: uncertainty routes to `needs_review`, not `include`.
 
 ## Blocked by
 

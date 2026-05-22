@@ -98,9 +98,18 @@ describe("continuum-import CLI", () => {
           uncertain: 0,
         },
         quarantine: [],
+        filterSummary: {
+          included: 1,
+          excluded: 0,
+          needsReview: 1,
+          reasons: {
+            strong_user_intent: 1,
+            weak_passive_activity: 1,
+          },
+        },
       }),
     ).toBe(
-      "Preview written to /tmp/preview.json\nReport new=2 known=0 changed=0 uncertain=0 quarantined=0 warnings=1 sourceFiles=3\n",
+      "Preview written to /tmp/preview.json\nReport new=2 known=0 changed=0 uncertain=0 quarantined=0 warnings=1 sourceFiles=3 included=1 excluded=0 needsReview=1\n",
     );
   });
 
@@ -595,8 +604,18 @@ describe("continuum-import CLI", () => {
       expect(result.batch.stats.filesSeen).toBe(3);
       expect(result.batch.stats.recordsSeen).toBe(5);
       expect(result.batch.stats.eventsCreated).toBe(5);
+      expect(result.filterSummary).toEqual({
+        included: 3,
+        excluded: 0,
+        needsReview: 2,
+        reasons: {
+          strong_user_intent: 3,
+          weak_passive_activity: 2,
+        },
+      });
 
       const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.filterSummary).toEqual(result.filterSummary);
       expect(preview.events).toHaveLength(5);
       expect(preview.events.map((event: { platform: string }) => event.platform)).toEqual([
         "google_chrome",
@@ -604,6 +623,51 @@ describe("continuum-import CLI", () => {
         "google_activity",
         "google_activity",
         "google_activity",
+      ]);
+      expect(
+        preview.events.map(
+          (event: {
+            subject: string | null;
+            filterDecision: { action: string; reason: string };
+            memoryActive: boolean;
+          }) => ({
+            subject: event.subject,
+            action: event.filterDecision.action,
+            reason: event.filterDecision.reason,
+            memoryActive: event.memoryActive,
+          }),
+        ),
+      ).toEqual([
+        {
+          subject: "Continuum core",
+          action: "include",
+          reason: "strong_user_intent",
+          memoryActive: true,
+        },
+        {
+          subject: "Continuum core issue tracker",
+          action: "needs_review",
+          reason: "weak_passive_activity",
+          memoryActive: false,
+        },
+        {
+          subject: "Watched TypeScript Tutorial",
+          action: "needs_review",
+          reason: "weak_passive_activity",
+          memoryActive: false,
+        },
+        {
+          subject: "Searched for canonical event schema",
+          action: "include",
+          reason: "strong_user_intent",
+          memoryActive: true,
+        },
+        {
+          subject: "Searched for coffee near me",
+          action: "include",
+          reason: "strong_user_intent",
+          memoryActive: true,
+        },
       ]);
       expect(preview.sourceFiles).toEqual([
         {

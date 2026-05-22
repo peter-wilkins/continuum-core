@@ -3,10 +3,15 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 import {
+  evaluateCanonicalEventImportProfile,
+  type ImportFilterDecision,
   type ImportErrorRecord,
+  type ImportFilterSummary,
+  type ImportProfile,
   mergeCanonicalEvents,
   type CanonicalEvent,
   type ImportReport,
+  summarizeImportFilterDecisions,
 } from "./index";
 import {
   normalizeArchiveFiles,
@@ -45,9 +50,11 @@ export type ImportBatch = {
 };
 
 export type ImportPreview = {
+  importProfile: ImportProfile;
   batch: ImportBatch;
   report: ImportReport;
   quarantine: ImportErrorRecord[];
+  filterSummary: ImportFilterSummary;
   sourceFiles: SourceFilePreview[];
   events: Array<{
     id: string;
@@ -55,6 +62,8 @@ export type ImportPreview = {
     role: string;
     createdAt: string;
     subject: string | null;
+    filterDecision: ImportFilterDecision;
+    memoryActive: boolean;
   }>;
 };
 
@@ -86,6 +95,7 @@ export type DryRunCliResult = {
   batch: ImportBatch;
   report: ImportReport;
   quarantine: ImportErrorRecord[];
+  filterSummary: ImportFilterSummary;
 };
 
 export type ContinuumImportCliResult =
@@ -304,6 +314,14 @@ async function dryRunImport(
 ): Promise<DryRunCliResult> {
   const { incomingEvents, quarantine, sourceFiles, warnings } =
     normalizeCommandInput(command.source, command.inputPath, input);
+  const importProfile: ImportProfile = "intentional_context";
+  const filterDecisions = incomingEvents.map((event) =>
+    evaluateCanonicalEventImportProfile({
+      profile: importProfile,
+      event,
+    }),
+  );
+  const filterSummary = summarizeImportFilterDecisions(filterDecisions);
   const { report } = mergeCanonicalEvents([], incomingEvents);
   const batch = createImportBatch({
     source: command.source,
@@ -316,9 +334,11 @@ async function dryRunImport(
     warnings,
   });
   const preview: ImportPreview = {
+    importProfile,
     batch,
     report,
     quarantine,
+    filterSummary,
     sourceFiles:
       sourceFiles.length > 0
         ? sourceFiles
@@ -328,12 +348,14 @@ async function dryRunImport(
             incomingEvents,
             quarantine,
           ),
-    events: incomingEvents.map((event) => ({
+    events: incomingEvents.map((event, index) => ({
       id: event.id,
       platform: event.source.platform,
       role: event.actor.role,
       createdAt: event.time.createdAt,
       subject: event.content.subject,
+      filterDecision: filterDecisions[index]!,
+      memoryActive: filterDecisions[index]?.action === "include",
     })),
   };
 
@@ -345,6 +367,7 @@ async function dryRunImport(
     batch,
     report,
     quarantine,
+    filterSummary,
   };
 }
 

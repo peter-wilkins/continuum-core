@@ -85,7 +85,7 @@ export function formatContinuumImportCliResult(
   if (result.command === "dry-run") {
     return [
       `Preview written to ${result.previewPath}`,
-      `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length} warnings=${result.batch.stats.warnings} sourceFiles=${result.batch.stats.filesSeen}`,
+      `Report new=${result.report.new} known=${result.report.known} changed=${result.report.changed} uncertain=${result.report.uncertain} quarantined=${result.quarantine.length} warnings=${result.batch.stats.warnings} sourceFiles=${result.batch.stats.filesSeen} included=${result.filterSummary.included} excluded=${result.filterSummary.excluded} needsReview=${result.filterSummary.needsReview}`,
     ].join("\n") + "\n";
   }
 
