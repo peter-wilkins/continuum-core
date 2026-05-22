@@ -187,6 +187,7 @@ Source fingerprint:
 - Used to detect same-key changed records.
 - Used for idempotent reimport reports.
 - Not used as proof of independent evidence.
+- Not used as a content-addressable storage key in the MVP.
 
 Reimport report:
 
@@ -276,6 +277,8 @@ The first core model exposes Atlas, Loom, and Beacon as default public Lens defi
 The deterministic MVP helper can create default Atlas, Loom, and Beacon outputs from a scope, query, and canonical events. These outputs are intentionally reference-only and can be replaced by richer generation later.
 
 For document-like public sources such as Wikipedia, import should preserve paragraph-level source references. These Source Paragraphs give Thought Cards precise provenance without making the importer generate Thought Cards directly.
+
+The MVP Source Paragraph locator should start with document id, paragraph index, and source fingerprint. Avoid character-count and line-count locators until a real retrieval problem requires them. If the locator needs source facts that are outside the paragraph text, such as page title, revision id, license, retrieval URL, or parser version, keep that context explicit beside the locator rather than hiding it in code assumptions.
 
 Lens feedback is evidence about one scope/query/candidate set:
 
