@@ -184,6 +184,17 @@ export type LensOutput = {
   };
 };
 
+export type LensFeedbackSignal = {
+  id: string;
+  userId: string;
+  scopeId: string;
+  queryId: string;
+  selectedLensOutputId: string;
+  candidateLensOutputIds: string[];
+  signal: "preferred";
+  createdAt: string;
+};
+
 export const defaultPublicLensDefinitions: LensDefinition[] = [
   {
     id: "atlas",
@@ -213,6 +224,14 @@ export const defaultPublicLensDefinitions: LensDefinition[] = [
 
 export function createLensOutput(input: LensOutput): LensOutput {
   validateLensOutput(input);
+
+  return input;
+}
+
+export function createLensFeedbackSignal(
+  input: LensFeedbackSignal,
+): LensFeedbackSignal {
+  validateLensFeedbackSignal(input);
 
   return input;
 }
@@ -274,6 +293,34 @@ function validateLensOutput(output: LensOutput): void {
   for (const parameter of output.generation.parameters) {
     validateNonBlank("LensOutput generation parameter key", parameter.key);
     validateNonBlank("LensOutput generation parameter value", parameter.value);
+  }
+}
+
+function validateLensFeedbackSignal(signal: LensFeedbackSignal): void {
+  validateNonBlank("LensFeedback id", signal.id);
+  validateNonBlank("LensFeedback userId", signal.userId);
+  validateNonBlank("LensFeedback scopeId", signal.scopeId);
+  validateNonBlank("LensFeedback queryId", signal.queryId);
+  validateNonBlank("LensFeedback selectedLensOutputId", signal.selectedLensOutputId);
+
+  if (signal.candidateLensOutputIds.length === 0) {
+    throw new Error(
+      "LensFeedback candidateLensOutputIds must contain at least one Lens output id.",
+    );
+  }
+
+  for (const candidateId of signal.candidateLensOutputIds) {
+    validateNonBlank("LensFeedback candidateLensOutputIds", candidateId);
+  }
+
+  if (!signal.candidateLensOutputIds.includes(signal.selectedLensOutputId)) {
+    throw new Error(
+      "LensFeedback selectedLensOutputId must be in candidateLensOutputIds.",
+    );
+  }
+
+  if (Number.isNaN(new Date(signal.createdAt).getTime())) {
+    throw new Error("LensFeedback createdAt must be an ISO-compatible date.");
   }
 }
 

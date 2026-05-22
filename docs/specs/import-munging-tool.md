@@ -271,6 +271,17 @@ For generated Lens outputs, prefer storing:
 
 The first core model exposes Atlas, Loom, and Beacon as default public Lens definitions. A `LensOutput` stores ordered event ids and section event ids; it does not store copied event payload text.
 
+Lens feedback is evidence about one scope/query/candidate set:
+
+- user id
+- scope id
+- query id
+- selected Lens output id
+- candidate Lens output ids
+- created time
+
+It is not a user settings system in the MVP.
+
 Avoid copying whole event payloads or treating generated text as durable truth. If generated text is stored for page-load stability or release repeatability, mark it as rebuildable and keep the source ids needed to regenerate it.
 
 Import batch provenance should use a link table rather than an `import_batch_id` column on events. A Canonical Event can be observed by multiple imports over time, especially during reimport, so batches observe events; they do not own them.
