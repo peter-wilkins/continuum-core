@@ -691,6 +691,37 @@ export type MediaWikiRevisionNormalizationInput = {
   };
 };
 
+export type WikidataLocalizedValue = {
+  language: string;
+  value: string;
+};
+
+export type WikidataEntityNormalizationInput = {
+  entities: Record<
+    string,
+    {
+      pageid: number;
+      ns: number;
+      title: string;
+      lastrevid: number;
+      modified: string;
+      type: "item";
+      id: string;
+      labels: {
+        en: WikidataLocalizedValue;
+      };
+      descriptions: {
+        en: WikidataLocalizedValue;
+      };
+      aliases: {
+        en: WikidataLocalizedValue[];
+      };
+      claims: Record<string, unknown[]>;
+      sitelinks: Record<string, unknown>;
+    }
+  >;
+};
+
 export type ImportReport = {
   new: number;
   known: number;
@@ -821,12 +852,15 @@ function provenanceKey(provenance: EventProvenance): string {
   const lineageInputs =
     provenance.derivedFrom.length > 0
       ? provenance.derivedFrom
-      : provenance.upstreamSources.length > 0
-        ? provenance.upstreamSources
-        : [provenance.sourceName];
+      : provenance.upstreamSources;
+
+  if (lineageInputs.length === 0) {
+    return `source:${provenance.sourceFamily}:${provenance.sourceName}`;
+  }
+
   const lineage = new Set(lineageInputs);
 
-  return `${provenance.sourceFamily}:${[...lineage].sort().join("|")}`;
+  return `lineage:${[...lineage].sort().join("|")}`;
 }
 
 export function countIndependentEvidence(events: CanonicalEvent[]): number {
@@ -1265,6 +1299,40 @@ const mediaWikiRevisionSchema = z
   })
   .passthrough();
 
+const wikidataLocalizedValueSchema = z.object({
+  language: z.string(),
+  value: z.string(),
+});
+
+const wikidataEntitySchema = z
+  .object({
+    pageid: z.number(),
+    ns: z.number(),
+    title: z.string(),
+    lastrevid: z.number(),
+    modified: isoDatetimeSchema,
+    type: z.literal("item"),
+    id: z.string(),
+    labels: z.object({
+      en: wikidataLocalizedValueSchema,
+    }),
+    descriptions: z.object({
+      en: wikidataLocalizedValueSchema,
+    }),
+    aliases: z.object({
+      en: z.array(wikidataLocalizedValueSchema),
+    }),
+    claims: z.record(z.string(), z.array(z.unknown())),
+    sitelinks: z.record(z.string(), z.unknown()),
+  })
+  .passthrough();
+
+const wikidataEntityExportSchema = z
+  .object({
+    entities: z.record(z.string(), wikidataEntitySchema),
+  })
+  .passthrough();
+
 const googleMyActivityExportSchema = z.array(googleMyActivityRecordSchema);
 
 function validationPath(path: PropertyKey[]): string {
@@ -1466,6 +1534,27 @@ export function parseMediaWikiRevision(
   input: unknown,
 ): SourceValidationResult<MediaWikiRevisionNormalizationInput> {
   const result = mediaWikiRevisionSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parseWikidataEntity(
+  input: unknown,
+): SourceValidationResult<WikidataEntityNormalizationInput> {
+  const result = wikidataEntityExportSchema.safeParse(input);
 
   if (result.success) {
     return {
@@ -2055,6 +2144,65 @@ function mediaWikiSourceFingerprint(
       sha1: input.revision.sha1,
       size: input.revision.size,
       slots: input.revision.slots,
+    }),
+  );
+}
+
+function singleWikidataEntity(input: WikidataEntityNormalizationInput): {
+  entityKey: string;
+  entity: WikidataEntityNormalizationInput["entities"][string];
+} {
+  const entries = Object.entries(input.entities);
+
+  if (entries.length !== 1) {
+    throw new Error("Wikidata entity import expects exactly one entity.");
+  }
+
+  const [entityKey, entity] = entries[0]!;
+
+  if (entity.id !== entityKey) {
+    throw new Error("Wikidata entity key must match entity id.");
+  }
+
+  return { entityKey, entity };
+}
+
+function wikidataSourceKey(entityId: string): string {
+  return `wikidata:${entityId}`;
+}
+
+function wikidataEntityText(
+  entity: WikidataEntityNormalizationInput["entities"][string],
+): string {
+  const aliases = entity.aliases.en.map((alias) => alias.value).join("; ");
+
+  return [
+    entity.labels.en.value,
+    entity.descriptions.en.value,
+    aliases.length > 0 ? `Aliases: ${aliases}` : null,
+    `Wikidata entity: ${entity.id}`,
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
+}
+
+function wikidataSourceFingerprint(
+  input: WikidataEntityNormalizationInput,
+): string {
+  const { entity } = singleWikidataEntity(input);
+
+  return stableHash(
+    JSON.stringify({
+      platform: "wikimedia",
+      sourceName: "wikidata",
+      id: entity.id,
+      lastrevid: entity.lastrevid,
+      modified: entity.modified,
+      labels: entity.labels,
+      descriptions: entity.descriptions,
+      aliases: entity.aliases,
+      claims: entity.claims,
+      sitelinks: entity.sitelinks,
     }),
   );
 }
@@ -3098,10 +3246,10 @@ export function normalizeMediaWikiRevision(
       canonicalParentEventId: null,
     },
     provenance: {
-      sourceFamily: "public_knowledge_graph",
+      sourceFamily: "wikimedia",
       sourceName: "wikipedia",
-      upstreamSources: [],
-      derivedFrom: ["wikipedia"],
+      upstreamSources: ["wikimedia"],
+      derivedFrom: [],
       retrievedAt: "unknown",
       license: "CC-BY-SA",
     },
@@ -3117,6 +3265,47 @@ export function normalizeMediaWikiRevision(
       kind: "text",
       subject: input.page.title,
       text: input.revision.comment,
+    },
+  });
+}
+
+export function normalizeWikidataEntity(
+  input: WikidataEntityNormalizationInput,
+): CanonicalEvent {
+  const { entity } = singleWikidataEntity(input);
+  const sourceKey = wikidataSourceKey(entity.id);
+
+  return buildCanonicalEvent({
+    source: {
+      platform: "wikimedia",
+      key: sourceKey,
+      fingerprint: wikidataSourceFingerprint(input),
+      externalConversationId: sourceKey,
+      externalMessageId: String(entity.lastrevid),
+      artifactId: sourceKey,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "wikimedia",
+      sourceName: "wikidata",
+      upstreamSources: ["wikimedia"],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: "CC0",
+    },
+    time: {
+      createdAt: new Date(entity.modified).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: entity.labels.en.value,
+      text: wikidataEntityText(entity),
     },
   });
 }

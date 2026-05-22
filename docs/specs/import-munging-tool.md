@@ -63,6 +63,7 @@ Private/personal parser coverage:
 - Google Chrome bookmarks: Takeout/Data Portability fixture imports one saved reference.
 - Google Chrome reading list: Takeout/Data Portability fixture imports one saved reference.
 - Google My Activity: fixture imports YouTube, Search, and Maps activity records.
+- Wikimedia/Wikidata entity: Ada Lovelace public fixture imports as one canonical event.
 - Wikimedia/MediaWiki revision: public sample fixture exists.
 
 Public MVP direction:

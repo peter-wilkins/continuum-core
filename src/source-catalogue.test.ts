@@ -34,8 +34,9 @@ describe("source catalogue", () => {
     );
 
     expect(wikimedia?.name).toContain("Wikimedia");
-    expect(wikimedia?.nextEventTarget).toBe("MediaWiki page revision");
-    expect(wikimedia?.provenance.derivedFrom).toContain("wikipedia");
+    expect(wikimedia?.nextEventTarget).toBe("Wikidata entity snapshot");
+    expect(wikimedia?.provenance.sourceFamily).toBe("wikimedia");
+    expect(wikimedia?.provenance.upstreamSources).toContain("wikimedia");
   });
 
   it("splits Google Takeout into concrete source families", () => {

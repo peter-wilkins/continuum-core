@@ -37,6 +37,9 @@ const gitFixturePath = fileURLToPath(
 const mediawikiFixturePath = fileURLToPath(
   new URL("./fixtures/mediawiki-one-revision.json", import.meta.url),
 );
+const wikidataFixturePath = fileURLToPath(
+  new URL("./fixtures/wikidata-ada-lovelace-entity.json", import.meta.url),
+);
 const emailMboxFixturePath = fileURLToPath(
   new URL("./fixtures/email-one-message.mbox", import.meta.url),
 );
@@ -1398,6 +1401,45 @@ describe("continuum-import CLI", () => {
         content: {
           subject: "Boiler",
           text: "Add maintenance note",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports a Wikidata entity file through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "wikidata-entity",
+        wikidataFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "wikimedia",
+          externalConversationId: "wikidata:Q7259",
+          externalMessageId: "2495481811",
+        },
+        provenance: {
+          sourceFamily: "wikimedia",
+          sourceName: "wikidata",
+        },
+        content: {
+          subject: "Ada Lovelace",
         },
       });
     } finally {

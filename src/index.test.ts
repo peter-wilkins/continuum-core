@@ -8,11 +8,15 @@ import emailFixture from "./fixtures/email-one-message.json" with {
 import mediaWikiFixture from "./fixtures/mediawiki-one-revision.json" with {
   type: "json",
 };
+import wikidataFixture from "./fixtures/wikidata-ada-lovelace-entity.json" with {
+  type: "json",
+};
 
 import {
   type ClaudeConversationExport,
   type EmailMessageNormalizationInput,
   type MediaWikiRevisionNormalizationInput,
+  type WikidataEntityNormalizationInput,
   canonicalEventToLocalSourceCacheEventRow,
   createImportedEntryFromCanonicalEvent,
   mergeCanonicalEvents,
@@ -22,6 +26,7 @@ import {
   normalizeChatGptMessage,
   normalizeEmailMessage,
   normalizeMediaWikiRevision,
+  normalizeWikidataEntity,
 } from "./index";
 
 describe("continuum core package scaffold", () => {
@@ -357,6 +362,52 @@ describe("Email import normalization", () => {
 });
 
 describe("Wikimedia import normalization", () => {
+  it("imports one Wikidata entity into the canonical event model", () => {
+    const event = normalizeWikidataEntity(
+      wikidataFixture as WikidataEntityNormalizationInput,
+    );
+
+    expect(event).toMatchObject({
+      id: "wikidata:Q7259",
+      source: {
+        platform: "wikimedia",
+        key: "wikidata:Q7259",
+        externalConversationId: "wikidata:Q7259",
+        externalMessageId: "2495481811",
+        artifactId: "wikidata:Q7259",
+        externalParentId: null,
+        canonicalParentEventId: null,
+      },
+      provenance: {
+        sourceFamily: "wikimedia",
+        sourceName: "wikidata",
+        upstreamSources: ["wikimedia"],
+        derivedFrom: [],
+        retrievedAt: "unknown",
+        license: "CC0",
+      },
+      time: {
+        createdAt: "2026-05-21T12:08:07.000Z",
+        createdAtConfidence: "exact",
+      },
+      actor: {
+        role: "other",
+      },
+      participants: [],
+      content: {
+        kind: "text",
+        subject: "Ada Lovelace",
+        text: [
+          "Ada Lovelace",
+          "English mathematician (1815-1852)",
+          "Aliases: Lady Ada; Augusta Ada Byron",
+          "Wikidata entity: Q7259",
+        ].join("\n"),
+      },
+    });
+    expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
+  });
+
   it("imports one MediaWiki page revision into the canonical event model", () => {
     const event = normalizeMediaWikiRevision(
       mediaWikiFixture as MediaWikiRevisionNormalizationInput,

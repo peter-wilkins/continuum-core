@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "Q7259": {
+      "pageid": 8067,
+      "ns": 0,
+      "title": "Q7259",
+      "lastrevid": 2495481811,
+      "modified": "2026-05-21T12:08:07Z",
+      "type": "item",
+      "id": "Q7259",
+      "labels": {
+        "en": {
+          "language": "en",
+          "value": "Ada Lovelace"
+        }
+      },
+      "descriptions": {
+        "en": {
+          "language": "en",
+          "value": "English mathematician (1815-1852)"
+        }
+      },
+      "aliases": {
+        "en": [
+          {
+            "language": "en",
+            "value": "Lady Ada"
+          },
+          {
+            "language": "en",
+            "value": "Augusta Ada Byron"
+          }
+        ]
+      },
+      "claims": {
+        "P101": [
+          {
+            "mainsnak": {
+              "property": "P101",
+              "snaktype": "value"
+            },
+            "rank": "normal"
+          }
+        ]
+      },
+      "sitelinks": {
+        "enwiki": {
+          "site": "enwiki",
+          "title": "Ada Lovelace"
+        }
+      }
+    }
+  }
+}

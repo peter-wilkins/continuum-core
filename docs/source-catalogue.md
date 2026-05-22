@@ -27,7 +27,7 @@ Public-first source queue:
 | 2 | Email / MBOX | implemented fixture | high | high | high | RFC 5322 email message | `src/fixtures/email-one-message.mbox` |
 | 3 | Git commits | implemented fixture | high | high | medium | Git commit | `src/fixtures/git-one-commit.txt` |
 | 4 | GitHub issues, pull requests, reviews, commits, discussions | sample available | high | high | medium | GitHub issue comment | `data/github/octocat-hello-world-issue-comments.json` |
-| 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | MediaWiki page revision | `data/wikimedia/boiler-revisions.json` |
+| 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | Wikidata entity snapshot | `src/fixtures/wikidata-ada-lovelace-entity.json` |
 | 6 | Calendar / iCalendar | implemented fixture | high | medium | high | Calendar event | `src/fixtures/calendar-one-event.ics` |
 | 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |
 | 8 | Markdown / Obsidian / local docs | implemented fixture | high | medium | medium | Markdown file revision snapshot | `src/fixtures/markdown-one-note.md` |
@@ -95,6 +95,7 @@ Google Takeout is not one schema:
 - GitHub issue comments: https://docs.github.com/en/rest/issues/comments
 - GitHub pull requests: https://docs.github.com/en/rest/pulls/pulls
 - MediaWiki revisions: https://www.mediawiki.org/wiki/API:Revisions
+- Wikidata data access: https://www.wikidata.org/wiki/Wikidata:Data_access
 - Wikimedia pageviews: https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html
 - iCalendar: https://www.rfc-editor.org/rfc/rfc5545
 - Slack exports: https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports

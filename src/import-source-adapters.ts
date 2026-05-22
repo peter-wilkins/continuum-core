@@ -14,6 +14,7 @@ import {
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
   normalizeMediaWikiRevision,
+  normalizeWikidataEntity,
   normalizeEmailMessage,
   parseClaudeConversationsWithQuarantine,
   parseGitLog,
@@ -23,6 +24,7 @@ import {
   parseGoogleMyActivityExport,
   parseICalendarEvents,
   parseMediaWikiRevision,
+  parseWikidataEntity,
   type MboxParseResult,
 } from "./index";
 
@@ -37,7 +39,8 @@ export type SourceImportCommand =
   | "git-log"
   | "icalendar"
   | "markdown"
-  | "mediawiki-revisions";
+  | "mediawiki-revisions"
+  | "wikidata-entity";
 
 export type ArchiveImportCommand = "google-takeout-folder" | "google-takeout-zip";
 
@@ -389,6 +392,37 @@ const sourceAdapters: SourceAdapter[] = [
       }
 
       return emptyNormalizedInput([normalizeMediaWikiRevision(result.value)]);
+    },
+  },
+  {
+    source: "wikidata-entity",
+    parseMode: "json",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".json") &&
+        (lowerPath.includes("wikidata") || lowerPath.includes("entitydata"))
+      );
+    },
+    parsedMatches: (parsed) => parseWikidataEntity(parsed).ok,
+    prepareInput: (parsed) => parsed,
+    normalize: (parsed) => {
+      const result = parseWikidataEntity(parsed);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine(
+            "wikidata-entity",
+            result.errors,
+          ),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return emptyNormalizedInput([normalizeWikidataEntity(result.value)]);
     },
   },
   {

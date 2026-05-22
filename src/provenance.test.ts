@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import wikidataFixture from "./fixtures/wikidata-ada-lovelace-entity.json" with {
+  type: "json",
+};
 
 import {
   countIndependentEvidence,
+  type WikidataEntityNormalizationInput,
   normalizeEmailMessage,
   normalizeMediaWikiRevision,
+  normalizeWikidataEntity,
 } from "./index";
 
 describe("provenance-aware ingestion", () => {
@@ -71,8 +76,8 @@ describe("provenance-aware ingestion", () => {
       provenance: {
         sourceFamily: "public_knowledge_graph",
         sourceName: "dbpedia",
-        upstreamSources: ["wikipedia"],
-        derivedFrom: ["wikipedia"],
+        upstreamSources: ["wikimedia"],
+        derivedFrom: [],
         retrievedAt: "2026-05-21T12:00:00.000Z",
         license: "CC-BY-SA",
       },
@@ -81,5 +86,38 @@ describe("provenance-aware ingestion", () => {
     expect(countIndependentEvidence([wikipediaRevision, derivedDbpediaEvent])).toBe(
       1,
     );
+  });
+
+  it("does not count Wikipedia and Wikidata records as independent by default", () => {
+    const wikipediaRevision = normalizeMediaWikiRevision({
+      project: "en.wikipedia.org",
+      page: {
+        pageid: 974,
+        ns: 0,
+        title: "Ada Lovelace",
+      },
+      revision: {
+        revid: 1344875211,
+        parentid: 1340805738,
+        timestamp: "2026-03-23T01:42:24Z",
+        user: "Example editor",
+        userid: 405840,
+        comment: "Update lead",
+        sha1: "7668dedccf109a2dfabd5e931261cd8aaeeeb237",
+        size: 30610,
+        slots: {
+          main: {
+            contentmodel: "wikitext",
+            contentformat: "text/x-wiki",
+            contentSha1: "7668dedccf109a2dfabd5e931261cd8aaeeeb237",
+          },
+        },
+      },
+    });
+    const wikidataEntity = normalizeWikidataEntity(
+      wikidataFixture as WikidataEntityNormalizationInput,
+    );
+
+    expect(countIndependentEvidence([wikipediaRevision, wikidataEntity])).toBe(1);
   });
 });
