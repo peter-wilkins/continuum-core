@@ -310,24 +310,29 @@ async function fetchGitDataset(outputDir, dataset) {
   const datasetDir = join(outputDir, dataset.id, "repo");
 
   if (await pathExists(datasetDir)) {
+    const lfsStatus = await inspectGitLfsPointerDataset(datasetDir);
+
     return {
       id: dataset.id,
       title: dataset.title,
-      status: "skipped_existing",
+      status: lfsStatus.status,
       license: dataset.license,
       path: datasetDir,
+      reason: lfsStatus.reason,
     };
   }
 
   await mkdir(join(outputDir, dataset.id), { recursive: true });
   await run("git", ["clone", "--depth", "1", dataset.repository, datasetDir]);
+  const lfsStatus = await inspectGitLfsPointerDataset(datasetDir);
 
   return {
     id: dataset.id,
     title: dataset.title,
-    status: "fetched",
+    status: lfsStatus.status,
     license: dataset.license,
     path: datasetDir,
+    reason: lfsStatus.reason,
   };
 }
 
@@ -337,6 +342,52 @@ async function pathExists(path) {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function inspectGitLfsPointerDataset(datasetDir) {
+  const sampleFiles = [
+    join(datasetDir, "AudioWAV", "1001_TIE_ANG_XX.wav"),
+    join(datasetDir, "AudioWAV", "1017_TSI_SAD_XX.wav"),
+  ];
+
+  for (const sampleFile of sampleFiles) {
+    if (!(await pathExists(sampleFile))) {
+      continue;
+    }
+
+    const firstBytes = await readTextPrefix(sampleFile, 64);
+
+    if (firstBytes.startsWith("version https://git-lfs.github.com/spec/v1")) {
+      return {
+        status: "fetched_metadata_lfs_pending",
+        reason:
+          "Repository cloned, but audio files are Git LFS pointers. Install git-lfs and run git lfs pull inside the dataset repo.",
+      };
+    }
+
+    return {
+      status: "fetched",
+      reason: "Repository cloned and sample audio file is not a Git LFS pointer.",
+    };
+  }
+
+  return {
+    status: "fetched",
+    reason: "Repository cloned; no known Git LFS sample file was found to inspect.",
+  };
+}
+
+async function readTextPrefix(path, length) {
+  const file = await import("node:fs/promises");
+  const handle = await file.open(path, "r");
+
+  try {
+    const buffer = Buffer.alloc(length);
+    const result = await handle.read(buffer, 0, length, 0);
+    return buffer.subarray(0, result.bytesRead).toString("utf8");
+  } finally {
+    await handle.close();
   }
 }
 

@@ -44,6 +44,8 @@ First benchmark pack:
 
 Do not train product models on non-commercial or licence-conflicted datasets. They can still shape schemas, local experiments, and QA if clearly marked.
 
+Local fetch note: CREMA-D clones metadata and label files through Git, but its `AudioWAV` files use Git LFS. Without `git-lfs`, those files are pointer text, not audio. Use RAVDESS for the first real WAV harness test.
+
 ## Processor Shape
 
 The audio processing contract should support:
