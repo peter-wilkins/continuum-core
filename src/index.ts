@@ -554,6 +554,46 @@ export function createDefaultPublicLensOutputs(
   );
 }
 
+export function createDefaultPublicThoughtCards(
+  lensOutput: LensOutput,
+  sourceParagraphs: SourceParagraph[],
+): ThoughtCard[] {
+  const sourceEventOrder = new Map(
+    lensOutput.sourceEventIds.map((eventId, index) => [eventId, index]),
+  );
+  const orderedParagraphs = sourceParagraphs
+    .filter((paragraph) => sourceEventOrder.has(paragraph.canonicalEventId))
+    .slice()
+    .sort((left, right) => {
+      const leftEventOrder = sourceEventOrder.get(left.canonicalEventId) ?? 0;
+      const rightEventOrder = sourceEventOrder.get(right.canonicalEventId) ?? 0;
+
+      if (leftEventOrder !== rightEventOrder) {
+        return leftEventOrder - rightEventOrder;
+      }
+
+      return Number(left.paragraphIndex) - Number(right.paragraphIndex);
+    });
+
+  if (orderedParagraphs.length === 0) {
+    throw new Error(
+      "Default public Thought Cards require at least one Source Paragraph referenced by the Lens output.",
+    );
+  }
+
+  return orderedParagraphs.map((paragraph, index) =>
+    createThoughtCard({
+      id: `thought-card:${lensOutput.id}:${index}`,
+      lensOutputId: lensOutput.id,
+      title: defaultThoughtCardTitle(paragraph.text),
+      body: paragraph.text,
+      sourceParagraphIds: [paragraph.id],
+      confidence: 1,
+      generatedAt: lensOutput.generatedAt,
+    }),
+  );
+}
+
 export function createLensFeedbackSignal(
   input: LensFeedbackSignal,
 ): LensFeedbackSignal {
@@ -623,6 +663,17 @@ function defaultLensSections(
 
 function compactLensSections(sections: LensOutputSection[]): LensOutputSection[] {
   return sections.filter((section) => section.eventIds.length > 0);
+}
+
+function defaultThoughtCardTitle(text: string): string {
+  const firstSentence = text.trim().split(/[.!?]/)[0]?.trim() ?? "";
+  const title = firstSentence.length > 0 ? firstSentence : text.trim();
+
+  if (title.length <= 80) {
+    return title;
+  }
+
+  return `${title.slice(0, 77).trim()}...`;
 }
 
 function validateNonBlank(fieldName: string, value: string): void {

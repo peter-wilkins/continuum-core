@@ -1,6 +1,6 @@
 # 075: Create Default Public Thought Cards
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -10,7 +10,7 @@ AFK.
 
 The MVP already creates default public Lens outputs, but those outputs are still document/event shaped. The next usable slice should produce Thought Cards from Source Paragraphs so the app can render small source-backed thoughts.
 
-## What to build
+## What Was Built
 
 Add a deterministic helper that creates ordered public MVP Thought Cards for a Lens output from Source Paragraphs.
 
@@ -20,14 +20,14 @@ Add a deterministic helper that creates ordered public MVP Thought Cards for a L
 
 ## Acceptance Criteria
 
-- [ ] Create Thought Cards for one Lens output from one or more Source Paragraphs.
-- [ ] Preserve the Lens output id on every Thought Card.
-- [ ] Store generated title and body as rebuildable display text.
-- [ ] Require at least one Source Paragraph id per card.
-- [ ] Return cards in stable display order.
-- [ ] Generate stable card ids for unchanged Lens output and Source Paragraph input.
-- [ ] Do not add source paragraph locator data directly to Thought Cards.
-- [ ] Do not call an LLM in this deterministic MVP helper.
+- [x] Create Thought Cards for one Lens output from one or more Source Paragraphs.
+- [x] Preserve the Lens output id on every Thought Card.
+- [x] Store generated title and body as rebuildable display text.
+- [x] Require at least one Source Paragraph id per card.
+- [x] Return cards in stable display order.
+- [x] Generate stable card ids for unchanged Lens output and Source Paragraph input.
+- [x] Do not add source paragraph locator data directly to Thought Cards.
+- [x] Do not call an LLM in this deterministic MVP helper.
 
 ## Blocked by
 
