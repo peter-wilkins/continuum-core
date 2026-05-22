@@ -1,0 +1,31 @@
+{
+  "url": "https://api.github.com/repos/octocat/Hello-World/issues/9578",
+  "repository_url": "https://api.github.com/repos/octocat/Hello-World",
+  "html_url": "https://github.com/octocat/Hello-World/pull/9578",
+  "id": 4493366828,
+  "node_id": "PR_kwDOABPHjc7d33VA",
+  "number": 9578,
+  "title": "add abc.txt",
+  "user": {
+    "login": "a3236852",
+    "id": 25762233,
+    "node_id": "MDQ6VXNlcjI1NzYyMjMz",
+    "html_url": "https://github.com/a3236852",
+    "type": "User"
+  },
+  "state": "closed",
+  "locked": false,
+  "comments": 0,
+  "created_at": "2026-05-21T09:26:33Z",
+  "updated_at": "2026-05-21T09:31:53Z",
+  "closed_at": "2026-05-21T09:30:27Z",
+  "author_association": "NONE",
+  "pull_request": {
+    "url": "https://api.github.com/repos/octocat/Hello-World/pulls/9578",
+    "html_url": "https://github.com/octocat/Hello-World/pull/9578",
+    "diff_url": "https://github.com/octocat/Hello-World/pull/9578.diff",
+    "patch_url": "https://github.com/octocat/Hello-World/pull/9578.patch",
+    "merged_at": null
+  },
+  "body": "123"
+}

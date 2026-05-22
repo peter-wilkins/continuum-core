@@ -1,6 +1,6 @@
 # 044: Import One GitHub Issue
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -18,14 +18,26 @@ Use `data/github/octocat-hello-world-issues.json` as source evidence and copy on
 
 ## Acceptance Criteria
 
-- [ ] Add a committed fixture for one GitHub issue.
-- [ ] Add a Zod parser for the GitHub issue source shape.
-- [ ] Normalize title/body/created time/repository/number/state into one canonical event.
-- [ ] Use `source.platform: "github"`.
-- [ ] Use the repository plus issue number as the source grouping/artifact identity.
-- [ ] Preserve GitHub user login without inventing identity resolution.
-- [ ] Distinguish normal issues from PR-backed issues when the `pull_request` field is present.
-- [ ] Update docs/specs if the canonical model needs a new source or participant role.
+- [x] Add a committed fixture for one GitHub issue.
+- [x] Add a Zod parser for the GitHub issue source shape.
+- [x] Normalize title/body/created time/repository/number/state into one canonical event.
+- [x] Use `source.platform: "github"`.
+- [x] Use the repository plus issue number as the source grouping/artifact identity.
+- [x] Preserve GitHub user login without inventing identity resolution.
+- [x] Distinguish normal issues from PR-backed issues when the `pull_request` field is present.
+- [x] Update docs/specs if the canonical model needs a new source or participant role.
+
+## What Was Built
+
+- Added `src/fixtures/github-one-issue.json`.
+- Added `parseGitHubIssue` and `normalizeGitHubIssue`.
+- Normalized GitHub issue-shaped records into canonical events with:
+  - grouping id like `owner/repo#number`
+  - source record id as `issue.id:issue.node_id`
+  - title/body/state/repository/number/comments in event text
+  - author login as an `author` participant
+  - `Kind: pull_request` when `pull_request` is present.
+- No canonical model changes were needed beyond the existing `github` source platform and `author` participant role.
 
 ## Blocked by
 

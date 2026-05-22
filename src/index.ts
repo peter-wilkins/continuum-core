@@ -1360,19 +1360,21 @@ export type GitCommitNormalizationInput = {
   commit: GitCommitRecord;
 };
 
+export type GitHubUserRecord = {
+  login: string;
+  id: number;
+  node_id: string;
+  html_url: string;
+  type: string;
+};
+
 export type GitHubIssueCommentRecord = {
   url: string;
   html_url: string;
   issue_url: string;
   id: number;
   node_id: string;
-  user: {
-    login: string;
-    id: number;
-    node_id: string;
-    html_url: string;
-    type: string;
-  };
+  user: GitHubUserRecord;
   created_at: string;
   updated_at: string;
   body: string;
@@ -1384,6 +1386,38 @@ export type GitHubIssueCommentNormalizationInput = {
 };
 
 export type GitHubIssueCommentsExport = GitHubIssueCommentRecord[];
+
+export type GitHubIssuePullRequestRecord = {
+  url: string;
+  html_url: string;
+  diff_url: string;
+  patch_url: string;
+  merged_at: string | null;
+};
+
+export type GitHubIssueRecord = {
+  url: string;
+  repository_url: string;
+  html_url: string;
+  id: number;
+  node_id: string;
+  number: number;
+  title: string;
+  user: GitHubUserRecord;
+  state: string;
+  locked: boolean;
+  comments: number;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  body: string | null;
+  author_association: string;
+  pull_request: GitHubIssuePullRequestRecord | null;
+};
+
+export type GitHubIssueNormalizationInput = {
+  issue: GitHubIssueRecord;
+};
 
 export type ImportProfile = "everything" | "clean_default" | "intentional_context";
 
@@ -2121,7 +2155,12 @@ const wikidataEntityExportSchema = z
 
 const nonBlankStringSchema = z.string().min(1);
 
-const githubIssueCommentUserSchema = z
+const nullableIsoDatetimeFromMissingSchema = z.preprocess(
+  (value) => value ?? null,
+  isoDatetimeSchema.nullable(),
+);
+
+const githubUserSchema = z
   .object({
     login: nonBlankStringSchema,
     id: z.number(),
@@ -2138,7 +2177,7 @@ const githubIssueCommentSchema = z
     issue_url: nonBlankStringSchema,
     id: z.number(),
     node_id: nonBlankStringSchema,
-    user: githubIssueCommentUserSchema,
+    user: githubUserSchema,
     created_at: isoDatetimeSchema,
     updated_at: isoDatetimeSchema,
     body: z.string(),
@@ -2149,6 +2188,41 @@ const githubIssueCommentSchema = z
 const githubIssueCommentsSchema = z
   .union([githubIssueCommentSchema, z.array(githubIssueCommentSchema)])
   .transform((value) => (Array.isArray(value) ? value : [value]));
+
+const githubIssuePullRequestSchema = z
+  .object({
+    url: nonBlankStringSchema,
+    html_url: nonBlankStringSchema,
+    diff_url: nonBlankStringSchema,
+    patch_url: nonBlankStringSchema,
+    merged_at: nullableIsoDatetimeFromMissingSchema,
+  })
+  .passthrough();
+
+const githubIssueSchema = z
+  .object({
+    url: nonBlankStringSchema,
+    repository_url: nonBlankStringSchema,
+    html_url: nonBlankStringSchema,
+    id: z.number(),
+    node_id: nonBlankStringSchema,
+    number: z.number(),
+    title: nonBlankStringSchema,
+    user: githubUserSchema,
+    state: nonBlankStringSchema,
+    locked: z.boolean(),
+    comments: z.number(),
+    created_at: isoDatetimeSchema,
+    updated_at: isoDatetimeSchema,
+    closed_at: nullableIsoDatetimeFromMissingSchema,
+    body: nullableStringFromMissingSchema,
+    author_association: nonBlankStringSchema,
+    pull_request: z.preprocess(
+      (value) => value ?? null,
+      githubIssuePullRequestSchema.nullable(),
+    ),
+  })
+  .passthrough();
 
 const publicDocumentCreatorSchema = z.object({
   role: z.enum(["author", "translator", "editor"]),
@@ -2463,6 +2537,27 @@ export function parseGitHubIssueComments(
   input: unknown,
 ): SourceValidationResult<GitHubIssueCommentsExport> {
   const result = githubIssueCommentsSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data,
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
+}
+
+export function parseGitHubIssue(
+  input: unknown,
+): SourceValidationResult<GitHubIssueRecord> {
+  const result = githubIssueSchema.safeParse(input);
 
   if (result.success) {
     return {
@@ -3020,6 +3115,99 @@ function gitCommitText(input: GitCommitNormalizationInput): string {
     input.commit.filesChanged.length > 0 ? "Files:" : null,
     ...input.commit.filesChanged,
     input.commit.statsSummary,
+  ]
+    .filter((value): value is string => value !== null && value.length > 0)
+    .join("\n");
+}
+
+function gitHubRepositoryIdFromApiUrl(repositoryUrl: string): string {
+  const url = new URL(repositoryUrl);
+  const parts = url.pathname.split("/").filter((part) => part.length > 0);
+  const owner = parts[1] ?? "";
+  const repo = parts[2] ?? "";
+
+  if (
+    parts[0] !== "repos" ||
+    owner.length === 0 ||
+    repo.length === 0
+  ) {
+    throw new Error(
+      "GitHub repository_url must use /repos/:owner/:repo.",
+    );
+  }
+
+  return `${owner}/${repo}`;
+}
+
+function gitHubIssueId(input: GitHubIssueNormalizationInput): string {
+  return `${gitHubRepositoryIdFromApiUrl(input.issue.repository_url)}#${input.issue.number}`;
+}
+
+function gitHubIssueKind(input: GitHubIssueNormalizationInput): "issue" | "pull_request" {
+  return input.issue.pull_request === null ? "issue" : "pull_request";
+}
+
+function gitHubIssueExternalMessageId(
+  input: GitHubIssueNormalizationInput,
+): string {
+  return `${input.issue.id}:${input.issue.node_id}`;
+}
+
+function gitHubIssueSourceKey(input: GitHubIssueNormalizationInput): string {
+  return `github_issue:${gitHubIssueId(input)}:${gitHubIssueExternalMessageId(input)}`;
+}
+
+function gitHubIssueSourceFingerprint(
+  input: GitHubIssueNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "github",
+      url: input.issue.url,
+      repository_url: input.issue.repository_url,
+      html_url: input.issue.html_url,
+      id: input.issue.id,
+      node_id: input.issue.node_id,
+      number: input.issue.number,
+      title: input.issue.title,
+      user: input.issue.user,
+      state: input.issue.state,
+      locked: input.issue.locked,
+      comments: input.issue.comments,
+      created_at: input.issue.created_at,
+      updated_at: input.issue.updated_at,
+      closed_at: input.issue.closed_at,
+      body: input.issue.body,
+      author_association: input.issue.author_association,
+      pull_request: input.issue.pull_request,
+    }),
+  );
+}
+
+function gitHubIssueText(input: GitHubIssueNormalizationInput): string {
+  const repositoryId = gitHubRepositoryIdFromApiUrl(input.issue.repository_url);
+  const kind = gitHubIssueKind(input);
+  const pullRequestUrl =
+    input.issue.pull_request === null
+      ? null
+      : `Pull Request: ${input.issue.pull_request.html_url}`;
+  const closedAt =
+    input.issue.closed_at === null
+      ? null
+      : `Closed: ${new Date(input.issue.closed_at).toISOString()}`;
+
+  return [
+    input.issue.title,
+    input.issue.body?.trim() ?? null,
+    `Repository: ${repositoryId}`,
+    `Number: ${input.issue.number}`,
+    `State: ${input.issue.state}`,
+    `Kind: ${kind}`,
+    pullRequestUrl,
+    `Author: ${input.issue.user.login}`,
+    `Association: ${input.issue.author_association}`,
+    `Comments: ${input.issue.comments}`,
+    closedAt,
   ]
     .filter((value): value is string => value !== null && value.length > 0)
     .join("\n");
@@ -4233,6 +4421,54 @@ export function normalizeGitCommit(
       kind: "text",
       subject: input.commit.subject,
       text: gitCommitText(input),
+    },
+  });
+}
+
+export function normalizeGitHubIssue(
+  input: GitHubIssueNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = gitHubIssueSourceKey(input);
+  const issueId = gitHubIssueId(input);
+  const kind = gitHubIssueKind(input);
+
+  return buildCanonicalEvent({
+    source: {
+      platform: "github",
+      key: sourceKey,
+      fingerprint: gitHubIssueSourceFingerprint(input),
+      externalConversationId: issueId,
+      externalMessageId: gitHubIssueExternalMessageId(input),
+      artifactId: input.issue.html_url,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "software_development",
+      sourceName: "github",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: new Date(input.issue.created_at).toISOString(),
+      license: null,
+    },
+    time: {
+      createdAt: new Date(input.issue.created_at).toISOString(),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "user",
+    },
+    participants: [
+      {
+        role: "author",
+        name: input.issue.user.login,
+        address: input.issue.user.html_url,
+      },
+    ],
+    content: {
+      kind: "text",
+      subject: `${issueId} ${kind === "pull_request" ? "pull request" : "issue"}`,
+      text: gitHubIssueText(input),
     },
   });
 }
