@@ -425,6 +425,29 @@ Pending:
 
 ## CLI
 
+## User Instructions: Google Takeout
+
+Open this link:
+
+https://takeout.google.com/
+
+Steps:
+
+1. Click `Deselect all`.
+2. Select the Google products to inspect.
+3. Deselect `Flow` / `Your images and videos from Google Flow`.
+4. Click `Next step`.
+5. Use:
+   - Destination: `Send download link via email`
+   - Frequency: `Export once`
+   - File type: `.zip`
+   - File size: `50 GB`
+6. Click `Create export`.
+7. Wait for Google's email.
+8. Download every zip part into local private storage.
+
+Expected result: the user has local `.zip` files that can be dry-run inspected before any records become memory-active.
+
 Current MVP:
 
 ```bash

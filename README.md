@@ -90,6 +90,23 @@ Build the CLI:
 npm run build
 ```
 
+Get a Google Takeout zip for Continuum:
+
+1. Open this link: https://takeout.google.com/
+2. Click `Deselect all`.
+3. Select the Google products you want Continuum to inspect.
+4. Deselect `Flow` / `Your images and videos from Google Flow`.
+5. Click `Next step`.
+6. Use these export settings:
+   - Destination: `Send download link via email`
+   - Frequency: `Export once`
+   - File type: `.zip`
+   - File size: `50 GB`
+7. Click `Create export`.
+8. Wait for Google's email, then download every zip part into a local `data/import-samples/` folder.
+
+Expected result: you have one or more `.zip` files that stay local and can be inspected before anything becomes memory-active.
+
 Inspect a Google Takeout zip before importing:
 
 ```bash
