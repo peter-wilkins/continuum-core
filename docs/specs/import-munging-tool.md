@@ -284,6 +284,22 @@ Public MVP Thought Cards cite one or more Source Paragraphs only. Broader source
 
 Public MVP Thought Cards may store generated display text, such as title and body, for stable swiping, inspection, and feedback. That text is rebuildable Materialized View output; Source Paragraph references remain the source truth.
 
+Accepted MVP Thought Card shape:
+
+```ts
+type ThoughtCard = {
+  id: ThoughtCardId;
+  lensOutputId: LensOutputId;
+  title: HumanText;
+  body: HumanText;
+  sourceParagraphIds: NonEmptyArray<SourceParagraphId>;
+  confidence: Confidence;
+  generatedAt: KnowledgeTime;
+};
+```
+
+The Thought Card does not duplicate scope id, query id, Lens id, or source paragraph locator data. Those are reached through the Lens output and Source Paragraph records.
+
 Lens feedback is evidence about one scope/query/candidate set:
 
 - user id
