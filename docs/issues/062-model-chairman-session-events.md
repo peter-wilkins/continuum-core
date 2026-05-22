@@ -1,6 +1,6 @@
 # 062: Model Chairman Session Events
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -26,18 +26,28 @@ This slice should model Chairman source truth as append-only events and rebuild 
 
 ## Acceptance Criteria
 
-- [ ] Define a `ChairmanSession` concept scoped to one meeting/conversation/thread, not one global Chairman.
-- [ ] A Chairman Session can exist before it is linked to a larger Continuation.
-- [ ] A session starts with an Agenda that has exactly one Root Line.
-- [ ] The meeting title is derived from the Root Line title, not duplicated as separate mutable state.
-- [ ] A Line of Inquiry has a title, question, desired outcome, outcome status, lifecycle status, parent Line reference, and source event references.
-- [ ] Line lifecycle status supports `active`, `parked`, `resolved`, and `abandoned`.
-- [ ] Outcome status supports `unknown`, `defined`, `achieved`, and `abandoned`.
-- [ ] A resolved or abandoned Line must have at least one Chairman Decision.
-- [ ] Chairman Decisions support at least `agreement`, `chair_call`, `solo_decision`, `assumption`, `parked_for_later`, and `abandoned`.
-- [ ] Chairman state is rebuilt from append-only Chairman Events.
-- [ ] Chairman Events may contain small labels/summaries, but must link back to source event ids when they summarize conversation.
-- [ ] Do not add a separate Question object in this slice; a Line carries the question.
+- [x] Define a `ChairmanSession` concept scoped to one meeting/conversation/thread, not one global Chairman.
+- [x] A Chairman Session can exist before it is linked to a larger Continuation.
+- [x] A session starts with an Agenda that has exactly one Root Line.
+- [x] The meeting title is derived from the Root Line title, not duplicated as separate mutable state.
+- [x] A Line of Inquiry has a title, question, desired outcome, outcome status, lifecycle status, parent Line reference, and source event references.
+- [x] Line lifecycle status supports `active`, `parked`, `resolved`, and `abandoned`.
+- [x] Outcome status supports `unknown`, `defined`, `achieved`, and `abandoned`.
+- [x] A resolved or abandoned Line must have at least one Chairman Decision.
+- [x] Chairman Decisions support at least `agreement`, `chair_call`, `solo_decision`, `assumption`, `parked_for_later`, and `abandoned`.
+- [x] Chairman state is rebuilt from append-only Chairman Events.
+- [x] Chairman Events may contain small labels/summaries, but must link back to source event ids when they summarize conversation.
+- [x] Do not add a separate Question object in this slice; a Line carries the question.
+
+## What Was Built
+
+- Added Chairman Session, Line, Decision, and Event types.
+- Added `rebuildChairmanSession(events)` as the source-truth projection helper.
+- Derived session title from the Root Line title.
+- Enforced one Root Line per session and one session id per event list.
+- Enforced that resolved/abandoned Lines have at least one Decision.
+- Kept source event id references on Events, Lines, and Decisions.
+- Updated domain language with `Chairman Session`.
 
 ## Blocked By
 

@@ -412,6 +412,101 @@ export type CuratorFeedbackSummary = {
   memoryDecision: CuratorFeedbackMemoryDecision;
 };
 
+export type ChairmanLineLifecycleStatus =
+  | "active"
+  | "parked"
+  | "resolved"
+  | "abandoned";
+
+export type ChairmanLineOutcomeStatus =
+  | "unknown"
+  | "defined"
+  | "achieved"
+  | "abandoned";
+
+export type ChairmanDecisionKind =
+  | "agreement"
+  | "chair_call"
+  | "solo_decision"
+  | "assumption"
+  | "parked_for_later"
+  | "abandoned";
+
+export type ChairmanLineSeed = {
+  id: string;
+  title: string;
+  question: string;
+  desiredOutcome: string;
+  sourceEventIds: string[];
+};
+
+export type ChairmanChildLineSeed = ChairmanLineSeed & {
+  parentLineId: string;
+};
+
+export type ChairmanDecision = {
+  id: string;
+  lineId: string;
+  kind: ChairmanDecisionKind;
+  summary: string;
+  sourceEventIds: string[];
+  decidedAt: string;
+};
+
+export type ChairmanLine = {
+  id: string;
+  title: string;
+  question: string;
+  desiredOutcome: string;
+  outcomeStatus: ChairmanLineOutcomeStatus;
+  lifecycleStatus: ChairmanLineLifecycleStatus;
+  parentLineId: string | null;
+  sourceEventIds: string[];
+  decisions: ChairmanDecision[];
+};
+
+type ChairmanEventBase = {
+  id: string;
+  sessionId: string;
+  occurredAt: string;
+  sourceEventIds: string[];
+};
+
+export type ChairmanEvent =
+  | (ChairmanEventBase & {
+      kind: "session_started";
+      rootLine: ChairmanLineSeed;
+    })
+  | (ChairmanEventBase & {
+      kind: "line_added";
+      line: ChairmanChildLineSeed;
+    })
+  | (ChairmanEventBase & {
+      kind: "line_status_changed";
+      lineId: string;
+      lifecycleStatus: ChairmanLineLifecycleStatus;
+    })
+  | (ChairmanEventBase & {
+      kind: "line_outcome_changed";
+      lineId: string;
+      desiredOutcome: string;
+      outcomeStatus: ChairmanLineOutcomeStatus;
+    })
+  | (ChairmanEventBase & {
+      kind: "decision_recorded";
+      decision: ChairmanDecision;
+    });
+
+export type ChairmanSession = {
+  id: string;
+  title: string;
+  rootLineId: string;
+  activeLineId: string | null;
+  parkedLineIds: string[];
+  lines: ChairmanLine[];
+  decisions: ChairmanDecision[];
+};
+
 export type SourceParagraphContext = {
   title: HumanText;
   sourceName: SourceName;
@@ -722,6 +817,125 @@ export function summarizeCuratorFeedbackSignals(input: {
       negativeMemoryWeight,
       input.signals.length,
     ),
+  };
+}
+
+export function rebuildChairmanSession(events: ChairmanEvent[]): ChairmanSession {
+  if (events.length === 0) {
+    throw new Error("Chairman Session requires at least one Event.");
+  }
+
+  let sessionId: string | null = null;
+  let rootLineId: string | null = null;
+  const linesById = new Map<string, ChairmanLine>();
+  const decisions: ChairmanDecision[] = [];
+
+  for (const event of events) {
+    validateChairmanEventBase(event);
+
+    if (sessionId === null) {
+      sessionId = event.sessionId;
+    } else if (event.sessionId !== sessionId) {
+      throw new Error("Chairman Events must belong to one Session.");
+    }
+
+    if (event.kind === "session_started") {
+      if (rootLineId !== null) {
+        throw new Error("Chairman Session can only have one Root Line.");
+      }
+
+      const rootLine = chairmanLineFromSeed(event.rootLine, null);
+      linesById.set(rootLine.id, rootLine);
+      rootLineId = rootLine.id;
+      continue;
+    }
+
+    if (rootLineId === null) {
+      throw new Error("Chairman Session must start before other Events.");
+    }
+
+    if (event.kind === "line_added") {
+      validateChairmanLineSeed(event.line);
+      validateNonBlank("Chairman Line parentLineId", event.line.parentLineId);
+
+      if (!linesById.has(event.line.parentLineId)) {
+        throw new Error("Chairman Line parent must exist.");
+      }
+
+      const line = chairmanLineFromSeed(event.line, event.line.parentLineId);
+
+      if (linesById.has(line.id)) {
+        throw new Error("Chairman Line ids must be unique.");
+      }
+
+      linesById.set(line.id, line);
+      continue;
+    }
+
+    if (event.kind === "decision_recorded") {
+      validateChairmanDecision(event.decision);
+
+      const line = linesById.get(event.decision.lineId);
+
+      if (!line) {
+        throw new Error("Chairman Decision line must exist.");
+      }
+
+      line.decisions.push(event.decision);
+      decisions.push(event.decision);
+      continue;
+    }
+
+    const line = linesById.get(event.lineId);
+
+    if (!line) {
+      throw new Error("Chairman Line must exist before it can be changed.");
+    }
+
+    if (event.kind === "line_status_changed") {
+      line.lifecycleStatus = event.lifecycleStatus;
+      continue;
+    }
+
+    line.desiredOutcome = event.desiredOutcome;
+    line.outcomeStatus = event.outcomeStatus;
+  }
+
+  if (sessionId === null || rootLineId === null) {
+    throw new Error("Chairman Session must include a session_started Event.");
+  }
+
+  const lines = [...linesById.values()];
+
+  for (const line of lines) {
+    if (
+      (line.lifecycleStatus === "resolved" ||
+        line.lifecycleStatus === "abandoned") &&
+      line.decisions.length === 0
+    ) {
+      throw new Error(
+        "Resolved or abandoned Chairman Lines require at least one Decision.",
+      );
+    }
+  }
+
+  const rootLine = linesById.get(rootLineId);
+
+  if (!rootLine) {
+    throw new Error("Chairman Root Line must exist.");
+  }
+
+  return {
+    id: sessionId,
+    title: rootLine.title,
+    rootLineId,
+    activeLineId:
+      lines.find((line) => line.lifecycleStatus === "active")?.id ?? null,
+    parkedLineIds: lines
+      .filter((line) => line.lifecycleStatus === "parked")
+      .map((line) => line.id),
+    lines,
+    decisions,
   };
 }
 
@@ -1125,6 +1339,82 @@ function curatorMemoryDecision(
     confidence: 0,
     reasons: ["mixed_or_absent_curator_feedback"],
   };
+}
+
+const chairmanDecisionKinds: ChairmanDecisionKind[] = [
+  "agreement",
+  "chair_call",
+  "solo_decision",
+  "assumption",
+  "parked_for_later",
+  "abandoned",
+];
+
+function chairmanLineFromSeed(
+  seed: ChairmanLineSeed,
+  parentLineId: string | null,
+): ChairmanLine {
+  validateChairmanLineSeed(seed);
+
+  return {
+    id: seed.id,
+    title: seed.title,
+    question: seed.question,
+    desiredOutcome: seed.desiredOutcome,
+    outcomeStatus: "unknown",
+    lifecycleStatus: "active",
+    parentLineId,
+    sourceEventIds: [...seed.sourceEventIds],
+    decisions: [],
+  };
+}
+
+function validateChairmanEventBase(event: ChairmanEvent): void {
+  validateNonBlank("ChairmanEvent id", event.id);
+  validateNonBlank("ChairmanEvent sessionId", event.sessionId);
+  validateSourceEventIds("ChairmanEvent sourceEventIds", event.sourceEventIds);
+
+  if (Number.isNaN(new Date(event.occurredAt).getTime())) {
+    throw new Error("ChairmanEvent occurredAt must be an ISO-compatible date.");
+  }
+}
+
+function validateChairmanLineSeed(seed: ChairmanLineSeed): void {
+  validateNonBlank("Chairman Line id", seed.id);
+  validateNonBlank("Chairman Line title", seed.title);
+  validateNonBlank("Chairman Line question", seed.question);
+  validateNonBlank("Chairman Line desiredOutcome", seed.desiredOutcome);
+  validateSourceEventIds(
+    "Chairman Line sourceEventIds",
+    seed.sourceEventIds,
+  );
+}
+
+function validateChairmanDecision(decision: ChairmanDecision): void {
+  validateNonBlank("Chairman Decision id", decision.id);
+  validateNonBlank("Chairman Decision lineId", decision.lineId);
+
+  if (!chairmanDecisionKinds.includes(decision.kind)) {
+    throw new Error("Chairman Decision kind is not supported.");
+  }
+
+  validateNonBlank("Chairman Decision summary", decision.summary);
+  validateSourceEventIds(
+    "Chairman Decision sourceEventIds",
+    decision.sourceEventIds,
+  );
+
+  if (Number.isNaN(new Date(decision.decidedAt).getTime())) {
+    throw new Error(
+      "Chairman Decision decidedAt must be an ISO-compatible date.",
+    );
+  }
+}
+
+function validateSourceEventIds(fieldName: string, sourceEventIds: string[]): void {
+  for (const sourceEventId of sourceEventIds) {
+    validateNonBlank(fieldName, sourceEventId);
+  }
 }
 
 export type TimeConfidence = "exact" | "inferred" | "unknown";

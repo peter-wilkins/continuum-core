@@ -136,6 +136,10 @@ _Avoid_: copied memory, canonical generated text, unrebuildable cache, hidden so
 A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. For the public MVP, a Thought Card stores stable generated display text and is grounded by one or more **Source Paragraphs**. Later Thought Cards may be grounded in Entries, events, audio, or several linked source records, but provenance should stay visible and generated text should not become source truth.
 _Avoid_: document row, full source record as the display unit, copied memory
 
+**Chairman Session**:
+A rebuildable facilitation projection for one bounded meeting, grill, design thread, or solo thinking session. Its source truth is append-only Chairman Events; the current agenda, active Line, parked Lines, and Decisions are projections.
+_Avoid_: global chairman, mutable meeting state, governance system
+
 **Line of Inquiry**:
 A question-shaped path through a **Chairman Session** or other facilitated thinking surface. A Line of Inquiry has a title, question, desired outcome, status, and source references; it may be active, parked, resolved, or abandoned. Use the short form **Line** in UI copy.
 _Avoid_: branch, Git branch, tree node, topic bucket
