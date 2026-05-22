@@ -355,6 +355,63 @@ export type LensFeedbackSignal = {
   createdAt: string;
 };
 
+export type CuratorFeedbackTarget =
+  | {
+      kind: "canonical_event";
+      canonicalEventId: string;
+    }
+  | {
+      kind: "imported_entry";
+      importedEntryId: string;
+      canonicalEventId: string | null;
+    }
+  | {
+      kind: "live_captured_thought";
+      thoughtId: string;
+      sourceEventIds: string[];
+    };
+
+export type CuratorFeedbackAction =
+  | "keep"
+  | "not_useful"
+  | "me"
+  | "not_me"
+  | "important"
+  | "passing_thought"
+  | "private"
+  | "shareable";
+
+export type CuratorFeedbackSurface =
+  | "import_preview"
+  | "idle_review"
+  | "capture_review"
+  | "compass_review"
+  | "api";
+
+export type CuratorFeedbackSignal = {
+  id: string;
+  userId: string;
+  target: CuratorFeedbackTarget;
+  action: CuratorFeedbackAction;
+  confidence: number;
+  surface: CuratorFeedbackSurface;
+  rationale: string | null;
+  recordedAt: string;
+};
+
+export type CuratorFeedbackMemoryDecision = {
+  action: "include" | "exclude" | "needs_review";
+  confidence: number;
+  reasons: string[];
+};
+
+export type CuratorFeedbackSummary = {
+  target: CuratorFeedbackTarget;
+  signalCount: number;
+  actionCounts: Record<CuratorFeedbackAction, number>;
+  memoryDecision: CuratorFeedbackMemoryDecision;
+};
+
 export type SourceParagraphContext = {
   title: HumanText;
   sourceName: SourceName;
@@ -601,6 +658,71 @@ export function createLensFeedbackSignal(
   validateLensFeedbackSignal(input);
 
   return input;
+}
+
+export function createCuratorFeedbackSignal(
+  input: CuratorFeedbackSignal,
+): CuratorFeedbackSignal {
+  validateCuratorFeedbackSignal(input);
+
+  return input;
+}
+
+export function recordCuratorFeedbackSignal(input: {
+  existingSignals: CuratorFeedbackSignal[];
+  signal: CuratorFeedbackSignal;
+}): CuratorFeedbackSignal[] {
+  return [
+    ...input.existingSignals,
+    createCuratorFeedbackSignal(input.signal),
+  ];
+}
+
+export function summarizeCuratorFeedbackSignals(input: {
+  target: CuratorFeedbackTarget;
+  signals: CuratorFeedbackSignal[];
+}): CuratorFeedbackSummary {
+  const targetKey = curatorFeedbackTargetKey(input.target);
+  const actionCounts = emptyCuratorFeedbackActionCounts();
+  let positiveMemoryWeight = 0;
+  let negativeMemoryWeight = 0;
+
+  for (const signal of input.signals) {
+    validateCuratorFeedbackSignal(signal);
+
+    if (curatorFeedbackTargetKey(signal.target) !== targetKey) {
+      throw new Error("CuratorFeedback summary signals must match target.");
+    }
+
+    actionCounts[signal.action] += 1;
+
+    if (
+      signal.action === "keep" ||
+      signal.action === "me" ||
+      signal.action === "important"
+    ) {
+      positiveMemoryWeight += signal.confidence;
+    }
+
+    if (
+      signal.action === "not_useful" ||
+      signal.action === "not_me" ||
+      signal.action === "passing_thought"
+    ) {
+      negativeMemoryWeight += signal.confidence;
+    }
+  }
+
+  return {
+    target: input.target,
+    signalCount: input.signals.length,
+    actionCounts,
+    memoryDecision: curatorMemoryDecision(
+      positiveMemoryWeight,
+      negativeMemoryWeight,
+      input.signals.length,
+    ),
+  };
 }
 
 function defaultLensSections(
@@ -873,6 +995,136 @@ function validateLensFeedbackSignal(signal: LensFeedbackSignal): void {
   if (Number.isNaN(new Date(signal.createdAt).getTime())) {
     throw new Error("LensFeedback createdAt must be an ISO-compatible date.");
   }
+}
+
+const curatorFeedbackActions: CuratorFeedbackAction[] = [
+  "keep",
+  "not_useful",
+  "me",
+  "not_me",
+  "important",
+  "passing_thought",
+  "private",
+  "shareable",
+];
+
+function emptyCuratorFeedbackActionCounts(): Record<CuratorFeedbackAction, number> {
+  return {
+    keep: 0,
+    not_useful: 0,
+    me: 0,
+    not_me: 0,
+    important: 0,
+    passing_thought: 0,
+    private: 0,
+    shareable: 0,
+  };
+}
+
+function validateCuratorFeedbackSignal(signal: CuratorFeedbackSignal): void {
+  validateNonBlank("CuratorFeedback id", signal.id);
+  validateNonBlank("CuratorFeedback userId", signal.userId);
+  validateCuratorFeedbackTarget(signal.target);
+
+  if (!curatorFeedbackActions.includes(signal.action)) {
+    throw new Error("CuratorFeedback action is not supported.");
+  }
+
+  if (
+    !Number.isFinite(signal.confidence) ||
+    signal.confidence < 0 ||
+    signal.confidence > 1
+  ) {
+    throw new Error(
+      "CuratorFeedback confidence must be a finite number from 0 to 1.",
+    );
+  }
+
+  if (signal.rationale !== null) {
+    validateNonBlank("CuratorFeedback rationale", signal.rationale);
+  }
+
+  if (Number.isNaN(new Date(signal.recordedAt).getTime())) {
+    throw new Error("CuratorFeedback recordedAt must be an ISO-compatible date.");
+  }
+}
+
+function validateCuratorFeedbackTarget(target: CuratorFeedbackTarget): void {
+  if (target.kind === "canonical_event") {
+    validateNonBlank(
+      "CuratorFeedback target.canonicalEventId",
+      target.canonicalEventId,
+    );
+    return;
+  }
+
+  if (target.kind === "imported_entry") {
+    validateNonBlank(
+      "CuratorFeedback target.importedEntryId",
+      target.importedEntryId,
+    );
+
+    if (target.canonicalEventId !== null) {
+      validateNonBlank(
+        "CuratorFeedback target.canonicalEventId",
+        target.canonicalEventId,
+      );
+    }
+
+    return;
+  }
+
+  validateNonBlank("CuratorFeedback target.thoughtId", target.thoughtId);
+
+  for (const sourceEventId of target.sourceEventIds) {
+    validateNonBlank("CuratorFeedback target.sourceEventIds", sourceEventId);
+  }
+}
+
+function curatorFeedbackTargetKey(target: CuratorFeedbackTarget): string {
+  if (target.kind === "canonical_event") {
+    return `canonical_event:${target.canonicalEventId}`;
+  }
+
+  if (target.kind === "imported_entry") {
+    return `imported_entry:${target.importedEntryId}`;
+  }
+
+  return `live_captured_thought:${target.thoughtId}`;
+}
+
+function curatorMemoryDecision(
+  positiveMemoryWeight: number,
+  negativeMemoryWeight: number,
+  signalCount: number,
+): CuratorFeedbackMemoryDecision {
+  const score = positiveMemoryWeight - negativeMemoryWeight;
+  const confidence =
+    signalCount === 0
+      ? 0
+      : clampConfidence(Math.min(0.9, Math.abs(score) / (signalCount + 2)));
+
+  if (score > 0) {
+    return {
+      action: "include",
+      confidence,
+      reasons: ["positive_curator_feedback"],
+    };
+  }
+
+  if (score < 0) {
+    return {
+      action: "exclude",
+      confidence,
+      reasons: ["negative_curator_feedback"],
+    };
+  }
+
+  return {
+    action: "needs_review",
+    confidence: 0,
+    reasons: ["mixed_or_absent_curator_feedback"],
+  };
 }
 
 export type TimeConfidence = "exact" | "inferred" | "unknown";

@@ -311,6 +311,14 @@ Lens feedback is evidence about one scope/query/candidate set:
 
 It is not a user settings system in the MVP.
 
+Curator feedback is append-only evidence about whether a candidate earns a place in memory or can cross a membrane. The first core model supports:
+
+- targets: Canonical Event, Imported Entry, or live captured thought
+- actions: `keep`, `not_useful`, `me`, `not_me`, `important`, `passing_thought`, `private`, `shareable`
+- surfaces: import preview, idle review, capture review, compass review, or API
+
+The summary helper can suggest future curation decisions, but a single signal is deliberately not treated as unquestionable truth.
+
 Public Continuum queries are explicit records tied to an Import Scope. The initial MVP query for the Ada scope can be seeded by the system, but it remains a query record rather than hidden product state.
 
 Public scope evaluation is a deterministic first pass:

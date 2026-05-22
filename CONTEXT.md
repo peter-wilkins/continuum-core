@@ -204,6 +204,10 @@ _Avoid_: self-training black box, static scoring, uninspected optimisation
 Evidence fed into a **Retrieval Feedback Loop**. Feedback Signals may include explicit user corrections, user behaviour, debugging observations, later successful resumes, failed resumes, and model-assisted critique. Model-assisted critique is evidence to inspect, not an authority.
 _Avoid_: hidden training label, LLM judge as truth, behaviour-only metric
 
+**Curator Feedback Signal**:
+Append-only user evidence that helps the **Curator** decide whether a candidate should become memory-active or cross a membrane. It can target a Canonical Event, Imported Entry, or live captured thought. It is evidence for later curation, not a command to mutate source truth.
+_Avoid_: preference setting, destructive edit, unquestionable training label
+
 **Ambiguous Resume**:
 A **Resume Request** where multiple **Continuations** are plausible and the system should surface low Confidence with candidates rather than pretend certainty. An Ambiguous Resume is a valid result, not a failure.
 _Avoid_: failed search, guessed match, forced match

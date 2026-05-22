@@ -1,6 +1,6 @@
 # 059: Record Curator Feedback Signals
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -28,13 +28,21 @@ Do not add UI, storage adapters, swipe gestures, review feeds, or app-specific p
 
 ## Acceptance Criteria
 
-- [ ] Define a Curator feedback signal type that can target an imported event, an Imported Entry, or a live captured thought.
-- [ ] Support low-friction actions such as `keep`, `not_useful`, `me`, `not_me`, `important`, `passing_thought`, `private`, and `shareable`.
-- [ ] Feedback signals are append-only and do not overwrite raw capture, Canonical Events, or Entries.
-- [ ] Feedback can adjust future curation decisions without treating one signal as unquestionable truth.
-- [ ] The model can represent signals produced by later idle-time review UX such as swipe left/right or a compass-style review surface.
-- [ ] Export pure helpers for recording/summarizing Curator feedback without adding persistence.
-- [ ] The implementation does not require a conversational Curator Agent, autonomous learning loop, or app UI.
+- [x] Define a Curator feedback signal type that can target an imported event, an Imported Entry, or a live captured thought.
+- [x] Support low-friction actions such as `keep`, `not_useful`, `me`, `not_me`, `important`, `passing_thought`, `private`, and `shareable`.
+- [x] Feedback signals are append-only and do not overwrite raw capture, Canonical Events, or Entries.
+- [x] Feedback can adjust future curation decisions without treating one signal as unquestionable truth.
+- [x] The model can represent signals produced by later idle-time review UX such as swipe left/right or a compass-style review surface.
+- [x] Export pure helpers for recording/summarizing Curator feedback without adding persistence.
+- [x] The implementation does not require a conversational Curator Agent, autonomous learning loop, or app UI.
+
+## What Was Built
+
+- Added `CuratorFeedbackSignal`, target, action, surface, and summary types.
+- Added `createCuratorFeedbackSignal`, `recordCuratorFeedbackSignal`, and `summarizeCuratorFeedbackSignals`.
+- Kept recording append-only: helper returns a new signal list and does not mutate existing events or entries.
+- Summary confidence is deliberately bounded so one signal can guide but not prove a future decision.
+- Updated domain/spec docs with `Curator Feedback Signal`.
 
 ## Blocked by
 
