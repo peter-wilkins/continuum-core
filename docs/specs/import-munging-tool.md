@@ -280,7 +280,7 @@ For document-like public sources such as Wikipedia, import should preserve parag
 
 The MVP Source Paragraph locator should start with document id, paragraph index, and source fingerprint. Avoid character-count and line-count locators until a real retrieval problem requires them. If the locator needs source facts that are outside the paragraph text, such as page title, revision id, license, retrieval URL, or parser version, keep that context explicit beside the locator rather than hiding it in code assumptions.
 
-Public MVP Thought Cards cite Source Paragraphs only. Broader source reference unions can wait until audio, email, and personal imports return to the active product path.
+Public MVP Thought Cards cite one or more Source Paragraphs only. Broader source reference unions can wait until audio, email, and personal imports return to the active product path.
 
 Lens feedback is evidence about one scope/query/candidate set:
 
