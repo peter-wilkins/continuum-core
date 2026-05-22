@@ -88,3 +88,7 @@ Possible loop:
 ## Important philosophy
 
 The user should not become the maintainer of the system.
+
+## Workflow Manager Awareness
+
+Workflow Manager is a sibling local-first project that may produce useful Continuum source material, shared utilities, and worker handoffs. Before starting a new epic or capture/audio/phone/feedback slice, check `docs/workflow-manager-intake.md` for how to inspect it without absorbing unrelated side projects.

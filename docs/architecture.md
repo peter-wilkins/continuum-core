@@ -118,6 +118,8 @@ Examples:
 
 Use a Shared Utility Project when the same utility belongs in Continuum apps and workflow-manager land. Do not put that code in Continuum Core unless it directly expresses Continuum domain behavior.
 
+See `docs/workflow-manager-intake.md` for the current sibling-project watchlist and pull-in rule.
+
 ## Important constraint
 
 Do not prematurely optimise for visual browsing.
