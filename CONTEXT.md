@@ -133,7 +133,7 @@ A rebuildable projection produced from source truth for stable display, inspecti
 _Avoid_: copied memory, canonical generated text, unrebuildable cache, hidden source
 
 **Thought Card**:
-A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. A Thought Card may be grounded in one Entry, one sentence, one paragraph span, or several linked source records, but it should keep provenance visible and should not become source truth.
+A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. For the public MVP, a Thought Card is grounded by **Source Paragraphs**. Later Thought Cards may be grounded in Entries, events, audio, or several linked source records, but provenance should stay visible and should not become source truth.
 _Avoid_: document row, full source record as the display unit, copied memory
 
 **Line of Inquiry**:
