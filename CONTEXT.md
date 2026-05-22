@@ -40,6 +40,10 @@ _Avoid_: silent drop, hidden eviction, best-effort capture without notice
 A durable reference from an **Entry** or **Canonical Event** to a raw captured artifact such as a WAV file, image, screenshot, or source file. Artifact References preserve origin material without making the artifact itself the searchable Entry text.
 _Avoid_: blob as Entry, hidden file path, copied payload without provenance
 
+**Source Paragraph**:
+A paragraph-sized, referenceable segment of source text preserved for provenance during import. A Source Paragraph may ground a **Thought Card**, but importing Source Paragraphs is not the same as creating Thought Cards.
+_Avoid_: card at import, whole-page pointer when a paragraph is known, arbitrary chunk without source position
+
 **File System Membrane**:
 A membrane that controls which raw artifacts may be written to local disk, at what quality, under what path, with what retention, checksum, quota, and later erasure behaviour. A File System Membrane can be permissive for a local dogfooding setup and stricter for other users.
 _Avoid_: unlimited writes without policy, storage as source truth, silent artifact loss

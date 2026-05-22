@@ -273,6 +273,8 @@ The first core model exposes Atlas, Loom, and Beacon as default public Lens defi
 
 The deterministic MVP helper can create default Atlas, Loom, and Beacon outputs from a scope, query, and canonical events. These outputs are intentionally reference-only and can be replaced by richer generation later.
 
+For document-like public sources such as Wikipedia, import should preserve paragraph-level source references. These Source Paragraphs give Thought Cards precise provenance without making the importer generate Thought Cards directly.
+
 Lens feedback is evidence about one scope/query/candidate set:
 
 - user id
