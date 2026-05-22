@@ -109,8 +109,12 @@ A user-facing projection over **Continuations**, **Entries**, and **Resume Brief
 _Avoid_: conversation as source truth, folder UI, canonical chat
 
 **Lens**:
-A named way of projecting source truth into a **Continuation Surface**. A Lens may choose ordering, emphasis, layout, synthesis style, and supporting evidence, but it should prefer references back to source **Entries** or **Canonical Events** over duplicated state. Materialized Lens outputs are rebuildable caches unless an exception is explicitly documented.
+A named way of projecting source truth into a **Continuation Surface**, often as **Thought Cards**. A Lens may choose ordering, emphasis, layout, synthesis style, and supporting evidence, but it should prefer references back to source **Entries** or **Canonical Events** over duplicated state. Materialized Lens outputs are rebuildable unless an exception is explicitly documented.
 _Avoid_: model as source truth, duplicated view state, hidden copy of memory
+
+**Materialized View**:
+A rebuildable projection produced from source truth for stable display, inspection, or feedback. A Materialized View may store source ids, ordering, parameters, and generated display text when needed, but it must not become source truth.
+_Avoid_: copied memory, canonical generated text, unrebuildable cache, hidden source
 
 **Thought Card**:
 A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. A Thought Card may be grounded in one Entry, one sentence, one paragraph span, or several linked source records, but it should keep provenance visible and should not become source truth.
