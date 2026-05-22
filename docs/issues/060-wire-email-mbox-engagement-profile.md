@@ -1,6 +1,6 @@
 # 060: Wire Email MBOX Engagement Profile Into CLI
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -56,15 +56,23 @@ The CLI path does not yet use this logic for MBOX.
 
 ## Acceptance Criteria
 
-- [ ] `email-mbox` dry-run performs an email-specific first pass over parsed messages before creating preview decisions.
-- [ ] The first pass builds an engagement index from explicit `myAddresses`.
-- [ ] `intentional_context` includes messages sent by the user.
-- [ ] `intentional_context` includes messages from replied contacts.
-- [ ] `intentional_context` includes messages in threads the user participated in.
-- [ ] Promotional/bulk email remains excluded before engagement checks.
-- [ ] Unreplied one-way email is excluded or routed to review according to the documented profile decision.
-- [ ] The preview still keeps raw imported events inspectable and does not make excluded/needs-review records memory-active.
-- [ ] The interface does not guess Peter's email addresses from data. `myAddresses` must be explicit.
+- [x] `email-mbox` dry-run performs an email-specific first pass over parsed messages before creating preview decisions.
+- [x] The first pass builds an engagement index from explicit `myAddresses`.
+- [x] `intentional_context` includes messages sent by the user.
+- [x] `intentional_context` includes messages from replied contacts.
+- [x] `intentional_context` includes messages in threads the user participated in.
+- [x] Promotional/bulk email remains excluded before engagement checks.
+- [x] Unreplied one-way email is excluded or routed to review according to the documented profile decision.
+- [x] The preview still keeps raw imported events inspectable and does not make excluded/needs-review records memory-active.
+- [x] The interface does not guess Peter's email addresses from data. `myAddresses` must be explicit.
+
+## What Was Built
+
+- Added repeated `--my-address <email>` support to `continuum-import dry-run`.
+- Wired direct `email-mbox` dry-run through `buildEmailEngagementIndex` and `evaluateEmailImportProfile`.
+- Required at least one explicit `--my-address` for `email-mbox` dry-run.
+- Verified sent-by-user, replied-contact, and promotional/bulk decisions in CLI preview output.
+- Updated README and import spec usage.
 
 ## Out Of Scope
 

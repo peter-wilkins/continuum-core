@@ -3,8 +3,10 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 import {
+  buildEmailEngagementIndex,
   createImportScope,
   evaluateCanonicalEventImportProfile,
+  evaluateEmailImportProfile,
   evaluatePublicScopeEvent,
   inspectMboxFile,
   type ImportFilterDecision,
@@ -15,7 +17,9 @@ import {
   mergeCanonicalEvents,
   parseMboxFile,
   type CanonicalEvent,
+  type EmailMessageNormalizationInput,
   type ImportReport,
+  type MboxParseResult,
   summarizeImportFilterDecisions,
 } from "./index";
 import {
@@ -126,6 +130,7 @@ export type ImportRunnerCommand =
       source: ImportCommand;
       inputPath: string;
       importScopePath: string | null;
+      myAddresses: string[];
       previewPath: string;
     };
 
@@ -368,13 +373,12 @@ async function dryRunImport(
     normalizeCommandInput(command.source, command.inputPath, input);
   const importProfile: ImportProfile = "intentional_context";
   const importScope = await readImportScope(command.importScopePath);
-  const filterDecisions = incomingEvents.map((event) =>
-    importScope === null
-      ? evaluateCanonicalEventImportProfile({
-          profile: importProfile,
-          event,
-        })
-      : evaluatePublicScopeEvent(importScope, event),
+  const filterDecisions = dryRunFilterDecisions(
+    command,
+    input,
+    incomingEvents,
+    importProfile,
+    importScope,
   );
   const filterSummary = summarizeImportFilterDecisions(filterDecisions);
   const { report } = mergeCanonicalEvents([], incomingEvents);
@@ -425,6 +429,59 @@ async function dryRunImport(
     quarantine,
     filterSummary,
   };
+}
+
+function dryRunFilterDecisions(
+  command: Extract<ImportRunnerCommand, { kind: "dry-run" }>,
+  input: SourceInput,
+  incomingEvents: CanonicalEvent[],
+  importProfile: ImportProfile,
+  importScope: ImportScope | null,
+): ImportFilterDecision[] {
+  if (importScope !== null) {
+    return incomingEvents.map((event) =>
+      evaluatePublicScopeEvent(importScope, event),
+    );
+  }
+
+  if (command.source !== "email-mbox") {
+    return incomingEvents.map((event) =>
+      evaluateCanonicalEventImportProfile({
+        profile: importProfile,
+        event,
+      }),
+    );
+  }
+
+  if (command.myAddresses.length === 0) {
+    throw new Error(
+      "email-mbox dry-run requires at least one --my-address value.",
+    );
+  }
+
+  const messages = emailMessagesFromSourceInput(input);
+  const engagement = buildEmailEngagementIndex(messages, command.myAddresses);
+
+  return messages.map((message) =>
+    evaluateEmailImportProfile({
+      profile: importProfile,
+      message,
+      engagement,
+      myAddresses: command.myAddresses,
+    }),
+  );
+}
+
+function emailMessagesFromSourceInput(
+  input: SourceInput,
+): EmailMessageNormalizationInput[] {
+  const parsed = input.parsed as Partial<MboxParseResult> | null;
+
+  if (!parsed || !Array.isArray(parsed.messages)) {
+    throw new Error("email-mbox dry-run expected parsed MBOX messages.");
+  }
+
+  return parsed.messages;
 }
 
 async function readImportScope(

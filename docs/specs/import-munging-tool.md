@@ -575,6 +575,7 @@ Current MVP:
 continuum-import inspect claude <conversations.json>
 continuum-import dry-run claude <conversations.json> --out <preview.json>
 continuum-import dry-run public-document <document.json> --scope <scope.json> --out <preview.json>
+continuum-import dry-run email-mbox <mailbox.mbox> --my-address <email> --out <preview.json>
 continuum-import chatgpt <conversations.json> --out <events.jsonl>
 continuum-import claude <conversations.json> --out <events.jsonl>
 continuum-import git-log <git-log.txt> --out <events.jsonl>
@@ -719,6 +720,7 @@ Done:
 - Import results report warning counts and ignore their own output file during folder reimport.
 - Malformed single JSON source files are quarantined during dry-run instead of throwing before preview.
 - Google Takeout folder JSON files can be classified by schema when filenames are generic.
+- Direct `email-mbox` dry-run uses explicit `--my-address` values for engaged-contact filtering.
 - Inspect results include source-file routing summaries for Takeout folders.
 - CLI dry-run can read Google Takeout zip files with the same source classifier.
 - CLI inspect/import can read Google Takeout zip files idempotently.

@@ -1229,6 +1229,8 @@ describe("continuum-import CLI", () => {
         "dry-run",
         "email-mbox",
         emailMboxFixturePath,
+        "--my-address",
+        "peter@example.com",
         "--out",
         previewPath,
       ]);
@@ -1245,6 +1247,11 @@ describe("continuum-import CLI", () => {
         {
           platform: "email",
           subject: "Boiler quote",
+          filterDecision: {
+            action: "include",
+            reason: "sent_by_user",
+          },
+          memoryActive: true,
         },
       ]);
     } finally {
@@ -1274,6 +1281,8 @@ describe("continuum-import CLI", () => {
         "dry-run",
         "email-mbox",
         inputPath,
+        "--my-address",
+        "peter@example.com",
         "--out",
         previewPath,
       ]);
@@ -1285,6 +1294,107 @@ describe("continuum-import CLI", () => {
       expect(result.quarantine).toHaveLength(1);
       expect(result.batch.stats.recordsQuarantined).toBe(1);
       expect(result.batch.stats.eventsCreated).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs MBOX email with engaged-contact decisions", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const inputPath = join(dir, "engaged.mbox");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(
+        inputPath,
+        [
+          "From peter@example.com Thu May 21 10:00:00 2026",
+          "Message-ID: <sent-1@example.com>",
+          "Date: Thu, 21 May 2026 10:00:00 +0000",
+          "From: Peter <peter@example.com>",
+          "To: Bob <bob@example.com>",
+          "Subject: Sent to Bob",
+          "Content-Type: text/plain; charset=utf-8",
+          "",
+          "I replied to Bob.",
+          "From bob@example.com Thu May 21 10:10:00 2026",
+          "Message-ID: <reply-1@example.com>",
+          "Date: Thu, 21 May 2026 10:10:00 +0000",
+          "From: Bob <bob@example.com>",
+          "To: Peter <peter@example.com>",
+          "Subject: Reply from Bob",
+          "In-Reply-To: <sent-1@example.com>",
+          "References: <sent-1@example.com>",
+          "Content-Type: text/plain; charset=utf-8",
+          "",
+          "Thanks Peter.",
+          "From newsletter@example.com Thu May 21 10:20:00 2026",
+          "Message-ID: <promo-1@example.com>",
+          "Date: Thu, 21 May 2026 10:20:00 +0000",
+          "From: Newsletter <newsletter@example.com>",
+          "To: Peter <peter@example.com>",
+          "Subject: Offer inside",
+          "List-Unsubscribe: <https://example.com/unsubscribe>",
+          "Content-Type: text/plain; charset=utf-8",
+          "",
+          "Buy now.",
+        ].join("\n"),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "email-mbox",
+        inputPath,
+        "--my-address",
+        "peter@example.com",
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.filterSummary).toMatchObject({
+        included: 2,
+        excluded: 1,
+        needsReview: 0,
+        reasons: {
+          sent_by_user: 1,
+          replied_contact: 1,
+          promotional_or_bulk: 1,
+        },
+      });
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(
+        preview.events.map((event: {
+          subject: string;
+          filterDecision: { reason: string };
+          memoryActive: boolean;
+        }) => ({
+          subject: event.subject,
+          reason: event.filterDecision.reason,
+          memoryActive: event.memoryActive,
+        })),
+      ).toEqual([
+        {
+          subject: "Sent to Bob",
+          reason: "sent_by_user",
+          memoryActive: true,
+        },
+        {
+          subject: "Reply from Bob",
+          reason: "replied_contact",
+          memoryActive: true,
+        },
+        {
+          subject: "Offer inside",
+          reason: "promotional_or_bulk",
+          memoryActive: false,
+        },
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -41,44 +41,64 @@ function parseInspectCommand(args: string[]): ImportRunnerCommand {
 }
 
 function parseDryRunCommand(args: string[]): ImportRunnerCommand {
-  const [, source, inputPath, firstFlag, firstValue, secondFlag, secondValue] = args;
+  const [, source, inputPath, ...flags] = args;
 
   if (
     !isImportCommand(source) ||
     !inputPath
   ) {
     throw new Error(
-      `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] --out <preview.json>`,
+      `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] [--my-address <email>] --out <preview.json>`,
     );
   }
 
-  if (firstFlag === "--out" && firstValue && secondFlag === undefined) {
-    return {
-      kind: "dry-run",
-      source,
-      inputPath,
-      importScopePath: null,
-      previewPath: firstValue,
-    };
+  let importScopePath: string | null = null;
+  let previewPath: string | null = null;
+  const myAddresses: string[] = [];
+
+  for (let index = 0; index < flags.length; index += 2) {
+    const flag = flags[index];
+    const value = flags[index + 1];
+
+    if (!flag || !value) {
+      throw new Error(
+        `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] [--my-address <email>] --out <preview.json>`,
+      );
+    }
+
+    if (flag === "--scope") {
+      importScopePath = value;
+      continue;
+    }
+
+    if (flag === "--my-address") {
+      myAddresses.push(value);
+      continue;
+    }
+
+    if (flag === "--out") {
+      previewPath = value;
+      continue;
+    }
+
+    throw new Error(
+      `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] [--my-address <email>] --out <preview.json>`,
+    );
   }
 
-  if (
-    firstFlag === "--scope" &&
-    firstValue &&
-    secondFlag === "--out" &&
-    secondValue
-  ) {
+  if (previewPath !== null) {
     return {
       kind: "dry-run",
       source,
       inputPath,
-      importScopePath: firstValue,
-      previewPath: secondValue,
+      importScopePath,
+      myAddresses,
+      previewPath,
     };
   }
 
   throw new Error(
-    `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] --out <preview.json>`,
+    `Usage: continuum-import dry-run <${importCommandUsage}> <source-file> [--scope <scope.json>] [--my-address <email>] --out <preview.json>`,
   );
 }
 

@@ -125,6 +125,12 @@ Write a public dry-run preview with an explicit Import Scope:
 node dist/cli.js dry-run public-document src/fixtures/project-gutenberg-analytical-engine-public-document.json --scope src/fixtures/import-scope-ada-lovelace-computing.json --out data/public-preview.json
 ```
 
+Write an email dry-run preview with explicit account addresses:
+
+```bash
+node dist/cli.js dry-run email-mbox data/email/small-slice.mbox --my-address peter@example.com --out data/email/preview.json
+```
+
 Import into local JSONL:
 
 ```bash
