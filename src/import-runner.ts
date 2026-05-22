@@ -4,11 +4,13 @@ import { basename } from "node:path";
 
 import {
   evaluateCanonicalEventImportProfile,
+  inspectMboxFile,
   type ImportFilterDecision,
   type ImportErrorRecord,
   type ImportFilterSummary,
   type ImportProfile,
   mergeCanonicalEvents,
+  parseMboxFile,
   type CanonicalEvent,
   type ImportReport,
   summarizeImportFilterDecisions,
@@ -140,6 +142,10 @@ type NormalizedSourceInput = {
 export async function runImportCommand(
   command: ImportRunnerCommand,
 ): Promise<ContinuumImportCliResult> {
+  if (command.kind === "inspect" && command.source === "email-mbox") {
+    return inspectEmailMboxSource(command);
+  }
+
   const sourceInput = await readSourceInput(
     command.source,
     command.inputPath,
@@ -235,6 +241,20 @@ async function readSourceInput(
     };
   }
 
+  if (source === "email-mbox") {
+    const result = await parseMboxFile(inputPath, {
+      mailboxPath: basename(inputPath),
+    });
+
+    return {
+      raw: "",
+      parsed: result,
+      hash: result.hash ?? "",
+      filesSeen: 1,
+      parseError: null,
+    };
+  }
+
   const raw = await readFile(inputPath, "utf8");
   const modifiedAt = (await stat(inputPath)).mtime.toISOString();
   let parsed: unknown = raw;
@@ -264,6 +284,33 @@ async function readSourceInput(
     hash: createHash("sha256").update(raw).digest("hex"),
     filesSeen: 1,
     parseError,
+  };
+}
+
+async function inspectEmailMboxSource(
+  command: Extract<ImportRunnerCommand, { kind: "inspect" }>,
+): Promise<InspectCliResult> {
+  const result = await inspectMboxFile(command.inputPath);
+
+  return {
+    command: "inspect",
+    sourcePlatform: command.source,
+    sourceName: command.source,
+    inputPath: command.inputPath,
+    conversationsSeen: 0,
+    recordsSeen: result.messagesSeen,
+    validationErrors: result.quarantine.length,
+    importableEvents: result.messagesParsed,
+    warnings: 0,
+    sourceFiles: [
+      {
+        path: basename(command.inputPath),
+        source: command.source,
+        status: result.quarantine.length > 0 ? "invalid" : "matched",
+        eventsCreated: result.messagesParsed,
+        quarantineRecords: result.quarantine.length,
+      },
+    ],
   };
 }
 

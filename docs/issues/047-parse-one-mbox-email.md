@@ -1,6 +1,6 @@
 # 047: Parse One MBOX Email
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -18,14 +18,14 @@ Use `src/fixtures/email-one-message.json` as the expected structured shape. If `
 
 ## Acceptance Criteria
 
-- [ ] Add a committed raw MBOX/RFC-style email fixture.
-- [ ] Parse `Message-ID`, `Date`, `From`, `To`, `Cc`, `Bcc`, `Reply-To`, `Subject`, `In-Reply-To`, and `References`.
-- [ ] Parse a plain text body.
-- [ ] Preserve unrecognized headers in `headers`.
-- [ ] Return validation errors instead of throwing for missing required fields.
-- [ ] Normalize the parsed message with the existing `normalizeEmailMessage`.
-- [ ] Do not strip quoted replies in this slice.
-- [ ] Do not implement MIME attachment extraction in this slice.
+- [x] Add a committed raw MBOX/RFC-style email fixture.
+- [x] Parse `Message-ID`, `Date`, `From`, `To`, `Cc`, `Bcc`, `Reply-To`, `Subject`, `In-Reply-To`, and `References`.
+- [x] Parse a plain text body.
+- [x] Preserve unrecognized headers in `headers`.
+- [x] Return validation errors instead of throwing for missing required fields.
+- [x] Normalize the parsed message with the existing `normalizeEmailMessage`.
+- [x] Do not strip quoted replies in this slice.
+- [x] Do not implement MIME attachment extraction in this slice.
 
 ## Blocked by
 
@@ -33,4 +33,4 @@ None - can start immediately.
 
 ## Notes
 
-Keep parser conservative. One plain text message is enough. MIME multipart, HTML, attachments, Gmail labels, and quote stripping are later slices.
+Implemented with `mailparser` for RFC/MIME decoding and a conservative MBOX splitter. Attachments are counted, not extracted. Gmail labels and quote stripping remain later slices.

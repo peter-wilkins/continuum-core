@@ -388,6 +388,14 @@ export type ImportErrorRecord = {
   recoverable: boolean;
 };
 
+export {
+  inspectMboxFile,
+  parseMboxFile,
+  parseMboxText,
+  type MboxParseOptions,
+  type MboxParseResult,
+} from "./email-mbox";
+
 export type SourceValidationResult<T> =
   | {
       ok: true;

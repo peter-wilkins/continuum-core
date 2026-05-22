@@ -37,6 +37,9 @@ const gitFixturePath = fileURLToPath(
 const mediawikiFixturePath = fileURLToPath(
   new URL("./fixtures/mediawiki-one-revision.json", import.meta.url),
 );
+const emailMboxFixturePath = fileURLToPath(
+  new URL("./fixtures/email-one-message.mbox", import.meta.url),
+);
 
 describe("continuum-import CLI", () => {
   it("formats inspect output with warnings and source file counts", () => {
@@ -1154,6 +1157,137 @@ describe("continuum-import CLI", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+
+  it("imports one MBOX email through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "email-mbox",
+        emailMboxFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        warnings: 0,
+        quarantine: [],
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "email",
+          externalMessageId: "<quote-456@example.com>",
+          externalConversationId: "<quote-123@example.com>",
+        },
+        content: {
+          subject: "Boiler quote",
+          text: "Need to quote Bob for the boiler.",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs one MBOX email through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "email-mbox",
+        emailMboxFixturePath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsSeen).toBe(1);
+      expect(result.quarantine).toEqual([]);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.events).toMatchObject([
+        {
+          platform: "email",
+          subject: "Boiler quote",
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("quarantines malformed MBOX email during dry-run", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const inputPath = join(dir, "broken.mbox");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(
+        inputPath,
+        [
+          "From bad@example.com Thu May 21 10:42:03 2026",
+          "Date: not a date",
+          "From: Bad <bad@example.com>",
+          "Subject: Broken",
+          "",
+          "No Message-ID here.",
+        ].join("\n"),
+      );
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "email-mbox",
+        inputPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.quarantine).toHaveLength(1);
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+      expect(result.batch.stats.eventsCreated).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("inspects one MBOX email through the CLI without loading the whole file as text", async () => {
+    const result = await runContinuumImportCli([
+      "inspect",
+      "email-mbox",
+      emailMboxFixturePath,
+    ]);
+
+    expect(result).toMatchObject({
+      command: "inspect",
+      sourcePlatform: "email-mbox",
+      recordsSeen: 1,
+      importableEvents: 1,
+      validationErrors: 0,
+      sourceFiles: [
+        {
+          source: "email-mbox",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ],
+    });
   });
 
   it("routes iCalendar files inside a Google Takeout zip", async () => {

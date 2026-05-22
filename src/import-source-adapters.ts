@@ -14,6 +14,7 @@ import {
   normalizeICalendarEvent,
   normalizeMarkdownDocument,
   normalizeMediaWikiRevision,
+  normalizeEmailMessage,
   parseClaudeConversationsWithQuarantine,
   parseGitLog,
   parseGoogleChromeBookmarksExport,
@@ -22,6 +23,7 @@ import {
   parseGoogleMyActivityExport,
   parseICalendarEvents,
   parseMediaWikiRevision,
+  type MboxParseResult,
 } from "./index";
 
 export type SourceImportCommand =
@@ -31,6 +33,7 @@ export type SourceImportCommand =
   | "google-chrome-bookmarks"
   | "google-chrome-reading-list"
   | "google-my-activity"
+  | "email-mbox"
   | "git-log"
   | "icalendar"
   | "markdown"
@@ -386,6 +389,25 @@ const sourceAdapters: SourceAdapter[] = [
       }
 
       return emptyNormalizedInput([normalizeMediaWikiRevision(result.value)]);
+    },
+  },
+  {
+    source: "email-mbox",
+    parseMode: "text",
+    fileMatches: () => false,
+    prepareInput: (parsed) => parsed,
+    normalize: (parsed) => {
+      const result = parsed as MboxParseResult;
+      const normalized = normalizeRecordsWithQuarantine(
+        "email-mbox",
+        result.messages,
+        normalizeEmailMessage,
+      );
+
+      return {
+        ...normalized,
+        quarantine: [...result.quarantine, ...normalized.quarantine],
+      };
     },
   },
   {

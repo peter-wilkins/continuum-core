@@ -56,7 +56,7 @@ export const sourceCatalogue = [
     schemaStressValue: "high",
     privacyRisk: "high",
     nextEventTarget: "RFC 5322 email message",
-    exampleDataPath: "data/email/rfc-style-example.mbox",
+    exampleDataPath: "src/fixtures/email-one-message.mbox",
     officialDocs: [
       "https://www.rfc-editor.org/rfc/rfc4155",
       "https://www.rfc-editor.org/rfc/rfc5322",

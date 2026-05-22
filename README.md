@@ -129,6 +129,7 @@ Supported source names:
 
 - `claude`
 - `chatgpt`
+- `email-mbox`
 - `google-chrome-history`
 - `google-chrome-bookmarks`
 - `google-chrome-reading-list`

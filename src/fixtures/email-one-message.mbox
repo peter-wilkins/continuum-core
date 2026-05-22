@@ -1,0 +1,11 @@
+From peter@example.com Thu May 21 10:42:03 2026
+Message-ID: <quote-456@example.com>
+Date: Thu, 21 May 2026 10:42:03 +0000
+From: Peter Wilkins <peter@example.com>
+To: Bob <bob@example.com>
+Subject: Boiler quote
+In-Reply-To: <quote-123@example.com>
+References: <quote-123@example.com>
+Content-Type: text/plain; charset=utf-8
+
+Need to quote Bob for the boiler.
