@@ -28,6 +28,10 @@ _Avoid_: direct Source Log write, tool-specific ingestion shortcut, unguarded im
 A source-side hook inside another tool's flow that emits captured material toward a **Capture Inlet**. A Capture Tap should name the point in the source flow it observes, such as after **Raw Transcript Text** exists while the original audio artifact is still available.
 _Avoid_: sync, importer, direct write, hidden listener
 
+**Landing Queue**:
+A durable, bounded staging area where material accepted through a **Capture Inlet** waits before becoming **Source Log** entries or **Artifact References**. Source tools may push into a Landing Queue, while Continuum processors pull from it at their own pace; queued material is not silently disposable.
+_Avoid_: landing cache, hidden buffer, lossy queue, unbounded inbox
+
 **Artifact Reference**:
 A durable reference from an **Entry** or **Canonical Event** to a raw captured artifact such as a WAV file, image, screenshot, or source file. Artifact References preserve origin material without making the artifact itself the searchable Entry text.
 _Avoid_: blob as Entry, hidden file path, copied payload without provenance
