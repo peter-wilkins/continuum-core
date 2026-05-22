@@ -220,8 +220,13 @@ export function normalizeArchiveFiles(
         : file.relativePath,
     }));
 
-    incomingEvents.push(...result.incomingEvents);
-    quarantine.push(...fileQuarantine);
+    for (const event of result.incomingEvents) {
+      incomingEvents.push(event);
+    }
+
+    for (const record of fileQuarantine) {
+      quarantine.push(record);
+    }
     sourceFiles.push({
       path: file.relativePath,
       source,

@@ -307,15 +307,16 @@ const sourceAdapters: SourceAdapter[] = [
         };
       }
 
-      return emptyNormalizedInput(
-        result.value.map((event) =>
+      return normalizeRecordsWithQuarantine(
+        "icalendar",
+        result.value,
+        (event) =>
           normalizeICalendarEvent({
             calendar: {
               path: input.calendarPath,
             },
             event,
           }),
-        ),
       );
     },
   },

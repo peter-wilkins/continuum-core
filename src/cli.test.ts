@@ -1057,6 +1057,70 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("quarantines an invalid iCalendar date inside a Google Takeout zip", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const zipPath = join(dir, "takeout.zip");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Calendar/calendar.ics": strToU8(
+          [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "BEGIN:VEVENT",
+            "UID:bad-date",
+            "DTSTART:not-a-date",
+            "SUMMARY:Bad calendar date",
+            "END:VEVENT",
+            "BEGIN:VEVENT",
+            "UID:good-date",
+            "DTSTART:20260521T104203Z",
+            "SUMMARY:Good calendar date",
+            "END:VEVENT",
+            "END:VCALENDAR",
+          ].join("\n"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.recordsSeen).toBe(2);
+      expect(result.batch.stats.eventsCreated).toBe(1);
+      expect(result.batch.stats.recordsQuarantined).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Calendar/calendar.ics",
+          source: "icalendar",
+          status: "invalid",
+          eventsCreated: 1,
+          quarantineRecords: 1,
+        },
+      ]);
+      expect(preview.quarantine[0]).toMatchObject({
+        sourcePath: "Takeout/Calendar/calendar.ics",
+        recordIndex: 0,
+        errorCode: "source_normalization_failed",
+        recoverable: true,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("imports an iCalendar file through the CLI", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
     const outputPath = join(dir, "events.jsonl");
