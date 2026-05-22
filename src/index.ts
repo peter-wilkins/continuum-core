@@ -157,6 +157,17 @@ export type PublicContinuumQuery = {
   createdAt: string;
 };
 
+export type PublicScopeEventDecision = {
+  action: "include" | "needs_review" | "exclude";
+  reason:
+    | "primary_and_focus_match"
+    | "primary_match_focus_uncertain"
+    | "primary_identity_missing"
+    | "source_family_not_allowed";
+  confidence: number;
+  matchedTerms: string[];
+};
+
 export function createPublicContinuumQuery(
   scope: ImportScope,
   query: PublicContinuumQuery,
@@ -183,6 +194,98 @@ function validatePublicContinuumQuery(
       "PublicContinuumQuery createdAt must be an ISO-compatible date.",
     );
   }
+}
+
+export function evaluatePublicScopeEvent(
+  scope: ImportScope,
+  event: CanonicalEvent,
+): PublicScopeEventDecision {
+  const primaryMatches = matchedIdentityTerms(scope.primaryEntity, event);
+  const focusMatches =
+    scope.focusEntity === null ? [] : matchedIdentityTerms(scope.focusEntity, event);
+  const matchedTerms = [...primaryMatches, ...focusMatches];
+
+  if (
+    !scope.sourceFamilies.some(
+      (sourceFamily) => sourceFamily === event.provenance.sourceFamily,
+    )
+  ) {
+    return {
+      action: "exclude",
+      reason: "source_family_not_allowed",
+      confidence: 1,
+      matchedTerms,
+    };
+  }
+
+  if (primaryMatches.length === 0) {
+    return {
+      action: "exclude",
+      reason: "primary_identity_missing",
+      confidence: 0.9,
+      matchedTerms: [],
+    };
+  }
+
+  if (scope.focusEntity === null || focusMatches.length > 0) {
+    return {
+      action: "include",
+      reason: "primary_and_focus_match",
+      confidence: 1,
+      matchedTerms,
+    };
+  }
+
+  return {
+    action: "needs_review",
+    reason: "primary_match_focus_uncertain",
+    confidence: 0.65,
+    matchedTerms,
+  };
+}
+
+function matchedIdentityTerms(
+  identity: ImportScopeEntity,
+  event: CanonicalEvent,
+): string[] {
+  const terms = [
+    identity.label,
+    ...identity.aliases,
+    ...identity.sourceIds.map((sourceId) => sourceId.id),
+  ];
+  const searchable = canonicalEventSearchText(event);
+  const matched: string[] = [];
+
+  for (const term of terms) {
+    if (
+      term.trim().length > 0 &&
+      searchable.includes(term.toLocaleLowerCase()) &&
+      !matched.includes(term)
+    ) {
+      matched.push(term);
+    }
+  }
+
+  return matched;
+}
+
+function canonicalEventSearchText(event: CanonicalEvent): string {
+  return [
+    event.id,
+    event.source.key,
+    event.source.externalConversationId,
+    event.source.externalMessageId,
+    event.source.artifactId,
+    event.content.subject,
+    event.content.text,
+    ...event.participants.flatMap((participant) => [
+      participant.name,
+      participant.address,
+    ]),
+  ]
+    .filter((value): value is string => value !== null)
+    .join("\n")
+    .toLocaleLowerCase();
 }
 
 export type LensDefinition = {

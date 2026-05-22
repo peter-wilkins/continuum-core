@@ -284,6 +284,14 @@ It is not a user settings system in the MVP.
 
 Public Continuum queries are explicit records tied to an Import Scope. The initial MVP query for the Ada scope can be seeded by the system, but it remains a query record rather than hidden product state.
 
+Public scope evaluation is a deterministic first pass:
+
+- `include` when primary identity and focus identity are both visible in the canonical event.
+- `needs_review` when the primary identity is visible but the focus identity is uncertain.
+- `exclude` when the primary identity is missing or the source family is outside the scope allowlist.
+
+Excluded and needs-review records must remain inspectable in previews; evaluation is not silent deletion.
+
 Avoid copying whole event payloads or treating generated text as durable truth. If generated text is stored for page-load stability or release repeatability, mark it as rebuildable and keep the source ids needed to regenerate it.
 
 Import batch provenance should use a link table rather than an `import_batch_id` column on events. A Canonical Event can be observed by multiple imports over time, especially during reimport, so batches observe events; they do not own them.
