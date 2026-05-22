@@ -105,6 +105,19 @@ Responsibilities:
 - Continuant integration
 - future SDK wrappers
 
+## Shared Utility Projects
+
+Some reusable behavior should live outside Continuum Core as a separate library repo when it is useful to multiple products but is not part of the Continuum domain model.
+
+Examples:
+
+- workflow-manager helpers
+- cross-agent resource leasing utilities
+- shared command/report formatting
+- local development coordination tools
+
+Use a Shared Utility Project when the same utility belongs in Continuum apps and workflow-manager land. Do not put that code in Continuum Core unless it directly expresses Continuum domain behavior.
+
 ## Important constraint
 
 Do not prematurely optimise for visual browsing.
