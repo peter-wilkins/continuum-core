@@ -13,8 +13,8 @@ Add the first core model for a **Chairman Session**: a continuable facilitation 
 The Chairman keeps the decision tree alive:
 
 - what the meeting is for
-- which branch is active
-- which branches are parked
+- which Line of Inquiry is active
+- which Lines are parked
 - what has been decided
 - what can be resumed later
 
@@ -28,16 +28,16 @@ This slice should model Chairman source truth as append-only events and rebuild 
 
 - [ ] Define a `ChairmanSession` concept scoped to one meeting/conversation/thread, not one global Chairman.
 - [ ] A Chairman Session can exist before it is linked to a larger Continuation.
-- [ ] A session starts with an Agenda that has exactly one Root Branch.
-- [ ] The meeting title is derived from the Root Branch title, not duplicated as separate mutable state.
-- [ ] A Branch has a title, question, desired outcome, outcome status, lifecycle status, parent branch reference, and source event references.
-- [ ] Branch lifecycle status supports `active`, `parked`, `resolved`, and `abandoned`.
+- [ ] A session starts with an Agenda that has exactly one Root Line.
+- [ ] The meeting title is derived from the Root Line title, not duplicated as separate mutable state.
+- [ ] A Line of Inquiry has a title, question, desired outcome, outcome status, lifecycle status, parent Line reference, and source event references.
+- [ ] Line lifecycle status supports `active`, `parked`, `resolved`, and `abandoned`.
 - [ ] Outcome status supports `unknown`, `defined`, `achieved`, and `abandoned`.
-- [ ] A resolved or abandoned Branch must have at least one Chairman Decision.
+- [ ] A resolved or abandoned Line must have at least one Chairman Decision.
 - [ ] Chairman Decisions support at least `agreement`, `chair_call`, `solo_decision`, `assumption`, `parked_for_later`, and `abandoned`.
 - [ ] Chairman state is rebuilt from append-only Chairman Events.
 - [ ] Chairman Events may contain small labels/summaries, but must link back to source event ids when they summarize conversation.
-- [ ] Do not add a separate Question object in this slice; a Branch carries the question.
+- [ ] Do not add a separate Question object in this slice; a Line carries the question.
 
 ## Blocked By
 
@@ -57,7 +57,7 @@ None - can start immediately.
 
 Working definition:
 
-> A Chairman Session is a Lens over a conversation or meeting that tracks branches, decisions, parked topics, and the current path to an outcome.
+> A Chairman Session is a Lens over a conversation or meeting that tracks Lines of Inquiry, decisions, parked topics, and the current path to an outcome.
 
 Chairman is facilitation and continuity in the MVP, not governance machinery.
 
@@ -85,11 +85,11 @@ Sketch of the intended event vocabulary:
 ```ts
 type ChairmanEventKind =
   | "session_started"
-  | "branch_added"
-  | "branch_status_changed"
-  | "branch_outcome_defined"
+  | "line_added"
+  | "line_status_changed"
+  | "line_outcome_defined"
   | "decision_recorded"
-  | "branch_returned_to"
+  | "line_returned_to"
   | "session_paused"
   | "session_resolved";
 ```

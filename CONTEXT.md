@@ -84,8 +84,16 @@ _Avoid_: conversation as source truth, folder UI, canonical chat
 A named way of projecting source truth into a **Continuation Surface**. A Lens may choose ordering, emphasis, layout, synthesis style, and supporting evidence, but it should prefer references back to source **Entries** or **Canonical Events** over duplicated state. Materialized Lens outputs are rebuildable caches unless an exception is explicitly documented.
 _Avoid_: model as source truth, duplicated view state, hidden copy of memory
 
+**Thought Card**:
+A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. A Thought Card may be grounded in one Entry, one sentence, one paragraph span, or several linked source records, but it should keep provenance visible and should not become source truth.
+_Avoid_: document row, full source record as the display unit, copied memory
+
+**Line of Inquiry**:
+A question-shaped path through a **Chairman Session** or other facilitated thinking surface. A Line of Inquiry has a title, question, desired outcome, status, and source references; it may be active, parked, resolved, or abandoned. Use the short form **Line** in UI copy.
+_Avoid_: branch, Git branch, tree node, topic bucket
+
 **Continuity Map**:
-A projection that shows how thought moved across **Entries**, **Continuations**, **Continuation Links**, topic turns, returns, branches, and dead ends. A Continuity Map can support debugging, user resumption, organisational reflection, or other future surfaces; it is not the source of truth.
+A projection that shows how thought moved across **Entries**, **Continuations**, **Continuation Links**, topic turns, returns, **Lines of Inquiry**, and dead ends. A Continuity Map can support debugging, user resumption, organisational reflection, or other future surfaces; it is not the source of truth.
 _Avoid_: chat transcript view, canonical graph, meeting score as source truth
 
 **Subject Boundary Cue**:
@@ -176,6 +184,7 @@ _Avoid_: client, consumer, frontend
 ## Flagged Ambiguities
 
 - **Stream** is avoided because it is overloaded in software. Use **Continuation** for an ongoing resumable context.
+- **Branch** is avoided in Chairman and decision-tree language because it clashes with Git. Use **Line of Inquiry** or **Line**.
 - **Metadata** is avoided because it hides whether context is required. Use **Capture Context** for the required envelope and **Context Clue** for individual evidence.
 - **Continuation state** is avoided because it blurs the infinite Continuation with the materialized view. Use **Resume Brief** for the materialized view.
 - **Source parent id** is avoided for canonical relationships because external graph ids and internal event ids have different stability and meaning. Use **Source Graph Reference** until the canonical relationship is known.
