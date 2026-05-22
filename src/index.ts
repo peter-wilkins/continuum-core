@@ -149,6 +149,42 @@ export type ImportScope = {
   createdAt: string;
 };
 
+export type PublicContinuumQuery = {
+  id: string;
+  scopeId: string;
+  text: string;
+  origin: "system_seed" | "user";
+  createdAt: string;
+};
+
+export function createPublicContinuumQuery(
+  scope: ImportScope,
+  query: PublicContinuumQuery,
+): PublicContinuumQuery {
+  validatePublicContinuumQuery(scope, query);
+
+  return query;
+}
+
+function validatePublicContinuumQuery(
+  scope: ImportScope,
+  query: PublicContinuumQuery,
+): void {
+  validateNonBlank("PublicContinuumQuery id", query.id);
+  validateNonBlank("PublicContinuumQuery scopeId", query.scopeId);
+  validateNonBlank("PublicContinuumQuery text", query.text);
+
+  if (query.scopeId !== scope.id) {
+    throw new Error("PublicContinuumQuery scopeId must match the ImportScope id.");
+  }
+
+  if (Number.isNaN(new Date(query.createdAt).getTime())) {
+    throw new Error(
+      "PublicContinuumQuery createdAt must be an ISO-compatible date.",
+    );
+  }
+}
+
 export type LensDefinition = {
   id: string;
   name: string;

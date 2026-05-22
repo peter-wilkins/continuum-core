@@ -282,6 +282,8 @@ Lens feedback is evidence about one scope/query/candidate set:
 
 It is not a user settings system in the MVP.
 
+Public Continuum queries are explicit records tied to an Import Scope. The initial MVP query for the Ada scope can be seeded by the system, but it remains a query record rather than hidden product state.
+
 Avoid copying whole event payloads or treating generated text as durable truth. If generated text is stored for page-load stability or release repeatability, mark it as rebuildable and keep the source ids needed to regenerate it.
 
 Import batch provenance should use a link table rather than an `import_batch_id` column on events. A Canonical Event can be observed by multiple imports over time, especially during reimport, so batches observe events; they do not own them.
