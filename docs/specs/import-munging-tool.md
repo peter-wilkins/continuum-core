@@ -282,6 +282,8 @@ The MVP Source Paragraph locator should start with document id, paragraph index,
 
 Public MVP Thought Cards cite one or more Source Paragraphs only. Broader source reference unions can wait until audio, email, and personal imports return to the active product path.
 
+Public MVP Thought Cards may store generated display text, such as title and body, for stable swiping, inspection, and feedback. That text is rebuildable Materialized View output; Source Paragraph references remain the source truth.
+
 Lens feedback is evidence about one scope/query/candidate set:
 
 - user id
