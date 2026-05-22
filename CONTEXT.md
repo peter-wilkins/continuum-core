@@ -8,6 +8,10 @@ Continuum Core names the domain of preserving and resuming human context without
 An immutable captured unit from something the user said, typed, or did. Entry content is not edited in place, but an Entry may be erased through a **Forget Request**.
 _Avoid_: note, memory, transcript chunk
 
+**Raw Transcript Text**:
+The closest available text rendering of captured speech after transcription and before cleanup, extraction, summarisation, or rewriting. Raw Transcript Text may contain hesitations, errors, repetitions, and spoken structure; derived clean text and **Thought Cards** must be projections over it, not replacements for it.
+_Avoid_: cleaned transcript as source truth, polished note, silently rewritten speech
+
 **Capture Context**:
 The required situation envelope attached to an **Entry** when it is captured. Capture Context includes the capture time and structured **Context Clues** supplied by the Host App; missing knowledge should be represented explicitly rather than omitted.
 _Avoid_: metadata, optional fields, source
