@@ -88,12 +88,12 @@ This lets us ask human-shaped questions:
 
 This is less like precise banking-style bi-temporal querying and more like fuzzy cognitive archaeology.
 
-## Event time and ingest time
+## Occurrence Time and Knowledge Time
 
 Continuum probably needs two simple time axes:
 
-- `event_time`: when the thing happened
-- `ingest_time`: when Continuum learned about it
+- **Occurrence Time**: when the thing happened or was true in the world
+- **Knowledge Time**: when Continuum learned about it, imported it, generated it, or corrected it
 
 This handles:
 

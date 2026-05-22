@@ -88,6 +88,18 @@ _Avoid_: imported event, vendor memory, raw import record
 A source-system relationship identifier preserved during import, such as a ChatGPT parent message id. A Source Graph Reference is not the same thing as a canonical parent event id until both source records have been normalized and linked.
 _Avoid_: canonical parent, internal graph edge
 
+**Occurrence Time**:
+When captured material happened or was true in the world, as best Continuum can tell. Occurrence Time may be exact, inferred, fuzzy, or unknown, but that uncertainty should be explicit.
+_Avoid_: treating import time as event time, hidden date guessing, exact timestamp theatre
+
+**Knowledge Time**:
+When Continuum learned, imported, generated, corrected, or reprocessed something. Knowledge Time preserves the history of what the system knew when, especially for delayed imports, corrections, and rebuilt materialized views.
+_Avoid_: overwriting past knowledge, pretending late knowledge was always known, hidden regeneration time
+
+**Thought Epoch**:
+A fuzzy human period used to ask what someone or a Continuum was thinking during a meaningful span, such as a month, year, project phase, research phase, or life chapter. A Thought Epoch may be grounded by time ranges and evidence, but it is not limited to exact calendar boundaries.
+_Avoid_: only exact timestamp queries, rigid accounting period, calendar folder
+
 **Memory Layer**:
 Derived retrieval material built from the **Source Log**, such as summaries, embeddings, salience, temporal weighting, and Continuation associations. The **Memory Layer** must be rebuildable from the Source Log except where Entries have been forgotten.
 _Avoid_: source memory, transcript store

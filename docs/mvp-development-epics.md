@@ -106,6 +106,9 @@ The source of truth is the event stream plus concept graph.
 ## Goal
 Capture new cognition directly into the living continuum.
 
+## Post-MVP Priority
+Start with audio capture and correction feedback because it directly improves the dogfooding workflow and the quality of daily Continuum input.
+
 ## Inputs
 
 - voice

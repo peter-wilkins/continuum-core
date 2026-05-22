@@ -242,7 +242,7 @@ Use the same camelCase field names in TypeScript and SQLite. Avoid camelCase-to-
 
 The `text` column is intentionally duplicated from `eventJson` so the Host App can serve timelines, simple search, and later SQLite FTS without reparsing every event. Because it is readable payload data, the Local Source Cache must be purged or rebuilt after Forget Requests and erasure operations.
 
-`createdAt` is event time: when the source event happened. `ingestedAt` is ingest/cache time: when Continuum learned about it or rebuilt the local row. Both are required because imported history often arrives long after it happened.
+`createdAt` represents **Occurrence Time**: when the source event happened. `ingestedAt` represents **Knowledge Time**: when Continuum learned about it or rebuilt the local row. Both are required because imported history often arrives long after it happened.
 
 SQLite FTS is not part of the first Local Source Cache slice. Add it after the basic timeline, source filtering, and event detail path is working, and test that erasure purges both base rows and FTS rows.
 
