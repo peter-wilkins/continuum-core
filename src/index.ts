@@ -11,6 +11,22 @@ export type ContinuumCorePackage = {
   name: typeof continuumCorePackageName;
 };
 
+type Brand<T, BrandName extends string> = T & {
+  readonly __brand: BrandName;
+};
+
+export type CanonicalEventId = Brand<string, "CanonicalEventId">;
+export type HumanText = Brand<string, "HumanText">;
+export type KnowledgeTime = Brand<string, "KnowledgeTime">;
+export type ParserVersion = Brand<string, "ParserVersion">;
+export type ParagraphIndex = Brand<number, "ParagraphIndex">;
+export type SourceDocumentId = Brand<string, "SourceDocumentId">;
+export type SourceFingerprint = Brand<string, "SourceFingerprint">;
+export type SourceName = Brand<string, "SourceName">;
+export type SourceParagraphId = Brand<string, "SourceParagraphId">;
+export type SourceRecordId = Brand<string, "SourceRecordId">;
+export type SourceUrl = Brand<string, "SourceUrl">;
+
 export function describeContinuumCorePackage(): ContinuumCorePackage {
   return {
     name: continuumCorePackageName,
@@ -334,6 +350,69 @@ export type LensFeedbackSignal = {
   createdAt: string;
 };
 
+export type SourceParagraphContext = {
+  title: HumanText;
+  sourceName: SourceName;
+  sourceRecordId: SourceRecordId;
+  sourceUrl: SourceUrl;
+  license: HumanText;
+  retrievedAt: KnowledgeTime;
+  parserVersion: ParserVersion;
+};
+
+export type SourceParagraph = {
+  id: SourceParagraphId;
+  canonicalEventId: CanonicalEventId;
+  documentId: SourceDocumentId;
+  paragraphIndex: ParagraphIndex;
+  sourceFingerprint: SourceFingerprint;
+  text: HumanText;
+  context: SourceParagraphContext;
+};
+
+export type SourceParagraphInput = {
+  id: string;
+  canonicalEventId: string;
+  documentId: string;
+  paragraphIndex: number;
+  sourceFingerprint: string;
+  text: string;
+  context: {
+    title: string;
+    sourceName: string;
+    sourceRecordId: string;
+    sourceUrl: string;
+    license: string;
+    retrievedAt: string;
+    parserVersion: string;
+  };
+};
+
+export function createSourceParagraph(
+  input: SourceParagraphInput,
+): SourceParagraph {
+  return {
+    id: sourceParagraphId(input.id),
+    canonicalEventId: canonicalEventId(input.canonicalEventId),
+    documentId: sourceDocumentId(input.documentId),
+    paragraphIndex: paragraphIndex(input.paragraphIndex),
+    sourceFingerprint: sourceFingerprint(input.sourceFingerprint),
+    text: humanText("SourceParagraph text", input.text),
+    context: {
+      title: humanText("SourceParagraph context.title", input.context.title),
+      sourceName: sourceName(input.context.sourceName),
+      sourceRecordId: sourceRecordId(input.context.sourceRecordId),
+      sourceUrl: sourceUrl(input.context.sourceUrl),
+      license: humanText("SourceParagraph context.license", input.context.license),
+      retrievedAt: knowledgeTime(
+        "SourceParagraph context.retrievedAt",
+        input.context.retrievedAt,
+      ),
+      parserVersion: parserVersion(input.context.parserVersion),
+    },
+  };
+}
+
 export const defaultPublicLensDefinitions: LensDefinition[] = [
   {
     id: "atlas",
@@ -478,6 +557,79 @@ function validateNonBlank(fieldName: string, value: string): void {
   if (value.trim().length === 0) {
     throw new Error(`${fieldName} must not be blank.`);
   }
+}
+
+function canonicalEventId(value: string): CanonicalEventId {
+  validateNonBlank("CanonicalEventId", value);
+  return value as CanonicalEventId;
+}
+
+function humanText(fieldName: string, value: string): HumanText {
+  validateNonBlank(fieldName, value);
+  return value as HumanText;
+}
+
+function knowledgeTime(fieldName: string, value: string): KnowledgeTime {
+  if (Number.isNaN(new Date(value).getTime())) {
+    throw new Error(`${fieldName} must be an ISO-compatible date.`);
+  }
+
+  return value as KnowledgeTime;
+}
+
+function paragraphIndex(value: number): ParagraphIndex {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error("SourceParagraph paragraphIndex must be a non-negative integer.");
+  }
+
+  return value as ParagraphIndex;
+}
+
+function parserVersion(value: string): ParserVersion {
+  validateNonBlank("SourceParagraph context.parserVersion", value);
+  return value as ParserVersion;
+}
+
+function sourceDocumentId(value: string): SourceDocumentId {
+  validateNonBlank("SourceDocumentId", value);
+  return value as SourceDocumentId;
+}
+
+function sourceFingerprint(value: string): SourceFingerprint {
+  validateNonBlank("SourceFingerprint", value);
+
+  if (!/^[0-9a-f]{16}$/.test(value)) {
+    throw new Error("SourceFingerprint must be 16 lowercase hexadecimal characters.");
+  }
+
+  return value as SourceFingerprint;
+}
+
+function sourceName(value: string): SourceName {
+  validateNonBlank("SourceParagraph context.sourceName", value);
+  return value as SourceName;
+}
+
+function sourceParagraphId(value: string): SourceParagraphId {
+  validateNonBlank("SourceParagraphId", value);
+  return value as SourceParagraphId;
+}
+
+function sourceRecordId(value: string): SourceRecordId {
+  validateNonBlank("SourceParagraph context.sourceRecordId", value);
+  return value as SourceRecordId;
+}
+
+function sourceUrl(value: string): SourceUrl {
+  validateNonBlank("SourceParagraph context.sourceUrl", value);
+
+  try {
+    new URL(value);
+  } catch {
+    throw new Error("SourceParagraph context.sourceUrl must be a valid URL.");
+  }
+
+  return value as SourceUrl;
 }
 
 function validateLensOutput(output: LensOutput): void {
