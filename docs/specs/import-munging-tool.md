@@ -40,6 +40,7 @@ That means import becomes **identity-first** and **focus-identity-filtered** bef
 - Immutable events: changes produce later events or tombstones, not silent mutation.
 - Required fields: public types avoid optional inputs and surprise defaults.
 - Explicit absence: use `null`, empty arrays, or `"unknown"` instead of omission.
+- No naked primitives: public domain fields use named domain scalars or value objects unless an exception is explicit.
 - Provenance-first: every event records source lineage at ingestion time.
 - Fingerprints detect changed source records; they do not prove independent evidence.
 - Zod validates unstable source schemas before normalization.
