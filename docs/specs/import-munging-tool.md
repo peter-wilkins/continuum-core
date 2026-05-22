@@ -271,6 +271,8 @@ For generated Lens outputs, prefer storing:
 
 The first core model exposes Atlas, Loom, and Beacon as default public Lens definitions. A `LensOutput` stores ordered event ids and section event ids; it does not store copied event payload text.
 
+The deterministic MVP helper can create default Atlas, Loom, and Beacon outputs from a scope, query, and canonical events. These outputs are intentionally reference-only and can be replaced by richer generation later.
+
 Lens feedback is evidence about one scope/query/candidate set:
 
 - user id

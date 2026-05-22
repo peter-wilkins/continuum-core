@@ -367,12 +367,111 @@ export function createLensOutput(input: LensOutput): LensOutput {
   return input;
 }
 
+export function createDefaultPublicLensOutputs(
+  scope: ImportScope,
+  query: PublicContinuumQuery,
+  events: CanonicalEvent[],
+  generatedAt: string,
+): LensOutput[] {
+  if (query.scopeId !== scope.id) {
+    throw new Error("PublicContinuumQuery scopeId must match the ImportScope id.");
+  }
+
+  const sourceEventIds = events.map((event) => event.id);
+
+  return defaultPublicLensDefinitions.map((lens) =>
+    createLensOutput({
+      id: `lens-output:${query.id}:${lens.id}:${lens.version}`,
+      scopeId: scope.id,
+      queryId: query.id,
+      lensId: lens.id,
+      lensVersion: lens.version,
+      generatedAt,
+      sourceEventIds,
+      sections: defaultLensSections(lens.id, scope, events),
+      generation: {
+        strategy: `default_${lens.id}`,
+        model: null,
+        parameters: [
+          {
+            key: "source",
+            value: "canonical_event_ids",
+          },
+        ],
+      },
+    }),
+  );
+}
+
 export function createLensFeedbackSignal(
   input: LensFeedbackSignal,
 ): LensFeedbackSignal {
   validateLensFeedbackSignal(input);
 
   return input;
+}
+
+function defaultLensSections(
+  lensId: string,
+  scope: ImportScope,
+  events: CanonicalEvent[],
+): LensOutputSection[] {
+  if (lensId === "atlas") {
+    return compactLensSections([
+      {
+        id: "atlas:identity",
+        title: "Identity",
+        eventIds: events
+          .filter((event) => event.provenance.sourceName === "wikidata")
+          .map((event) => event.id),
+      },
+      {
+        id: "atlas:source-trail",
+        title: "Source Trail",
+        eventIds: events
+          .filter((event) => event.provenance.sourceName !== "wikidata")
+          .map((event) => event.id),
+      },
+    ]);
+  }
+
+  if (lensId === "loom") {
+    const sourceFamilies = Array.from(
+      new Set(events.map((event) => event.provenance.sourceFamily)),
+    );
+
+    return compactLensSections(
+      sourceFamilies.map((sourceFamily) => ({
+        id: `loom:${sourceFamily}`,
+        title: sourceFamily,
+        eventIds: events
+          .filter((event) => event.provenance.sourceFamily === sourceFamily)
+          .map((event) => event.id),
+      })),
+    );
+  }
+
+  if (lensId === "beacon") {
+    return [
+      {
+        id: "beacon:strongest-signals",
+        title: "Strongest Signals",
+        eventIds: [...events]
+          .sort(
+            (left, right) =>
+              evaluatePublicScopeEvent(scope, right).confidence -
+              evaluatePublicScopeEvent(scope, left).confidence,
+          )
+          .map((event) => event.id),
+      },
+    ];
+  }
+
+  throw new Error(`Unknown default Lens id: ${lensId}`);
+}
+
+function compactLensSections(sections: LensOutputSection[]): LensOutputSection[] {
+  return sections.filter((section) => section.eventIds.length > 0);
 }
 
 function validateNonBlank(fieldName: string, value: string): void {
