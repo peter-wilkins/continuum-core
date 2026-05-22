@@ -80,6 +80,10 @@ _Avoid_: stream, folder, project, thread
 A user-facing projection over **Continuations**, **Entries**, and **Resume Briefs**. A Continuation Surface may look like a chat list, timeline, graph, recent activity list, or explicit "new subject" affordance, but it is not the source of truth.
 _Avoid_: conversation as source truth, folder UI, canonical chat
 
+**Lens**:
+A named way of projecting source truth into a **Continuation Surface**. A Lens may choose ordering, emphasis, layout, synthesis style, and supporting evidence, but it should prefer references back to source **Entries** or **Canonical Events** over duplicated state. Materialized Lens outputs are rebuildable caches unless an exception is explicitly documented.
+_Avoid_: model as source truth, duplicated view state, hidden copy of memory
+
 **Continuity Map**:
 A projection that shows how thought moved across **Entries**, **Continuations**, **Continuation Links**, topic turns, returns, branches, and dead ends. A Continuity Map can support debugging, user resumption, organisational reflection, or other future surfaces; it is not the source of truth.
 _Avoid_: chat transcript view, canonical graph, meeting score as source truth
@@ -175,6 +179,21 @@ _Avoid_: client, consumer, frontend
 - **Metadata** is avoided because it hides whether context is required. Use **Capture Context** for the required envelope and **Context Clue** for individual evidence.
 - **Continuation state** is avoided because it blurs the infinite Continuation with the materialized view. Use **Resume Brief** for the materialized view.
 - **Source parent id** is avoided for canonical relationships because external graph ids and internal event ids have different stability and meaning. Use **Source Graph Reference** until the canonical relationship is known.
+
+## Project Rule: Source Truth Over Duplicate State
+
+Duplicate state creates drift. Prefer functional, rebuildable projections over copied mutable state.
+
+Default rule:
+
+- Source truth lives in the **Source Log**, **Canonical Events**, and explicitly named durable domain records.
+- **Lenses**, surfaces, summaries, rankings, previews, local caches, and generated outputs are projections over source truth.
+- Projection records should store stable source ids, ordering, parameters, Lens ids, and provenance before they store copied content.
+- If duplicated state is unavoidable for performance, deployment, or UX stability, document why it exists, what source truth rebuilds it, and when it must be invalidated.
+
+Short form:
+
+> Source of truth first. Lenses over copies. Duplicate state only by exception.
 
 ## Example Dialogue
 

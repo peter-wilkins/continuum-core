@@ -244,6 +244,31 @@ The `text` column is intentionally duplicated from `eventJson` so the Host App c
 
 SQLite FTS is not part of the first Local Source Cache slice. Add it after the basic timeline, source filtering, and event detail path is working, and test that erasure purges both base rows and FTS rows.
 
+## Source Truth And Lenses
+
+Do not duplicate state unless there is an explicit exception.
+
+The preferred shape is:
+
+```text
+source truth
+  -> Lens parameters
+  -> ordered source ids
+  -> rebuildable surface
+```
+
+For generated Lens outputs, prefer storing:
+
+- scope id
+- query id
+- Lens id
+- Lens version
+- ordered Canonical Event or Entry ids
+- section structure
+- provenance and generation parameters
+
+Avoid copying whole event payloads or treating generated text as durable truth. If generated text is stored for page-load stability or release repeatability, mark it as rebuildable and keep the source ids needed to regenerate it.
+
 Import batch provenance should use a link table rather than an `import_batch_id` column on events. A Canonical Event can be observed by multiple imports over time, especially during reimport, so batches observe events; they do not own them.
 
 ```sql
