@@ -24,6 +24,10 @@ _Avoid_: tag, category, note
 An interface where a Host App or local tool submits captured material into Continuum. A Capture Inlet may receive transcript text, files, events, or artifact references, but it must pass through the relevant membranes before material becomes source truth or durable local storage.
 _Avoid_: direct Source Log write, tool-specific ingestion shortcut, unguarded import
 
+**Capture Tap**:
+A source-side hook inside another tool's flow that emits captured material toward a **Capture Inlet**. A Capture Tap should name the point in the source flow it observes, such as after **Raw Transcript Text** exists while the original audio artifact is still available.
+_Avoid_: sync, importer, direct write, hidden listener
+
 **Artifact Reference**:
 A durable reference from an **Entry** or **Canonical Event** to a raw captured artifact such as a WAV file, image, screenshot, or source file. Artifact References preserve origin material without making the artifact itself the searchable Entry text.
 _Avoid_: blob as Entry, hidden file path, copied payload without provenance
