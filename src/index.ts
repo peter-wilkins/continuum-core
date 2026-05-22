@@ -16,8 +16,11 @@ type Brand<T, BrandName extends string> = T & {
 };
 
 export type CanonicalEventId = Brand<string, "CanonicalEventId">;
+export type Confidence = Brand<number, "Confidence">;
 export type HumanText = Brand<string, "HumanText">;
 export type KnowledgeTime = Brand<string, "KnowledgeTime">;
+export type LensOutputId = Brand<string, "LensOutputId">;
+export type NonEmptyArray<T> = [T, ...T[]];
 export type ParserVersion = Brand<string, "ParserVersion">;
 export type ParagraphIndex = Brand<number, "ParagraphIndex">;
 export type SourceDocumentId = Brand<string, "SourceDocumentId">;
@@ -26,6 +29,7 @@ export type SourceName = Brand<string, "SourceName">;
 export type SourceParagraphId = Brand<string, "SourceParagraphId">;
 export type SourceRecordId = Brand<string, "SourceRecordId">;
 export type SourceUrl = Brand<string, "SourceUrl">;
+export type ThoughtCardId = Brand<string, "ThoughtCardId">;
 
 export function describeContinuumCorePackage(): ContinuumCorePackage {
   return {
@@ -388,6 +392,26 @@ export type SourceParagraphInput = {
   };
 };
 
+export type ThoughtCard = {
+  id: ThoughtCardId;
+  lensOutputId: LensOutputId;
+  title: HumanText;
+  body: HumanText;
+  sourceParagraphIds: NonEmptyArray<SourceParagraphId>;
+  confidence: Confidence;
+  generatedAt: KnowledgeTime;
+};
+
+export type ThoughtCardInput = {
+  id: string;
+  lensOutputId: string;
+  title: string;
+  body: string;
+  sourceParagraphIds: string[];
+  confidence: number;
+  generatedAt: string;
+};
+
 export function createSourceParagraph(
   input: SourceParagraphInput,
 ): SourceParagraph {
@@ -410,6 +434,18 @@ export function createSourceParagraph(
       ),
       parserVersion: parserVersion(input.context.parserVersion),
     },
+  };
+}
+
+export function createThoughtCard(input: ThoughtCardInput): ThoughtCard {
+  return {
+    id: thoughtCardId(input.id),
+    lensOutputId: lensOutputId(input.lensOutputId),
+    title: humanText("ThoughtCard title", input.title),
+    body: humanText("ThoughtCard body", input.body),
+    sourceParagraphIds: nonEmptySourceParagraphIds(input.sourceParagraphIds),
+    confidence: confidence(input.confidence),
+    generatedAt: knowledgeTime("ThoughtCard generatedAt", input.generatedAt),
   };
 }
 
@@ -600,6 +636,14 @@ function canonicalEventId(value: string): CanonicalEventId {
   return value as CanonicalEventId;
 }
 
+function confidence(value: number): Confidence {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error("Confidence must be a finite number from 0 to 1.");
+  }
+
+  return value as Confidence;
+}
+
 function humanText(fieldName: string, value: string): HumanText {
   validateNonBlank(fieldName, value);
   return value as HumanText;
@@ -611,6 +655,23 @@ function knowledgeTime(fieldName: string, value: string): KnowledgeTime {
   }
 
   return value as KnowledgeTime;
+}
+
+function lensOutputId(value: string): LensOutputId {
+  validateNonBlank("LensOutputId", value);
+  return value as LensOutputId;
+}
+
+function nonEmptySourceParagraphIds(
+  values: string[],
+): NonEmptyArray<SourceParagraphId> {
+  if (values.length === 0) {
+    throw new Error(
+      "ThoughtCard sourceParagraphIds must contain at least one Source Paragraph id.",
+    );
+  }
+
+  return values.map(sourceParagraphId) as NonEmptyArray<SourceParagraphId>;
 }
 
 function paragraphIndex(value: number): ParagraphIndex {
@@ -673,6 +734,11 @@ function splitSourceParagraphText(text: string): string[] {
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim())
     .filter((paragraph) => paragraph.length > 0);
+}
+
+function thoughtCardId(value: string): ThoughtCardId {
+  validateNonBlank("ThoughtCardId", value);
+  return value as ThoughtCardId;
 }
 
 function validateLensOutput(output: LensOutput): void {
