@@ -17,6 +17,55 @@ export function describeContinuumCorePackage(): ContinuumCorePackage {
   };
 }
 
+export function createImportScope(input: ImportScope): ImportScope {
+  validateImportScope(input);
+
+  return input;
+}
+
+export function importScopeTitle(scope: ImportScope): string {
+  if (scope.focusEntity === null) {
+    return scope.primaryEntity.label;
+  }
+
+  return `${scope.primaryEntity.label} through ${scope.focusEntity.label}`;
+}
+
+function validateImportScope(scope: ImportScope): void {
+  if (scope.id.trim().length === 0) {
+    throw new Error("ImportScope id must not be blank.");
+  }
+
+  validateImportScopeEntity("primaryEntity", scope.primaryEntity);
+
+  if (scope.focusEntity !== null) {
+    validateImportScopeEntity("focusEntity", scope.focusEntity);
+  }
+
+  if (scope.sourceFamilies.length === 0) {
+    throw new Error("ImportScope sourceFamilies must contain at least one source family.");
+  }
+
+  if (Number.isNaN(new Date(scope.createdAt).getTime())) {
+    throw new Error("ImportScope createdAt must be an ISO-compatible date.");
+  }
+}
+
+function validateImportScopeEntity(
+  fieldName: "primaryEntity" | "focusEntity",
+  entity: ImportScopeEntity,
+): void {
+  if (entity.label.trim().length === 0) {
+    throw new Error(`ImportScope ${fieldName}.label must not be blank.`);
+  }
+
+  for (const sourceId of entity.sourceIds) {
+    if (sourceId.id.trim().length === 0) {
+      throw new Error(`ImportScope ${fieldName}.sourceIds.id must not be blank.`);
+    }
+  }
+}
+
 export type CanonicalActorRole = "user" | "assistant" | "system" | "tool" | "other";
 
 export type CanonicalSourcePlatform =
@@ -52,6 +101,49 @@ export type EventProvenance = {
   derivedFrom: string[];
   retrievedAt: string;
   license: string | null;
+};
+
+export type ImportScopeSourceFamily =
+  | "wikimedia"
+  | "github_public"
+  | "public_archive"
+  | "scholarly_metadata";
+
+export type ImportScopeEntityKind =
+  | "person"
+  | "topic"
+  | "work"
+  | "organization"
+  | "place"
+  | "event"
+  | "concept";
+
+export type ImportScopeEntitySourceId = {
+  sourceFamily: ImportScopeSourceFamily;
+  id: string;
+  url: string | null;
+};
+
+export type ImportScopeEntity = {
+  kind: ImportScopeEntityKind;
+  label: string;
+  aliases: string[];
+  sourceIds: ImportScopeEntitySourceId[];
+};
+
+export type ImportScope = {
+  id: string;
+  primaryEntity: ImportScopeEntity;
+  focusEntity: ImportScopeEntity | null;
+  sourceFamilies: ImportScopeSourceFamily[];
+  publicness: {
+    access: "public_only";
+    licenseIntent: "respect_source_license" | "public_domain_or_open_license";
+  };
+  provenancePolicy: {
+    sourceFamiliesCountAsIndependentEvidence: boolean;
+  };
+  createdAt: string;
 };
 
 export type TimeConfidence = "exact" | "inferred" | "unknown";

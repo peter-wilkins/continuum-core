@@ -1,6 +1,6 @@
 # 061: Identity-First Public Import Scope
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -24,7 +24,7 @@ Import everything Ada Lovelace said about computers.
 That implies an import must start with an explicit scope:
 
 - target identity
-- optional topic filter
+- optional focus identity
 - allowed source families
 - license/publicness expectation
 - provenance rules
@@ -41,15 +41,15 @@ This is a model and test slice, not a complete public web crawler.
 
 ## Acceptance Criteria
 
-- [ ] Define a public `ImportScope` type.
-- [ ] Scope requires an identity target.
-- [ ] Scope requires source-family allowlist, even if it contains only one source.
-- [ ] Scope requires publicness/license intent rather than assuming all sources are safe.
-- [ ] Scope supports a required topic filter field represented explicitly as a string or `null`.
-- [ ] Scope can represent `Ada Lovelace` with topic `computing`.
-- [ ] Scope can represent identity aliases without resolving them into one hidden string.
-- [ ] Scope can be serialized in preview/import batch metadata.
-- [ ] Existing private importers do not need to implement this immediately.
+- [x] Define a public `ImportScope` type.
+- [x] Scope requires a primary identity target.
+- [x] Scope requires source-family allowlist, even if it contains only one source.
+- [x] Scope requires publicness/license intent rather than assuming all sources are safe.
+- [x] Scope supports a required focus identity field represented explicitly as an entity or `null`.
+- [x] Scope can represent `Ada Lovelace` through `computing`.
+- [x] Scope can represent identity aliases without resolving them into one hidden string.
+- [x] Scope can be serialized in preview/import batch metadata.
+- [x] Existing private importers do not need to implement this immediately.
 
 ## Out Of Scope
 
@@ -64,4 +64,9 @@ This is a model and test slice, not a complete public web crawler.
 
 Use public data first because it is easier to demo, easier to share, easier to test, and safer for early feedback loops.
 
-Do not silently discard records that fail a topic filter. They should become excluded or needs-review evidence with reasons, not disappear.
+Do not silently discard records that fail a focus identity filter. They should become excluded or needs-review evidence with reasons, not disappear.
+
+Implementation notes:
+
+- `focusEntity` replaces earlier topic-filter language because entities can be people, topics, works, places, events, or concepts.
+- Existing private import batches serialize `importScope: null`.

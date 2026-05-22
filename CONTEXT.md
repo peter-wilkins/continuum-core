@@ -37,16 +37,16 @@ An immutable normalized event in Continuum's unified event model. A Canonical Ev
 _Avoid_: vendor record, raw message, source-specific event
 
 **Import Scope**:
-The explicit boundary for an import before source parsing begins. An Import Scope names the target **Identity**, optional **Topic Filter**, source families, and time/license constraints. It prevents "import everything" from being the default shape.
+The explicit boundary for an import before source parsing begins. An Import Scope names the primary **Identity**, optional focus **Identity**, source families, and time/license constraints. It prevents "import everything" from being the default shape.
 _Avoid_: broad dump, source-first import, implicit filter
 
 **Identity**:
-The person, organisation, group, project, or artefact an import is about. Identity is not resolved by string matching alone; source-specific identifiers, names, aliases, and provenance stay inspectable until later identity resolution.
+The person, topic, organisation, group, project, artefact, place, event, or concept an import is about. Identity is not resolved by string matching alone; source-specific identifiers, names, aliases, and provenance stay inspectable until later identity resolution.
 _Avoid_: author string as person, account as person, guessed entity
 
-**Topic Filter**:
-A subject boundary inside an **Import Scope**, such as "Ada Lovelace about computing". Topic Filters narrow candidate source records before promotion, but uncertain records should remain inspectable rather than silently discarded.
-_Avoid_: search query as truth, hidden relevance filter, destructive prefilter
+**Focus Identity**:
+The optional second **Identity** that narrows an **Import Scope**, such as `computing` in "Ada Lovelace through computing". Focus Identities narrow candidate source records before promotion, but uncertain records should remain inspectable rather than silently discarded.
+_Avoid_: Lens for ingestion, search query as truth, hidden relevance filter, destructive prefilter
 
 **Imported Entry**:
 An **Entry** created from a **Canonical Event** during import. Retrieval and **Continuation** inference work over Entries in the **Source Log**, not over source-specific Canonical Events directly.

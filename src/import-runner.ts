@@ -9,6 +9,7 @@ import {
   type ImportErrorRecord,
   type ImportFilterSummary,
   type ImportProfile,
+  type ImportScope,
   mergeCanonicalEvents,
   parseMboxFile,
   type CanonicalEvent,
@@ -36,6 +37,7 @@ export type ImportBatch = {
   sourceName: string;
   originalFilename: string;
   originalFileHash: string;
+  importScope: ImportScope | null;
   createdAt: string;
   completedAt: string | null;
   status: "parsed" | "normalized" | "previewed" | "approved" | "failed";
@@ -374,6 +376,7 @@ async function dryRunImport(
     source: command.source,
     inputPath: command.inputPath,
     inputHash: input.hash,
+    importScope: null,
     filesSeen: input.filesSeen,
     recordsSeen: incomingEvents.length + quarantine.length,
     report,
@@ -443,6 +446,7 @@ function createImportBatch(input: {
   source: ImportCommand;
   inputPath: string;
   inputHash: string;
+  importScope: ImportScope | null;
   filesSeen: number;
   recordsSeen: number;
   report: ImportReport;
@@ -455,6 +459,7 @@ function createImportBatch(input: {
     sourceName: input.source,
     originalFilename: basename(input.inputPath),
     originalFileHash: input.inputHash,
+    importScope: input.importScope,
     createdAt: "unknown",
     completedAt: null,
     status: "previewed",

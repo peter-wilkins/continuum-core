@@ -32,7 +32,7 @@ Import Ada Lovelace into this Continuum.
 Import everything Ada Lovelace said about computers.
 ```
 
-That means import becomes **identity-first** and **topic-filtered** before parsing source records.
+That means import becomes **identity-first** and **focus-identity-filtered** before parsing source records.
 
 ## Current Principles
 

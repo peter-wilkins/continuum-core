@@ -80,6 +80,7 @@ describe("continuum-import CLI", () => {
           sourceName: "google-takeout-zip",
           originalFilename: "takeout.zip",
           originalFileHash: "abc",
+          importScope: null,
           createdAt: "unknown",
           completedAt: null,
           status: "previewed",
@@ -309,12 +310,14 @@ describe("continuum-import CLI", () => {
       }
       expect(result.previewPath).toBe(previewPath);
       expect(result.batch.sourcePlatform).toBe("claude");
+      expect(result.batch.importScope).toBeNull();
       expect(result.batch.stats.recordsSeen).toBe(2);
       expect(result.batch.stats.eventsCreated).toBe(2);
       expect(result.batch.stats.recordsQuarantined).toBe(0);
 
       const preview = JSON.parse(await readFile(previewPath, "utf8"));
 
+      expect(preview.batch.importScope).toBeNull();
       expect(preview.report).toEqual({
         new: 2,
         known: 0,
