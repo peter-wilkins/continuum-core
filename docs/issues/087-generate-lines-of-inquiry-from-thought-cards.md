@@ -28,6 +28,8 @@ The MVP baseline should start with three Synthesis Moves:
 
 Question Card UX should align with Workflow Manager's Brain Dump Ingestion format: show the question, recommended answer, and Thought Journey Progress by default. Hide rationale, rejected options, and the branch map unless requested. The old suggested-next-step footer is retired for grilling surfaces.
 
+A Line of Inquiry is good enough to ask the human when it is source-grounded, answerable now, small enough for one response, and likely to move synthesis forward rather than only request more facts.
+
 ## First Failing Test
 
 TBD after grilling.
@@ -36,6 +38,7 @@ TBD after grilling.
 
 - [ ] Build one deterministic baseline from Thought Cards to candidate Lines of Inquiry.
 - [ ] Preserve source Thought Card ids behind each Line.
+- [ ] Only recommend Lines that meet the good-enough threshold: source-grounded, answerable now, small enough for one response, and synthesis-moving.
 - [ ] Return more than one candidate Line when the evidence supports multiple possible directions.
 - [ ] Mark the recommended next Line explicitly.
 - [ ] Keep generated Lines rebuildable and non-source-truth.
@@ -43,5 +46,4 @@ TBD after grilling.
 
 ## Open Questions
 
-- What makes a Line of Inquiry "good enough" to ask the human?
 - What should `why this?` reveal include?
