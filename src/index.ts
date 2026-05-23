@@ -35,6 +35,7 @@ export type LensOutputId = Brand<string, "LensOutputId">;
 export type NonEmptyArray<T> = [T, ...T[]];
 export type ParserVersion = Brand<string, "ParserVersion">;
 export type ParagraphIndex = Brand<number, "ParagraphIndex">;
+export type PublicLineOfInquiryId = Brand<string, "PublicLineOfInquiryId">;
 export type PublicSynthesizedAnswerId = Brand<string, "PublicSynthesizedAnswerId">;
 export type SourceDocumentId = Brand<string, "SourceDocumentId">;
 export type SourceFingerprint = Brand<string, "SourceFingerprint">;
@@ -441,6 +442,7 @@ export type PublicContinuumMaterialization = {
   lensOutputs: LensOutput[];
   thoughtCards: ThoughtCard[];
   synthesizedAnswer: PublicSynthesizedAnswer;
+  linesOfInquiry: PublicLinesOfInquiry;
   redundancy: LensRedundancyReport;
 };
 
@@ -448,10 +450,12 @@ export type PublicSynthesizedAnswerStatus =
   | "answered"
   | "insufficient_evidence";
 
-export type PublicSynthesizedAnswerSourceSupport = {
+export type PublicSourceSupport = {
   thoughtCardId: ThoughtCardId;
   sourceParagraphIds: NonEmptyArray<SourceParagraphId>;
 };
+
+export type PublicSynthesizedAnswerSourceSupport = PublicSourceSupport;
 
 export type PublicSynthesizedAnswer = {
   id: PublicSynthesizedAnswerId;
@@ -479,6 +483,50 @@ export type PublicSynthesizedAnswerInput = {
   }>;
   lensOutputIdsForCompare: string[];
   generatedAt: string;
+  generation: {
+    strategy: string;
+    model: string | null;
+    parameters: LensGenerationParameter[];
+  };
+};
+
+export type PublicSynthesisMove =
+  | "core_claim"
+  | "tension"
+  | "next_question";
+
+export type PublicLineOfInquiryStatus = "candidate";
+
+export type PublicLineOfInquiryWhyThis = {
+  synthesisMove: PublicSynthesisMove;
+  explanation: HumanText;
+};
+
+export type PublicLineOfInquiry = {
+  id: PublicLineOfInquiryId;
+  queryId: string;
+  title: HumanText;
+  question: HumanText;
+  desiredOutcome: HumanText;
+  synthesisMove: PublicSynthesisMove;
+  status: PublicLineOfInquiryStatus;
+  recommended: boolean;
+  sourceSupport: NonEmptyArray<PublicSourceSupport>;
+  whyThis: PublicLineOfInquiryWhyThis;
+  confidence: Confidence;
+  generatedAt: KnowledgeTime;
+  generation: {
+    strategy: string;
+    model: string | null;
+    parameters: LensGenerationParameter[];
+  };
+};
+
+export type PublicLinesOfInquiry = {
+  queryId: string;
+  recommendedLineId: PublicLineOfInquiryId;
+  lines: NonEmptyArray<PublicLineOfInquiry>;
+  generatedAt: KnowledgeTime;
   generation: {
     strategy: string;
     model: string | null;
@@ -1435,6 +1483,51 @@ export function createDefaultPublicSynthesizedAnswer(
   });
 }
 
+export function createDefaultPublicLinesOfInquiry(
+  query: PublicContinuumQuery,
+  thoughtCards: ThoughtCard[],
+  generatedAt: string,
+): PublicLinesOfInquiry {
+  validateNonBlank("PublicContinuumQuery id", query.id);
+  validateNonBlank("PublicContinuumQuery text", query.text);
+
+  const supportCards = canonicalThoughtCardsForSynthesis(thoughtCards).slice(0, 2);
+
+  if (supportCards.length === 0) {
+    throw new Error(
+      "Default public Lines of Inquiry require at least one source-backed Thought Card.",
+    );
+  }
+
+  const sourceSupport = nonEmptyPublicSourceSupport(
+    supportCards.map(sourceSupportFromThoughtCard),
+  );
+  const lines = nonEmptyPublicLinesOfInquiry(
+    defaultLineSeeds(query.id, sourceSupport, generatedAt),
+  );
+
+  return {
+    queryId: humanText("PublicLinesOfInquiry queryId", query.id),
+    recommendedLineId: lines[0].id,
+    lines,
+    generatedAt: knowledgeTime("PublicLinesOfInquiry generatedAt", generatedAt),
+    generation: {
+      strategy: "default_synthesis_moves",
+      model: null,
+      parameters: [
+        {
+          key: "moves",
+          value: "core_claim,tension,next_question",
+        },
+        {
+          key: "support_limit",
+          value: "2",
+        },
+      ],
+    },
+  };
+}
+
 export function createPublicContinuumMaterialization(
   input: PublicContinuumMaterializationInput,
 ): PublicContinuumMaterialization {
@@ -1484,6 +1577,11 @@ export function createPublicContinuumMaterialization(
     thoughtCards,
     input.generatedAt,
   );
+  const linesOfInquiry = createDefaultPublicLinesOfInquiry(
+    input.query,
+    thoughtCards,
+    input.generatedAt,
+  );
 
   return {
     generatedAt,
@@ -1496,6 +1594,7 @@ export function createPublicContinuumMaterialization(
     lensOutputs,
     thoughtCards,
     synthesizedAnswer,
+    linesOfInquiry,
     redundancy: findRedundantLensOutputs(lensOutputs),
   };
 }
@@ -1995,6 +2094,139 @@ function uniqueStrings(values: string[]): string[] {
   return unique;
 }
 
+function defaultLineSeeds(
+  queryId: string,
+  sourceSupport: NonEmptyArray<PublicSourceSupport>,
+  generatedAt: string,
+): PublicLineOfInquiry[] {
+  const baseGeneration = {
+    strategy: "default_synthesis_moves",
+    model: null,
+    parameters: [
+      {
+        key: "source",
+        value: "thought_card_ids",
+      },
+    ],
+  };
+  const lines: PublicLineOfInquiry[] = [
+    {
+      id: publicLineOfInquiryId(`line-of-inquiry:${queryId}:core_claim:v1`),
+      queryId: humanText("PublicLineOfInquiry queryId", queryId),
+      title: humanText("PublicLineOfInquiry title", "Name the core claim"),
+      question: humanText(
+        "PublicLineOfInquiry question",
+        "What is the strongest source-backed claim about how people extend thought?",
+      ),
+      desiredOutcome: humanText(
+        "PublicLineOfInquiry desiredOutcome",
+        "A one-sentence claim that can be tested against the sources.",
+      ),
+      synthesisMove: "core_claim",
+      status: "candidate",
+      recommended: true,
+      sourceSupport,
+      whyThis: {
+        synthesisMove: "core_claim",
+        explanation: humanText(
+          "PublicLineOfInquiry whyThis.explanation",
+          "This line turns source-backed thoughts into the main claim to test next.",
+        ),
+      },
+      confidence: confidence(0.82),
+      generatedAt: knowledgeTime("PublicLineOfInquiry generatedAt", generatedAt),
+      generation: baseGeneration,
+    },
+  ];
+
+  if (sourceSupport.length > 1) {
+    lines.push({
+      id: publicLineOfInquiryId(`line-of-inquiry:${queryId}:tension:v1`),
+      queryId: humanText("PublicLineOfInquiry queryId", queryId),
+      title: humanText("PublicLineOfInquiry title", "Find the tension"),
+      question: humanText(
+        "PublicLineOfInquiry question",
+        "Where do these source-backed thoughts pull in different directions?",
+      ),
+      desiredOutcome: humanText(
+        "PublicLineOfInquiry desiredOutcome",
+        "A specific tension that can sharpen the next answer.",
+      ),
+      synthesisMove: "tension",
+      status: "candidate",
+      recommended: false,
+      sourceSupport,
+      whyThis: {
+        synthesisMove: "tension",
+        explanation: humanText(
+          "PublicLineOfInquiry whyThis.explanation",
+          "This line looks for useful friction between supported thoughts.",
+        ),
+      },
+      confidence: confidence(0.74),
+      generatedAt: knowledgeTime("PublicLineOfInquiry generatedAt", generatedAt),
+      generation: baseGeneration,
+    });
+  }
+
+  lines.push({
+    id: publicLineOfInquiryId(`line-of-inquiry:${queryId}:next_question:v1`),
+    queryId: humanText("PublicLineOfInquiry queryId", queryId),
+    title: humanText("PublicLineOfInquiry title", "Ask the next question"),
+    question: humanText(
+      "PublicLineOfInquiry question",
+      "What question would move this inquiry forward from the current sources?",
+    ),
+    desiredOutcome: humanText(
+      "PublicLineOfInquiry desiredOutcome",
+      "A small next question that can be answered or parked.",
+    ),
+    synthesisMove: "next_question",
+    status: "candidate",
+    recommended: false,
+    sourceSupport,
+    whyThis: {
+      synthesisMove: "next_question",
+      explanation: humanText(
+        "PublicLineOfInquiry whyThis.explanation",
+        "This line turns current source support into the next useful step.",
+      ),
+    },
+    confidence: confidence(0.76),
+    generatedAt: knowledgeTime("PublicLineOfInquiry generatedAt", generatedAt),
+    generation: baseGeneration,
+  });
+
+  return lines;
+}
+
+function sourceSupportFromThoughtCard(card: ThoughtCard): PublicSourceSupport {
+  return {
+    thoughtCardId: card.id,
+    sourceParagraphIds: card.sourceParagraphIds,
+  };
+}
+
+function nonEmptyPublicSourceSupport(
+  values: PublicSourceSupport[],
+): NonEmptyArray<PublicSourceSupport> {
+  if (values.length === 0) {
+    throw new Error("Public Source Support must contain at least one item.");
+  }
+
+  return values as NonEmptyArray<PublicSourceSupport>;
+}
+
+function nonEmptyPublicLinesOfInquiry(
+  values: PublicLineOfInquiry[],
+): NonEmptyArray<PublicLineOfInquiry> {
+  if (values.length === 0) {
+    throw new Error("Public Lines of Inquiry must contain at least one Line.");
+  }
+
+  return values as NonEmptyArray<PublicLineOfInquiry>;
+}
+
 function validateNonBlank(fieldName: string, value: string): void {
   if (value.trim().length === 0) {
     throw new Error(`${fieldName} must not be blank.`);
@@ -2252,6 +2484,11 @@ function sourceUrl(value: string): SourceUrl {
 function publicSynthesizedAnswerId(value: string): PublicSynthesizedAnswerId {
   validateNonBlank("PublicSynthesizedAnswerId", value);
   return value as PublicSynthesizedAnswerId;
+}
+
+function publicLineOfInquiryId(value: string): PublicLineOfInquiryId {
+  validateNonBlank("PublicLineOfInquiryId", value);
+  return value as PublicLineOfInquiryId;
 }
 
 function splitSourceParagraphText(text: string): string[] {

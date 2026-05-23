@@ -1,6 +1,6 @@
 # 087: Generate Lines Of Inquiry From Thought Cards
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -40,14 +40,18 @@ It generates a recommended Line of Inquiry from canonical Thought Cards using a 
 
 ## Acceptance Criteria
 
-- [ ] Build one deterministic baseline from Thought Cards to candidate Lines of Inquiry.
-- [ ] Preserve source Thought Card ids behind each Line.
-- [ ] Only recommend Lines that meet the good-enough threshold: source-grounded, answerable now, small enough for one response, and synthesis-moving.
-- [ ] Return more than one candidate Line when the evidence supports multiple possible directions.
-- [ ] Mark the recommended next Line explicitly.
-- [ ] Keep generated Lines rebuildable and non-source-truth.
-- [ ] Leave room for LLM-generated Lines later without making the MVP depend on an LLM.
-- [ ] Pair cleanly with synthesized answers from issue 088.
+- [x] Build one deterministic baseline from Thought Cards to candidate Lines of Inquiry.
+- [x] Preserve source Thought Card ids behind each Line.
+- [x] Only recommend Lines that meet the good-enough threshold: source-grounded, answerable now, small enough for one response, and synthesis-moving.
+- [x] Return more than one candidate Line when the evidence supports multiple possible directions.
+- [x] Mark the recommended next Line explicitly.
+- [x] Keep generated Lines rebuildable and non-source-truth.
+- [x] Leave room for LLM-generated Lines later without making the MVP depend on an LLM.
+- [x] Pair cleanly with synthesized answers from issue 088.
+
+## Implementation
+
+Added deterministic public Lines of Inquiry to materialization. The baseline uses three Synthesis Moves: `core_claim`, `tension`, and `next_question`; marks Core Claim as recommended; preserves Source Support; and exposes a compact `Why this?` explanation for each Line.
 
 ## Open Questions
 

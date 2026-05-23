@@ -129,6 +129,25 @@ describe("public Continuum materialization", () => {
       },
     });
     expect(materialization.synthesizedAnswer.sourceSupport).toHaveLength(2);
+    expect(materialization.linesOfInquiry).toMatchObject({
+      queryId: "query:extended-thought-brain-augmentation-seed",
+      recommendedLineId:
+        "line-of-inquiry:query:extended-thought-brain-augmentation-seed:core_claim:v1",
+      lines: [
+        {
+          synthesisMove: "core_claim",
+          recommended: true,
+        },
+        {
+          synthesisMove: "tension",
+          recommended: false,
+        },
+        {
+          synthesisMove: "next_question",
+          recommended: false,
+        },
+      ],
+    });
   });
 
   it("fails clearly when no public documents are active", () => {
