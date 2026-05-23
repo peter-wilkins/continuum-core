@@ -141,6 +141,47 @@ describe("Thought Cards", () => {
     );
   });
 
+  it("keeps default public Thought Card titles readable instead of truncating them", () => {
+    const publicDocument = {
+      ...publicDocumentFixture,
+      document: {
+        ...publicDocumentFixture.document,
+        text: [
+          "Augmented cognition is an interdisciplinary area of psychology and engineering, attracting researchers from the more traditional fields of human-computer interaction, psychology, ergonomics and neuroscience.",
+        ].join("\n"),
+      },
+    } as PublicDocumentNormalizationInput;
+    const sourceParagraphs =
+      extractSourceParagraphsFromPublicDocument(publicDocument);
+    const lensOutput = createLensOutput({
+      id: "lens-output:ada-computing:atlas:v1",
+      scopeId: "scope:ada-lovelace-through-computing",
+      queryId: "query:ada-lovelace-contribution",
+      lensId: "atlas",
+      lensVersion: "1.0.0",
+      generatedAt: "2026-05-22T12:30:00.000Z",
+      sourceEventIds: ["public_archive:project_gutenberg:75107"],
+      sections: [
+        {
+          id: "atlas:source-text",
+          title: "Source Text",
+          eventIds: ["public_archive:project_gutenberg:75107"],
+        },
+      ],
+      generation: {
+        strategy: "deterministic_fixture",
+        model: null,
+        parameters: [],
+      },
+    });
+
+    const [card] = createDefaultPublicThoughtCards(lensOutput, sourceParagraphs);
+
+    expect(card?.title).toBe(
+      "Augmented cognition is an interdisciplinary area of psychology and engineering, attracting researchers from the more traditional fields of human-computer interaction, psychology, ergonomics and neuroscience",
+    );
+  });
+
   it("rejects default public Thought Card generation without matching Source Paragraphs", () => {
     const lensOutput = createLensOutput({
       id: "lens-output:ada-computing:atlas:v1",

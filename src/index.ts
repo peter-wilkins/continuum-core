@@ -1798,13 +1798,7 @@ function compactLensSections(sections: LensOutputSection[]): LensOutputSection[]
 
 function defaultThoughtCardTitle(text: string): string {
   const firstSentence = text.trim().split(/[.!?]/)[0]?.trim() ?? "";
-  const title = firstSentence.length > 0 ? firstSentence : text.trim();
-
-  if (title.length <= 80) {
-    return title;
-  }
-
-  return `${title.slice(0, 77).trim()}...`;
+  return firstSentence.length > 0 ? firstSentence : text.trim();
 }
 
 function validateNonBlank(fieldName: string, value: string): void {
