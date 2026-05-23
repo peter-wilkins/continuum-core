@@ -172,6 +172,10 @@ _Avoid_: document row, full source record as the display unit, copied memory
 A reasoning operation applied to source-backed material, such as naming the core claim, finding a tension, identifying a mechanism, tracing a consequence, spotting a missing piece, or turning evidence into the next useful question. Synthesis Moves should usually shape the next **Line of Inquiry** without becoming loud UI labels.
 _Avoid_: topic tag, category, school lesson label, visible taxonomy as the product
 
+**Concierge**:
+The agentic helper role that does bounded legwork for the user: researching, fetching sources, assembling a **Source Trail**, and preparing an answer or candidate **Line of Inquiry**. The Concierge may gather material, but the **Chairman Session** keeps the thinking path coherent and continuable.
+_Avoid_: generic chatbot, unbounded assistant, source-free answer, replacing the Chairman
+
 **Guided Inquiry**:
 The user-facing experience where Continuum quietly teaches better thinking by offering one useful next question, preserving redirects, and helping the user reach a **Decision**, **Open Thread**, or parked **Line**. Guided Inquiry may reveal why a question was chosen, but it should not require the user to enter an explicit teacher mode.
 _Avoid_: teacher mode as default, lesson UI, quiz flow, patronising explanation
@@ -181,11 +185,11 @@ The user's limited working-memory stack at a given moment. When the Human Brain 
 _Avoid_: unlimited dashboard, exposing every branch, treating overload as a productivity problem
 
 **Thought Journey**:
-A facilitated user-facing path from messy captured thought toward a usable **Decision**, **Open Thread**, parked **Line**, or next resumable question. A Thought Journey may use **Thought Cards**, **Lines of Inquiry**, and a **Synthesis Loop** internally, but the user experience should usually be one clear question at a time.
+A facilitated user-facing path from messy captured thought toward a usable **Decision**, **Open Thread**, parked **Line**, or next resumable question. A Thought Journey may use **Thought Cards**, **Lines of Inquiry**, and a **Synthesis Loop** internally, but the user experience should usually be one clear question at a time. Thought Journeys are allowed to be interrupted: a user can jump to another Line, capture enough to make it resumable, then return without treating the jump as a failed session.
 _Avoid_: visual decision tree as default, raw branch map, exact progress theatre
 
 **Thought Journey Progress**:
-A coarse user-facing progress signal for a **Thought Journey**, showing approximate movement toward a usable decision or resumable state. In decision journeys, grill sessions, design threads, and other facilitated decision paths, this should usually be visible as a progress bar. It is a heuristic for orientation, not a precise measure of tree completion.
+A coarse user-facing progress signal for a **Thought Journey**, showing approximate movement toward a usable decision or resumable state. In decision journeys, grill sessions, design threads, and other facilitated decision paths, this should usually be visible as a progress bar. Progress belongs to the active Line or Journey state, so different interrupted thoughts can each show their own rough position when resumed. It is a heuristic for orientation, not a precise measure of tree completion.
 _Avoid_: fake exact percentage, gamified pressure, hidden confidence as truth
 
 **Synthesis Loop**:

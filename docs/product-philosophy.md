@@ -43,6 +43,28 @@ This turns the human into the database administrator for their own mind.
 
 Continuum Core assumes modern language models can infer enough structure to remove much of this burden.
 
+## Interruptions are first-class
+
+The target user may not stay on one topic for long.
+
+This is not a failure mode to punish. It is part of the product shape.
+
+Continuum should let the user:
+
+- honour a sudden important thought
+- capture enough to make it resumable
+- return to the prior thought without losing the path
+
+The system should treat topic jumps as managed redirects, not as broken sessions.
+
+A visible progress signal helps because each active thought can keep its own coarse state:
+
+- this one is just started
+- this one is halfway to a decision
+- this one is nearly done
+
+The product should reduce the shame and overhead of switching context, while still helping the user finish things.
+
 ## Thought is not hierarchical
 
 Human thought is:
