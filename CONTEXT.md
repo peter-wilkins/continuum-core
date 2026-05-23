@@ -177,7 +177,7 @@ A facilitated user-facing path from messy captured thought toward a usable **Dec
 _Avoid_: visual decision tree as default, raw branch map, exact progress theatre
 
 **Thought Journey Progress**:
-A coarse user-facing progress signal for a **Thought Journey**, showing approximate movement toward a usable decision or resumable state. It is a heuristic for orientation, not a precise measure of tree completion.
+A coarse user-facing progress signal for a **Thought Journey**, showing approximate movement toward a usable decision or resumable state. In decision journeys, grill sessions, design threads, and other facilitated decision paths, this should usually be visible as a progress bar. It is a heuristic for orientation, not a precise measure of tree completion.
 _Avoid_: fake exact percentage, gamified pressure, hidden confidence as truth
 
 **Synthesis Loop**:

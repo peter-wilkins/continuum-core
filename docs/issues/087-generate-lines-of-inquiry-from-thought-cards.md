@@ -28,7 +28,7 @@ The MVP baseline should start with three Synthesis Moves:
 - Tension
 - Next Question
 
-Question Card UX should align with Workflow Manager's Brain Dump Ingestion format: show the question, recommended answer, and Thought Journey Progress by default. Hide rationale, rejected options, and the branch map unless requested. The old suggested-next-step footer is retired for grilling surfaces.
+Question Card UX should align with Workflow Manager's Brain Dump Ingestion format: show the question, recommended answer, and a coarse Thought Journey Progress bar by default. Hide rationale, rejected options, and the branch map unless requested. The old suggested-next-step footer is retired for grilling surfaces.
 
 A Line of Inquiry is good enough to ask the human when it is source-grounded, answerable now, small enough for one response, and likely to move synthesis forward rather than only request more facts.
 
