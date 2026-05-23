@@ -116,6 +116,19 @@ describe("public Continuum materialization", () => {
     ).toEqual(
       new Set(materialization.lensOutputs.map((output) => output.id)),
     );
+    expect(materialization.synthesizedAnswer).toMatchObject({
+      id: "synthesized-answer:query:extended-thought-brain-augmentation-seed:default:v1",
+      queryId: "query:extended-thought-brain-augmentation-seed",
+      status: "answered",
+      lensOutputIdsForCompare: materialization.lensOutputs.map(
+        (output) => output.id,
+      ),
+      generation: {
+        strategy: "default_source_support_summary",
+        model: null,
+      },
+    });
+    expect(materialization.synthesizedAnswer.sourceSupport).toHaveLength(2);
   });
 
   it("fails clearly when no public documents are active", () => {

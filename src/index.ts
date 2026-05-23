@@ -35,6 +35,7 @@ export type LensOutputId = Brand<string, "LensOutputId">;
 export type NonEmptyArray<T> = [T, ...T[]];
 export type ParserVersion = Brand<string, "ParserVersion">;
 export type ParagraphIndex = Brand<number, "ParagraphIndex">;
+export type PublicSynthesizedAnswerId = Brand<string, "PublicSynthesizedAnswerId">;
 export type SourceDocumentId = Brand<string, "SourceDocumentId">;
 export type SourceFingerprint = Brand<string, "SourceFingerprint">;
 export type SourceName = Brand<string, "SourceName">;
@@ -439,7 +440,50 @@ export type PublicContinuumMaterialization = {
   sourceParagraphs: SourceParagraph[];
   lensOutputs: LensOutput[];
   thoughtCards: ThoughtCard[];
+  synthesizedAnswer: PublicSynthesizedAnswer;
   redundancy: LensRedundancyReport;
+};
+
+export type PublicSynthesizedAnswerStatus =
+  | "answered"
+  | "insufficient_evidence";
+
+export type PublicSynthesizedAnswerSourceSupport = {
+  thoughtCardId: ThoughtCardId;
+  sourceParagraphIds: NonEmptyArray<SourceParagraphId>;
+};
+
+export type PublicSynthesizedAnswer = {
+  id: PublicSynthesizedAnswerId;
+  queryId: string;
+  status: PublicSynthesizedAnswerStatus;
+  answer: HumanText;
+  sourceSupport: PublicSynthesizedAnswerSourceSupport[];
+  lensOutputIdsForCompare: LensOutputId[];
+  generatedAt: KnowledgeTime;
+  generation: {
+    strategy: string;
+    model: string | null;
+    parameters: LensGenerationParameter[];
+  };
+};
+
+export type PublicSynthesizedAnswerInput = {
+  id: string;
+  queryId: string;
+  status: PublicSynthesizedAnswerStatus;
+  answer: string;
+  sourceSupport: Array<{
+    thoughtCardId: string;
+    sourceParagraphIds: string[];
+  }>;
+  lensOutputIdsForCompare: string[];
+  generatedAt: string;
+  generation: {
+    strategy: string;
+    model: string | null;
+    parameters: LensGenerationParameter[];
+  };
 };
 
 export type LensFeedbackSignal = {
@@ -1298,6 +1342,99 @@ export function createDefaultPublicThoughtCards(
   );
 }
 
+export function createPublicSynthesizedAnswer(
+  input: PublicSynthesizedAnswerInput,
+): PublicSynthesizedAnswer {
+  validatePublicSynthesizedAnswerInput(input);
+
+  return {
+    id: publicSynthesizedAnswerId(input.id),
+    queryId: humanText("PublicSynthesizedAnswer queryId", input.queryId),
+    status: input.status,
+    answer: humanText("PublicSynthesizedAnswer answer", input.answer),
+    sourceSupport: input.sourceSupport.map((support) => ({
+      thoughtCardId: thoughtCardId(support.thoughtCardId),
+      sourceParagraphIds: nonEmptyPublicSynthesizedAnswerSourceParagraphIds(
+        support.sourceParagraphIds,
+      ),
+    })),
+    lensOutputIdsForCompare: input.lensOutputIdsForCompare.map(lensOutputId),
+    generatedAt: knowledgeTime(
+      "PublicSynthesizedAnswer generatedAt",
+      input.generatedAt,
+    ),
+    generation: {
+      strategy: humanText(
+        "PublicSynthesizedAnswer generation.strategy",
+        input.generation.strategy,
+      ),
+      model:
+        input.generation.model === null
+          ? null
+          : humanText(
+            "PublicSynthesizedAnswer generation.model",
+            input.generation.model,
+          ),
+      parameters: input.generation.parameters.map((parameter) => ({
+        key: humanText(
+          "PublicSynthesizedAnswer generation parameter key",
+          parameter.key,
+        ),
+        value: humanText(
+          "PublicSynthesizedAnswer generation parameter value",
+          parameter.value,
+        ),
+      })),
+    },
+  };
+}
+
+export function createDefaultPublicSynthesizedAnswer(
+  query: PublicContinuumQuery,
+  thoughtCards: ThoughtCard[],
+  generatedAt: string,
+): PublicSynthesizedAnswer {
+  validateNonBlank("PublicContinuumQuery id", query.id);
+  validateNonBlank("PublicContinuumQuery text", query.text);
+
+  const lensOutputIdsForCompare = uniqueStrings(
+    thoughtCards.map((card) => card.lensOutputId),
+  );
+  const supportCards = canonicalThoughtCardsForSynthesis(thoughtCards).slice(0, 4);
+  const status: PublicSynthesizedAnswerStatus =
+    supportCards.length === 0 ? "insufficient_evidence" : "answered";
+
+  return createPublicSynthesizedAnswer({
+    id: `synthesized-answer:${query.id}:default:v1`,
+    queryId: query.id,
+    status,
+    answer:
+      status === "answered"
+        ? defaultSynthesizedAnswerText(supportCards)
+        : "I do not have enough source-backed Thought Cards to answer this yet.",
+    sourceSupport: supportCards.map((card) => ({
+      thoughtCardId: card.id,
+      sourceParagraphIds: card.sourceParagraphIds,
+    })),
+    lensOutputIdsForCompare,
+    generatedAt,
+    generation: {
+      strategy: "default_source_support_summary",
+      model: null,
+      parameters: [
+        {
+          key: "support_limit",
+          value: "4",
+        },
+        {
+          key: "canonicalization",
+          value: "source_paragraph_ids_and_body",
+        },
+      ],
+    },
+  });
+}
+
 export function createPublicContinuumMaterialization(
   input: PublicContinuumMaterializationInput,
 ): PublicContinuumMaterialization {
@@ -1342,6 +1479,11 @@ export function createPublicContinuumMaterialization(
   const thoughtCards = lensOutputs.flatMap((lensOutput) =>
     createDefaultPublicThoughtCards(lensOutput, sourceParagraphs),
   );
+  const synthesizedAnswer = createDefaultPublicSynthesizedAnswer(
+    input.query,
+    thoughtCards,
+    input.generatedAt,
+  );
 
   return {
     generatedAt,
@@ -1353,6 +1495,7 @@ export function createPublicContinuumMaterialization(
     sourceParagraphs,
     lensOutputs,
     thoughtCards,
+    synthesizedAnswer,
     redundancy: findRedundantLensOutputs(lensOutputs),
   };
 }
@@ -1801,6 +1944,57 @@ function defaultThoughtCardTitle(text: string): string {
   return firstSentence.length > 0 ? firstSentence : text.trim();
 }
 
+function canonicalThoughtCardsForSynthesis(cards: ThoughtCard[]): ThoughtCard[] {
+  const cardsBySupportAndBody = new Map<string, ThoughtCard>();
+
+  for (const card of cards) {
+    const key = [
+      card.sourceParagraphIds.join("\n"),
+      normalizeTextForIdentity(card.body),
+    ].join("\n---\n");
+
+    if (!cardsBySupportAndBody.has(key)) {
+      cardsBySupportAndBody.set(key, card);
+    }
+  }
+
+  return [...cardsBySupportAndBody.values()];
+}
+
+function defaultSynthesizedAnswerText(cards: ThoughtCard[]): string {
+  return cards.map((card) => firstSentence(card.body)).join(" ");
+}
+
+function firstSentence(text: string): string {
+  const trimmed = text.trim();
+  const match = /^.*?[.!?](?=\s|$)/.exec(trimmed);
+  const sentence = (match?.[0] ?? trimmed).trim();
+
+  if (/[.!?]$/.test(sentence)) {
+    return sentence;
+  }
+
+  return `${sentence}.`;
+}
+
+function normalizeTextForIdentity(text: string): string {
+  return text.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+
+  for (const value of values) {
+    if (!seen.has(value)) {
+      seen.add(value);
+      unique.push(value);
+    }
+  }
+
+  return unique;
+}
+
 function validateNonBlank(fieldName: string, value: string): void {
   if (value.trim().length === 0) {
     throw new Error(`${fieldName} must not be blank.`);
@@ -1977,6 +2171,18 @@ function nonEmptySourceParagraphIds(
   return values.map(sourceParagraphId) as NonEmptyArray<SourceParagraphId>;
 }
 
+function nonEmptyPublicSynthesizedAnswerSourceParagraphIds(
+  values: string[],
+): NonEmptyArray<SourceParagraphId> {
+  if (values.length === 0) {
+    throw new Error(
+      "PublicSynthesizedAnswer sourceSupport sourceParagraphIds must contain at least one Source Paragraph id.",
+    );
+  }
+
+  return values.map(sourceParagraphId) as NonEmptyArray<SourceParagraphId>;
+}
+
 function nonEmptyHumanTexts(
   fieldName: string,
   values: string[],
@@ -2041,6 +2247,11 @@ function sourceUrl(value: string): SourceUrl {
   }
 
   return value as SourceUrl;
+}
+
+function publicSynthesizedAnswerId(value: string): PublicSynthesizedAnswerId {
+  validateNonBlank("PublicSynthesizedAnswerId", value);
+  return value as PublicSynthesizedAnswerId;
 }
 
 function splitSourceParagraphText(text: string): string[] {
@@ -2235,6 +2446,50 @@ function validateLensFeedbackSignal(signal: LensFeedbackSignal): void {
 
   if (Number.isNaN(new Date(signal.createdAt).getTime())) {
     throw new Error("LensFeedback createdAt must be an ISO-compatible date.");
+  }
+}
+
+function validatePublicSynthesizedAnswerInput(
+  input: PublicSynthesizedAnswerInput,
+): void {
+  validateNonBlank("PublicSynthesizedAnswer id", input.id);
+  validateNonBlank("PublicSynthesizedAnswer queryId", input.queryId);
+  validateNonBlank("PublicSynthesizedAnswer answer", input.answer);
+
+  if (
+    input.status !== "answered" &&
+    input.status !== "insufficient_evidence"
+  ) {
+    throw new Error("PublicSynthesizedAnswer status is unknown.");
+  }
+
+  if (input.status === "answered" && input.sourceSupport.length === 0) {
+    throw new Error(
+      "PublicSynthesizedAnswer answered status requires source support.",
+    );
+  }
+
+  validateNonBlank(
+    "PublicSynthesizedAnswer generation.strategy",
+    input.generation.strategy,
+  );
+
+  if (input.generation.model !== null) {
+    validateNonBlank(
+      "PublicSynthesizedAnswer generation.model",
+      input.generation.model,
+    );
+  }
+
+  for (const parameter of input.generation.parameters) {
+    validateNonBlank(
+      "PublicSynthesizedAnswer generation parameter key",
+      parameter.key,
+    );
+    validateNonBlank(
+      "PublicSynthesizedAnswer generation parameter value",
+      parameter.value,
+    );
   }
 }
 

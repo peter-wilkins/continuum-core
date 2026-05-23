@@ -1,6 +1,6 @@
 # 088: Generate Synthesized Answers From Thought Cards
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -43,15 +43,19 @@ It synthesizes a short answer from canonical Thought Cards and preserves the sup
 
 ## Acceptance Criteria
 
-- [ ] Produce a short answer for a bounded public query from Thought Cards.
-- [ ] Run the first synthesis pass over canonical Thought Cards before Lens ordering.
-- [ ] Preserve supporting Thought Card ids or source paragraph refs behind each answer.
-- [ ] Do not store the answer as source truth.
-- [ ] Return an explicit insufficient-evidence result when cards do not support an answer.
-- [ ] Keep the output rebuildable from source material.
-- [ ] Preserve enough ids for the app to keep Lens Compare visible alongside synthesized answers.
-- [ ] Leave room for LLM wording later without making tests depend on an LLM.
-- [ ] Pair cleanly with generated Lines of Inquiry from issue 087.
+- [x] Produce a short answer for a bounded public query from Thought Cards.
+- [x] Run the first synthesis pass over canonical Thought Cards before Lens ordering.
+- [x] Preserve supporting Thought Card ids or source paragraph refs behind each answer.
+- [x] Do not store the answer as source truth.
+- [x] Return an explicit insufficient-evidence result when cards do not support an answer.
+- [x] Keep the output rebuildable from source material.
+- [x] Preserve enough ids for the app to keep Lens Compare visible alongside synthesized answers.
+- [x] Leave room for LLM wording later without making tests depend on an LLM.
+- [x] Pair cleanly with generated Lines of Inquiry from issue 087.
+
+## Implementation
+
+Added deterministic synthesized answers to public materialization. The baseline deduplicates Thought Cards by source paragraph support and body before summarizing, keeps supporting Thought Card/source paragraph ids, and preserves Lens output ids for visible Lens Compare.
 
 ## Open Questions
 
