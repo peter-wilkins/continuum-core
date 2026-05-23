@@ -12,6 +12,8 @@ The public MVP currently renders Wikipedia-derived Thought Cards. That proves so
 
 The product should move from facts to synthesis: cluster related Thought Cards, generate the next useful question, and help the human work toward agreement, a decision, or a sharper open thread.
 
+The app direction is answer-first rather than card-first: the user sees a synthesized answer, can dig into evidence, then receives one Line of Inquiry. This issue owns the Line of Inquiry part of that flow.
+
 ## Product Decision
 
 Next MVP slice should generate Lines of Inquiry from clustered Thought Cards rather than only cleaning paragraph extraction.
@@ -43,6 +45,7 @@ TBD after grilling.
 - [ ] Mark the recommended next Line explicitly.
 - [ ] Keep generated Lines rebuildable and non-source-truth.
 - [ ] Leave room for LLM-generated Lines later without making the MVP depend on an LLM.
+- [ ] Pair cleanly with synthesized answers from issue 088.
 
 ## Open Questions
 
