@@ -2047,6 +2047,10 @@ function canonicalThoughtCardsForSynthesis(cards: ThoughtCard[]): ThoughtCard[] 
   const cardsBySupportAndBody = new Map<string, ThoughtCard>();
 
   for (const card of cards) {
+    if (!isSynthesisUsableThoughtCard(card)) {
+      continue;
+    }
+
     const key = [
       card.sourceParagraphIds.join("\n"),
       normalizeTextForIdentity(card.body),
@@ -2057,11 +2061,43 @@ function canonicalThoughtCardsForSynthesis(cards: ThoughtCard[]): ThoughtCard[] 
     }
   }
 
-  return [...cardsBySupportAndBody.values()];
+  return diversifyThoughtCardsBySource([...cardsBySupportAndBody.values()]);
+}
+
+function isSynthesisUsableThoughtCard(card: ThoughtCard): boolean {
+  return !/=/.test(card.title) && !/=/.test(card.body);
+}
+
+function diversifyThoughtCardsBySource(cards: ThoughtCard[]): ThoughtCard[] {
+  const firstCardBySource = new Map<string, ThoughtCard>();
+  const remainingCards: ThoughtCard[] = [];
+
+  for (const card of cards) {
+    const sourceKey = synthesisSourceKey(card);
+
+    if (!firstCardBySource.has(sourceKey)) {
+      firstCardBySource.set(sourceKey, card);
+      continue;
+    }
+
+    remainingCards.push(card);
+  }
+
+  return [...firstCardBySource.values(), ...remainingCards];
+}
+
+function synthesisSourceKey(card: ThoughtCard): string {
+  return card.sourceParagraphIds[0].replace(/:\d+$/, "");
 }
 
 function defaultSynthesizedAnswerText(cards: ThoughtCard[]): string {
-  return cards.map((card) => firstSentence(card.body)).join(" ");
+  const subjects = uniqueStrings(
+    cards
+      .map((card) => compactAnswerSubject(card.title))
+      .filter((subject) => subject.length > 0),
+  ).slice(0, 3);
+
+  return `The sources point to ${naturalLanguageList(subjects)} as practical ways people extend thought.`;
 }
 
 function firstSentence(text: string): string {
@@ -2074,6 +2110,57 @@ function firstSentence(text: string): string {
   }
 
   return `${sentence}.`;
+}
+
+function compactAnswerSubject(title: string): string {
+  const normalized = title.trim().replace(/\s+/g, " ");
+
+  if (/=/.test(normalized)) {
+    return "";
+  }
+
+  const separators = [
+    " is ",
+    " are ",
+    " uses ",
+    " use ",
+    " connects ",
+    " connect ",
+    " encompasses ",
+    " originated ",
+    " refers ",
+    " can ",
+  ];
+  const separatorIndex = separators
+    .map((separator) => normalized.toLocaleLowerCase().indexOf(separator))
+    .filter((index) => index > 0)
+    .sort((left, right) => left - right)[0];
+  const subject =
+    separatorIndex === undefined
+      ? normalized.split(/\s+/).slice(0, 8).join(" ")
+      : normalized.slice(0, separatorIndex);
+
+  return lowerInitial(subject.split(",")[0]!.replace(/[.,;:!?]+$/g, ""));
+}
+
+function lowerInitial(value: string): string {
+  return `${value.slice(0, 1).toLocaleLowerCase()}${value.slice(1)}`;
+}
+
+function naturalLanguageList(values: string[]): string {
+  if (values.length === 0) {
+    return "the available sources";
+  }
+
+  if (values.length === 1) {
+    return values[0]!;
+  }
+
+  if (values.length === 2) {
+    return `${values[0]} and ${values[1]}`;
+  }
+
+  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
 }
 
 function normalizeTextForIdentity(text: string): string {

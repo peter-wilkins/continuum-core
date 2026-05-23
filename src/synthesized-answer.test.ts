@@ -45,6 +45,15 @@ describe("public synthesized answers", () => {
         confidence: 0.9,
         generatedAt,
       }),
+      createThoughtCard({
+        id: "thought-card:lens-output:extended-thought:beacon:v1:2",
+        lensOutputId: "lens-output:extended-thought:beacon:v1",
+        title: "== History ==",
+        body: "== History == This heading should not become the answer.",
+        sourceParagraphIds: ["source-paragraph:wikimedia:wikipedia:3:0"],
+        confidence: 0.9,
+        generatedAt,
+      }),
     ];
 
     const answer = createDefaultPublicSynthesizedAnswer(
@@ -58,7 +67,7 @@ describe("public synthesized answers", () => {
       queryId: "query:extended-thought-seed",
       status: "answered",
       answer:
-        "Intelligence amplification uses computers to extend thought. Brain-computer interfaces connect brain signals to tools.",
+        "The sources point to intelligence amplification and brain-computer interfaces as practical ways people extend thought.",
       sourceSupport: [
         {
           thoughtCardId: "thought-card:lens-output:extended-thought:atlas:v1:0",
