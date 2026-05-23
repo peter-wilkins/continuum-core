@@ -1,6 +1,6 @@
 # 082: Diversify Bootstrap Lens Strategies
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -20,17 +20,21 @@ extended thought through brain augmentation
 
 Make the default public Lens outputs more diverse for bootstrap public continuums.
 
+## What Was Built
+
+Default public Lens outputs now use Lens-specific deterministic source event ordering. Atlas keeps source-trail order, Loom interleaves source families, and Beacon orders by scope signal strength. The bootstrap diversity test uses the redundancy report from issue 081 to prove no duplicate display order is produced for mixed public events.
+
 ## First failing test
 
 `default bootstrap Lens outputs have distinct display orders`
 
 ## Acceptance Criteria
 
-- [ ] Given mixed public events, Atlas, Loom, and Beacon should not all have the same `sourceEventIds` order.
-- [ ] Use the redundancy report from issue 081 to assert the diversity target.
-- [ ] Preserve reference-only Lens outputs; do not copy source payload text.
-- [ ] Keep deterministic fallback behaviour.
-- [ ] Record generation parameters that explain how each Lens differs.
+- [x] Given mixed public events, Atlas, Loom, and Beacon should not all have the same `sourceEventIds` order.
+- [x] Use the redundancy report from issue 081 to assert the diversity target.
+- [x] Preserve reference-only Lens outputs; do not copy source payload text.
+- [x] Keep deterministic fallback behaviour.
+- [x] Record generation parameters that explain how each Lens differs.
 
 ## Suggested Strategy
 

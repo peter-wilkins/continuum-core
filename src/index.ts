@@ -1157,18 +1157,18 @@ export function createDefaultPublicLensOutputs(
     throw new Error("PublicContinuumQuery scopeId must match the ImportScope id.");
   }
 
-  const sourceEventIds = events.map((event) => event.id);
+  return defaultPublicLensDefinitions.map((lens) => {
+    const orderedEvents = defaultLensOrderedEvents(lens.id, scope, events);
 
-  return defaultPublicLensDefinitions.map((lens) =>
-    createLensOutput({
+    return createLensOutput({
       id: `lens-output:${query.id}:${lens.id}:${lens.version}`,
       scopeId: scope.id,
       queryId: query.id,
       lensId: lens.id,
       lensVersion: lens.version,
       generatedAt,
-      sourceEventIds,
-      sections: defaultLensSections(lens.id, scope, events),
+      sourceEventIds: orderedEvents.map((event) => event.id),
+      sections: defaultLensSections(lens.id, scope, orderedEvents),
       generation: {
         strategy: `default_${lens.id}`,
         model: null,
@@ -1177,10 +1177,14 @@ export function createDefaultPublicLensOutputs(
             key: "source",
             value: "canonical_event_ids",
           },
+          {
+            key: "ordering",
+            value: defaultLensOrderingName(lens.id),
+          },
         ],
       },
-    }),
-  );
+    });
+  });
 }
 
 export function createDefaultPublicThoughtCards(
@@ -1508,6 +1512,107 @@ function defaultLensSections(
   }
 
   throw new Error(`Unknown default Lens id: ${lensId}`);
+}
+
+function defaultLensOrderedEvents(
+  lensId: string,
+  scope: ImportScope,
+  events: CanonicalEvent[],
+): CanonicalEvent[] {
+  if (lensId === "atlas") {
+    return [...events];
+  }
+
+  if (lensId === "loom") {
+    return interleaveEventsBySourceFamily(scope, events);
+  }
+
+  if (lensId === "beacon") {
+    return [...events].sort((left, right) => {
+      const scoreDifference =
+        scopeSignalStrength(scope, right) - scopeSignalStrength(scope, left);
+
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      return events.indexOf(left) - events.indexOf(right);
+    });
+  }
+
+  throw new Error(`Unknown default Lens id: ${lensId}`);
+}
+
+function defaultLensOrderingName(lensId: string): string {
+  if (lensId === "atlas") {
+    return "source_trail";
+  }
+
+  if (lensId === "loom") {
+    return "source_family_interleave";
+  }
+
+  if (lensId === "beacon") {
+    return "scope_signal_strength";
+  }
+
+  throw new Error(`Unknown default Lens id: ${lensId}`);
+}
+
+function interleaveEventsBySourceFamily(
+  scope: ImportScope,
+  events: CanonicalEvent[],
+): CanonicalEvent[] {
+  const allowedSourceFamilies: string[] = scope.sourceFamilies;
+  const familyOrder = [
+    ...scope.sourceFamilies,
+    ...events
+      .map((event) => event.provenance.sourceFamily)
+      .filter(
+        (sourceFamily) => !allowedSourceFamilies.includes(sourceFamily),
+      ),
+  ];
+  const uniqueFamilyOrder = [...new Set(familyOrder)];
+  const eventsByFamily = new Map<string, CanonicalEvent[]>();
+
+  for (const sourceFamily of uniqueFamilyOrder) {
+    eventsByFamily.set(
+      sourceFamily,
+      events.filter((event) => event.provenance.sourceFamily === sourceFamily),
+    );
+  }
+
+  const orderedEvents: CanonicalEvent[] = [];
+  let layer = 0;
+
+  while (orderedEvents.length < events.length) {
+    let addedInLayer = false;
+
+    for (const sourceFamily of uniqueFamilyOrder) {
+      const event = eventsByFamily.get(sourceFamily)?.[layer];
+
+      if (event) {
+        orderedEvents.push(event);
+        addedInLayer = true;
+      }
+    }
+
+    if (!addedInLayer) {
+      break;
+    }
+
+    layer += 1;
+  }
+
+  return orderedEvents;
+}
+
+function scopeSignalStrength(scope: ImportScope, event: CanonicalEvent): number {
+  const primaryMatches = matchedIdentityTerms(scope.primaryEntity, event).length;
+  const focusMatches =
+    scope.focusEntity === null ? 0 : matchedIdentityTerms(scope.focusEntity, event).length;
+
+  return primaryMatches + focusMatches * 2;
 }
 
 function compactLensSections(sections: LensOutputSection[]): LensOutputSection[] {
