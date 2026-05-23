@@ -160,6 +160,10 @@ _Avoid_: copied memory, canonical generated text, unrebuildable cache, hidden so
 A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. For the public MVP, a Thought Card stores stable generated display text and is grounded by one or more **Source Paragraphs**. Later Thought Cards may be grounded in Entries, events, audio, or several linked source records, but provenance should stay visible and generated text should not become source truth.
 _Avoid_: document row, full source record as the display unit, copied memory
 
+**Synthesis Loop**:
+A facilitated thinking cycle where related **Thought Cards** are grouped, turned into candidate **Lines of Inquiry**, answered or redirected by a human, and then resolved into **Decisions**, **Open Threads**, or parked Lines. The loop is Continuum's move beyond passive retrieval: it helps thought continue toward agreement or sharper questions.
+_Avoid_: passive summary, endless feed, chatbot answer, search results as the product
+
 **Chairman Session**:
 A rebuildable facilitation projection for one bounded meeting, grill, design thread, or solo thinking session. Its source truth is append-only Chairman Events; the current agenda, active Line, parked Lines, and Decisions are projections.
 _Avoid_: global chairman, mutable meeting state, governance system
