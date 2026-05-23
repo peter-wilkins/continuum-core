@@ -160,6 +160,18 @@ _Avoid_: copied memory, canonical generated text, unrebuildable cache, hidden so
 A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. For the public MVP, a Thought Card stores stable generated display text and is grounded by one or more **Source Paragraphs**. Later Thought Cards may be grounded in Entries, events, audio, or several linked source records, but provenance should stay visible and generated text should not become source truth.
 _Avoid_: document row, full source record as the display unit, copied memory
 
+**Human Brain Stack**:
+The user's limited working-memory stack at a given moment. When the Human Brain Stack is close to overflow, Continuum should reduce visible choices, preserve side branches, and guide the user toward one resumable next step.
+_Avoid_: unlimited dashboard, exposing every branch, treating overload as a productivity problem
+
+**Thought Journey**:
+A facilitated user-facing path from messy captured thought toward a usable **Decision**, **Open Thread**, parked **Line**, or next resumable question. A Thought Journey may use **Thought Cards**, **Lines of Inquiry**, and a **Synthesis Loop** internally, but the user experience should usually be one clear question at a time.
+_Avoid_: visual decision tree as default, raw branch map, exact progress theatre
+
+**Thought Journey Progress**:
+A coarse user-facing progress signal for a **Thought Journey**, showing approximate movement toward a usable decision or resumable state. It is a heuristic for orientation, not a precise measure of tree completion.
+_Avoid_: fake exact percentage, gamified pressure, hidden confidence as truth
+
 **Synthesis Loop**:
 A facilitated thinking cycle where related **Thought Cards** are grouped, turned into candidate **Lines of Inquiry**, answered or redirected by a human, and then resolved into **Decisions**, **Open Threads**, or parked Lines. The loop is Continuum's move beyond passive retrieval: it helps thought continue toward agreement or sharper questions.
 _Avoid_: passive summary, endless feed, chatbot answer, search results as the product
