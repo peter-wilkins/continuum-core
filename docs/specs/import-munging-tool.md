@@ -32,7 +32,7 @@ Import Ada Lovelace into this Continuum.
 Import everything Ada Lovelace said about computers.
 ```
 
-That means import becomes **identity-first** and **focus-identity-filtered** before parsing source records.
+That means import becomes **identity-first** and **focus-identity-filtered** before parsing source records. Each public import scope must also state a membership policy, so broad concept sweeps do not secretly behave like strict person/topic intersections.
 
 ## Current Principles
 
@@ -325,6 +325,7 @@ Public scope evaluation is a deterministic first pass:
 
 - `include` when primary identity and focus identity are both visible in the canonical event.
 - `needs_review` when the primary identity is visible but the focus identity is uncertain.
+- `needs_review` when the focus identity is visible, the primary identity is uncertain, and the scope membership policy allows focus-side review candidates.
 - `exclude` when the primary identity is missing or the source family is outside the scope allowlist.
 
 Excluded and needs-review records must remain inspectable in previews; evaluation is not silent deletion.

@@ -10,6 +10,9 @@ describe("public import scopes", () => {
   it("defines an identity-first public import scope for Ada Lovelace about computing", () => {
     const scope = createImportScope({
       id: "scope:ada-lovelace-through-computing",
+      membershipPolicy: {
+        mode: "primary_required",
+      },
       primaryEntity: {
         kind: "person",
         label: "Ada Lovelace",
@@ -47,6 +50,9 @@ describe("public import scopes", () => {
 
     expect(scope).toEqual<ImportScope>({
       id: "scope:ada-lovelace-through-computing",
+      membershipPolicy: {
+        mode: "primary_required",
+      },
       primaryEntity: {
         kind: "person",
         label: "Ada Lovelace",
@@ -89,6 +95,9 @@ describe("public import scopes", () => {
     expect(() =>
       createImportScope({
         id: "scope:ada-lovelace",
+        membershipPolicy: {
+          mode: "primary_required",
+        },
         primaryEntity: {
           kind: "person",
           label: "Ada Lovelace",
@@ -107,5 +116,31 @@ describe("public import scopes", () => {
         createdAt: "2026-05-22T12:00:00.000Z",
       }),
     ).toThrow("ImportScope sourceFamilies must contain at least one source family.");
+  });
+
+  it("rejects public import scopes without an explicit membership policy", () => {
+    const scopeWithoutMembership = {
+      id: "scope:ada-lovelace",
+      primaryEntity: {
+        kind: "person",
+        label: "Ada Lovelace",
+        aliases: [],
+        sourceIds: [],
+      },
+      focusEntity: null,
+      sourceFamilies: ["wikimedia"],
+      publicness: {
+        access: "public_only",
+        licenseIntent: "respect_source_license",
+      },
+      provenancePolicy: {
+        sourceFamiliesCountAsIndependentEvidence: false,
+      },
+      createdAt: "2026-05-22T12:00:00.000Z",
+    } as unknown as ImportScope;
+
+    expect(() => createImportScope(scopeWithoutMembership)).toThrow(
+      "ImportScope membershipPolicy is required.",
+    );
   });
 });

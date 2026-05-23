@@ -1,5 +1,8 @@
 {
   "id": "scope:extended-thought-brain-augmentation",
+  "membershipPolicy": {
+    "mode": "primary_or_focus_review"
+  },
   "primaryEntity": {
     "kind": "concept",
     "label": "extended thought",

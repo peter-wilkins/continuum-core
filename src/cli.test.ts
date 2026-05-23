@@ -58,6 +58,12 @@ const publicDocumentFixturePath = fileURLToPath(
 const adaImportScopeFixturePath = fileURLToPath(
   new URL("./fixtures/import-scope-ada-lovelace-computing.json", import.meta.url),
 );
+const bootstrapImportScopeFixturePath = fileURLToPath(
+  new URL(
+    "./fixtures/import-scope-extended-thought-brain-augmentation.json",
+    import.meta.url,
+  ),
+);
 const emailMboxFixturePath = fileURLToPath(
   new URL("./fixtures/email-one-message.mbox", import.meta.url),
 );
@@ -1635,6 +1641,9 @@ describe("continuum-import CLI", () => {
       }
       expect(result.batch.importScope).toMatchObject({
         id: "scope:ada-lovelace-through-computing",
+        membershipPolicy: {
+          mode: "primary_required",
+        },
         primaryEntity: {
           label: "Ada Lovelace",
         },
@@ -1661,6 +1670,83 @@ describe("continuum-import CLI", () => {
         confidence: 1,
       });
       expect(preview.events[0].memoryActive).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-runs focus-only public scope candidates into needs review", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const documentPath = join(dir, "brain-computer-interface.public-document.json");
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      await writeFile(
+        documentPath,
+        JSON.stringify(
+          {
+            source: {
+              platform: "wikimedia",
+              sourceFamily: "wikimedia",
+              sourceName: "wikipedia",
+              sourceId: "623686",
+              sourceUrl: "https://en.wikipedia.org/wiki/Brain%E2%80%93computer_interface",
+              retrievedAt: "2026-05-23T08:19:37.680Z",
+              license:
+                "Wikipedia text is available under CC BY-SA 4.0; additional terms may apply.",
+              upstreamSources: ["en.wikipedia.org"],
+              derivedFrom: ["enwiki-revision:1354854338"],
+            },
+            document: {
+              title: "Brain-computer interface",
+              language: "en",
+              publishedAt: "2026-05-18T16:27:14.000Z",
+              publishedAtConfidence: "exact",
+              creators: [
+                {
+                  role: "author",
+                  name: "Wikipedia contributors",
+                },
+              ],
+              subjectTags: ["brain-computer interface"],
+              text: "Brain-computer interfaces and neurotechnology connect brain signals to devices.",
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "public-document",
+        documentPath,
+        "--scope",
+        bootstrapImportScopeFixturePath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.filterSummary).toMatchObject({
+        included: 0,
+        excluded: 0,
+        needsReview: 1,
+        reasons: {
+          focus_match_primary_uncertain: 1,
+        },
+      });
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.events[0].filterDecision).toMatchObject({
+        action: "needs_review",
+        reason: "focus_match_primary_uncertain",
+        confidence: 0.65,
+      });
+      expect(preview.events[0].memoryActive).toBe(false);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

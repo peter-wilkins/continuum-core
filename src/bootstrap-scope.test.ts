@@ -33,6 +33,9 @@ describe("bootstrap public Continuum scope", () => {
         "intelligence amplification",
       ]),
     });
+    expect(scope.membershipPolicy).toEqual({
+      mode: "primary_or_focus_review",
+    });
     expect(scope.focusEntity).toMatchObject({
       kind: "concept",
       label: "brain augmentation",

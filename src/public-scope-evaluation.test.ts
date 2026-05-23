@@ -17,6 +17,9 @@ import {
 
 const adaScope = createImportScope({
   id: "scope:ada-lovelace-through-computing",
+  membershipPolicy: {
+    mode: "primary_required",
+  },
   primaryEntity: {
     kind: "person",
     label: "Ada Lovelace",
@@ -44,6 +47,34 @@ const adaScope = createImportScope({
     sourceFamiliesCountAsIndependentEvidence: false,
   },
   createdAt: "2026-05-22T12:00:00.000Z",
+});
+
+const bootstrapScope = createImportScope({
+  id: "scope:extended-thought-brain-augmentation",
+  membershipPolicy: {
+    mode: "primary_or_focus_review",
+  },
+  primaryEntity: {
+    kind: "concept",
+    label: "extended thought",
+    aliases: ["extended mind", "distributed cognition"],
+    sourceIds: [],
+  },
+  focusEntity: {
+    kind: "concept",
+    label: "brain augmentation",
+    aliases: ["brain-computer interface", "neurotechnology"],
+    sourceIds: [],
+  },
+  sourceFamilies: ["wikimedia"],
+  publicness: {
+    access: "public_only",
+    licenseIntent: "respect_source_license",
+  },
+  provenancePolicy: {
+    sourceFamiliesCountAsIndependentEvidence: false,
+  },
+  createdAt: "2026-05-23T08:20:00.000Z",
 });
 
 describe("public scope event evaluation", () => {
@@ -92,6 +123,58 @@ describe("public scope event evaluation", () => {
       reason: "primary_identity_missing",
       confidence: 0.9,
       matchedTerms: [],
+    });
+  });
+
+  it("keeps focus identity matches in review when exploratory scope membership allows focus candidates", () => {
+    const publicDocumentEvent = normalizePublicDocument(
+      publicDocumentFixture as PublicDocumentNormalizationInput,
+    );
+    const event = {
+      ...publicDocumentEvent,
+      id: "wikimedia:wikipedia:623686",
+      provenance: {
+        ...publicDocumentEvent.provenance,
+        sourceFamily: "wikimedia" as const,
+      },
+      content: {
+        kind: "text" as const,
+        subject: "Brain-computer interface",
+        text: "Brain augmentation research includes brain-computer interfaces and neurotechnology.",
+      },
+      participants: [],
+    };
+
+    expect(evaluatePublicScopeEvent(bootstrapScope, event)).toEqual({
+      action: "needs_review",
+      reason: "focus_match_primary_uncertain",
+      confidence: 0.65,
+      matchedTerms: [
+        "brain augmentation",
+        "brain-computer interface",
+        "neurotechnology",
+      ],
+    });
+  });
+
+  it("excludes disallowed source families before exploratory membership review", () => {
+    const event = {
+      ...normalizePublicDocument(
+        publicDocumentFixture as PublicDocumentNormalizationInput,
+      ),
+      content: {
+        kind: "text" as const,
+        subject: "Neurotechnology",
+        text: "Neurotechnology can support brain augmentation.",
+      },
+      participants: [],
+    };
+
+    expect(evaluatePublicScopeEvent(bootstrapScope, event)).toEqual({
+      action: "exclude",
+      reason: "source_family_not_allowed",
+      confidence: 1,
+      matchedTerms: ["brain augmentation", "neurotechnology"],
     });
   });
 });

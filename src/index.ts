@@ -68,6 +68,7 @@ function validateImportScope(scope: ImportScope): void {
     throw new Error("ImportScope id must not be blank.");
   }
 
+  validateImportScopeMembershipPolicy(scope);
   validateImportScopeEntity("primaryEntity", scope.primaryEntity);
 
   if (scope.focusEntity !== null) {
@@ -80,6 +81,33 @@ function validateImportScope(scope: ImportScope): void {
 
   if (Number.isNaN(new Date(scope.createdAt).getTime())) {
     throw new Error("ImportScope createdAt must be an ISO-compatible date.");
+  }
+}
+
+function validateImportScopeMembershipPolicy(scope: ImportScope): void {
+  const policy = scope.membershipPolicy as
+    | ImportScopeMembershipPolicy
+    | null
+    | undefined;
+
+  if (policy === undefined || policy === null) {
+    throw new Error("ImportScope membershipPolicy is required.");
+  }
+
+  if (
+    policy.mode !== "primary_required" &&
+    policy.mode !== "primary_or_focus_review"
+  ) {
+    throw new Error("ImportScope membershipPolicy.mode is unknown.");
+  }
+
+  if (
+    policy.mode === "primary_or_focus_review" &&
+    scope.focusEntity === null
+  ) {
+    throw new Error(
+      "ImportScope primary_or_focus_review membership requires a focusEntity.",
+    );
   }
 }
 
@@ -167,8 +195,13 @@ export type ImportScopeEntity = {
   sourceIds: ImportScopeEntitySourceId[];
 };
 
+export type ImportScopeMembershipPolicy = {
+  mode: "primary_required" | "primary_or_focus_review";
+};
+
 export type ImportScope = {
   id: string;
+  membershipPolicy: ImportScopeMembershipPolicy;
   primaryEntity: ImportScopeEntity;
   focusEntity: ImportScopeEntity | null;
   sourceFamilies: ImportScopeSourceFamily[];
@@ -195,6 +228,7 @@ export type PublicScopeEventDecision = {
   reason:
     | "primary_and_focus_match"
     | "primary_match_focus_uncertain"
+    | "focus_match_primary_uncertain"
     | "primary_identity_missing"
     | "source_family_not_allowed";
   confidence: number;
@@ -252,6 +286,18 @@ export function evaluatePublicScopeEvent(
   }
 
   if (primaryMatches.length === 0) {
+    if (
+      scope.membershipPolicy.mode === "primary_or_focus_review" &&
+      focusMatches.length > 0
+    ) {
+      return {
+        action: "needs_review",
+        reason: "focus_match_primary_uncertain",
+        confidence: 0.65,
+        matchedTerms: focusMatches,
+      };
+    }
+
     return {
       action: "exclude",
       reason: "primary_identity_missing",
@@ -2873,6 +2919,7 @@ export type ImportFilterReason =
   | "no_prior_engagement"
   | "primary_and_focus_match"
   | "primary_match_focus_uncertain"
+  | "focus_match_primary_uncertain"
   | "primary_identity_missing"
   | "source_family_not_allowed";
 

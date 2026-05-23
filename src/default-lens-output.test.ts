@@ -18,6 +18,9 @@ import {
 
 const adaScope = createImportScope({
   id: "scope:ada-lovelace-through-computing",
+  membershipPolicy: {
+    mode: "primary_required",
+  },
   primaryEntity: {
     kind: "person",
     label: "Ada Lovelace",

@@ -85,7 +85,7 @@ An immutable normalized event in Continuum's unified event model. A Canonical Ev
 _Avoid_: vendor record, raw message, source-specific event
 
 **Import Scope**:
-The explicit boundary for an import before source parsing begins. An Import Scope names the primary **Identity**, optional focus **Identity**, source families, and time/license constraints. It prevents "import everything" from being the default shape.
+The explicit boundary for an import before source parsing begins. An Import Scope names the primary **Identity**, optional focus **Identity**, membership policy, source families, and time/license constraints. It prevents "import everything" from being the default shape.
 _Avoid_: broad dump, source-first import, implicit filter
 
 **Identity**:
@@ -95,6 +95,10 @@ _Avoid_: author string as person, account as person, guessed entity
 **Focus Identity**:
 The optional second **Identity** that narrows an **Import Scope**, such as `computing` in "Ada Lovelace through computing". Focus Identities narrow candidate source records before promotion, but uncertain records should remain inspectable rather than silently discarded.
 _Avoid_: Lens for ingestion, search query as truth, hidden relevance filter, destructive prefilter
+
+**Import Scope Membership Policy**:
+The explicit rule for whether scope membership requires the primary **Identity** or can keep focus-only candidates in review. Person-centric imports usually use primary-required membership; exploratory concept sweeps can use primary-or-focus-review membership so useful adjacent sources are inspectable without becoming active truth.
+_Avoid_: hidden broadening, silent reject, default scope semantics
 
 **Imported Entry**:
 An **Entry** created from a **Canonical Event** during import. Retrieval and **Continuation** inference work over Entries in the **Source Log**, not over source-specific Canonical Events directly.
