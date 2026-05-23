@@ -1,0 +1,42 @@
+{
+  "id": "scope:extended-thought-brain-augmentation",
+  "primaryEntity": {
+    "kind": "concept",
+    "label": "extended thought",
+    "aliases": [
+      "extended mind",
+      "extended mind thesis",
+      "distributed cognition",
+      "situated cognition",
+      "embodied cognition",
+      "intelligence amplification"
+    ],
+    "sourceIds": []
+  },
+  "focusEntity": {
+    "kind": "concept",
+    "label": "brain augmentation",
+    "aliases": [
+      "brain-computer interface",
+      "cognitive augmentation",
+      "augmented cognition",
+      "neurotechnology",
+      "human enhancement",
+      "cognitive prosthetic"
+    ],
+    "sourceIds": []
+  },
+  "sourceFamilies": [
+    "wikimedia",
+    "public_archive",
+    "scholarly_metadata"
+  ],
+  "publicness": {
+    "access": "public_only",
+    "licenseIntent": "respect_source_license"
+  },
+  "provenancePolicy": {
+    "sourceFamiliesCountAsIndependentEvidence": false
+  },
+  "createdAt": "2026-05-23T08:20:00.000Z"
+}

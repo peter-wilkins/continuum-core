@@ -356,6 +356,21 @@ export type LensOutput = {
   };
 };
 
+export type LensRedundancyReason = "same_source_event_order";
+
+export type LensRedundancyFinding = {
+  retainedLensOutputId: string;
+  redundantLensOutputId: string;
+  reason: LensRedundancyReason;
+  confidence: Confidence;
+};
+
+export type LensRedundancyReport = {
+  uniqueLensOutputIds: string[];
+  redundantLensOutputIds: string[];
+  findings: LensRedundancyFinding[];
+};
+
 export type LensFeedbackSignal = {
   id: string;
   userId: string;
@@ -1206,6 +1221,42 @@ export function createDefaultPublicThoughtCards(
       generatedAt: lensOutput.generatedAt,
     }),
   );
+}
+
+export function findRedundantLensOutputs(
+  outputs: LensOutput[],
+): LensRedundancyReport {
+  const firstOutputByDisplayOrder = new Map<string, LensOutput>();
+  const uniqueLensOutputIds: string[] = [];
+  const redundantLensOutputIds: string[] = [];
+  const findings: LensRedundancyFinding[] = [];
+
+  for (const output of outputs) {
+    validateLensOutput(output);
+
+    const displayOrderKey = output.sourceEventIds.join("\n");
+    const retainedOutput = firstOutputByDisplayOrder.get(displayOrderKey);
+
+    if (!retainedOutput) {
+      firstOutputByDisplayOrder.set(displayOrderKey, output);
+      uniqueLensOutputIds.push(output.id);
+      continue;
+    }
+
+    redundantLensOutputIds.push(output.id);
+    findings.push({
+      retainedLensOutputId: retainedOutput.id,
+      redundantLensOutputId: output.id,
+      reason: "same_source_event_order",
+      confidence: confidence(1),
+    });
+  }
+
+  return {
+    uniqueLensOutputIds,
+    redundantLensOutputIds,
+    findings,
+  };
 }
 
 export function createLensFeedbackSignal(
