@@ -10,6 +10,24 @@ The goal is:
 
 The user should remain in cognition mode rather than software-operation mode.
 
+## Least Context Switching Principle
+
+When the user can give useful signal, capture it at the point of use.
+
+Do not make the user leave the current thought, surface, or task just to explain what happened.
+
+Prefer:
+
+- one-touch feedback first
+- current surface/query/Lens context captured automatically
+- optional detail after the signal is safe
+- diagnostic Context Clues gathered by the system
+- later maintainer/agent triage rather than making the user file a perfect report
+
+This follows JobDone's feedback pattern: the feedback report is a small user signal plus bounded context clues for reproduction, not a support-ticket workflow and not background telemetry.
+
+Continuum should apply the same rule to Lens feedback, Curator feedback, capture correction, and future crash/problem reporting.
+
 ## Traditional knowledge management breaks flow
 
 Most systems interrupt thought with:
