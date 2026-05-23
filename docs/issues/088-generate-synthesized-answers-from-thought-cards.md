@@ -27,15 +27,18 @@ A synthesized answer is not source truth. It is a rebuildable Lens/projection ov
 
 The answer must carry references to the Thought Cards or source paragraphs that support it. If there is not enough evidence, the answer should say so instead of pretending.
 
+The answer synthesis baseline should run over canonical Thought Cards before Lens ordering. Lens outputs can remain comparison/evidence/debug views, but answer generation should not depend on selecting one Lens first.
+
 The MVP answer can be deterministic and plain. An LLM can improve wording later, but the baseline should be testable without network calls.
 
 ## First Failing Test
 
-TBD after one more product decision: whether the answer is produced across all Lens outputs or by a separate synthesis step over Thought Cards.
+It synthesizes a short answer from canonical Thought Cards and preserves the supporting Thought Card ids.
 
 ## Acceptance Criteria
 
 - [ ] Produce a short answer for a bounded public query from Thought Cards.
+- [ ] Run the first synthesis pass over canonical Thought Cards before Lens ordering.
 - [ ] Preserve supporting Thought Card ids or source paragraph refs behind each answer.
 - [ ] Do not store the answer as source truth.
 - [ ] Return an explicit insufficient-evidence result when cards do not support an answer.
@@ -45,11 +48,9 @@ TBD after one more product decision: whether the answer is produced across all L
 
 ## Open Questions
 
-- Should answer synthesis run across all Lens outputs, or over canonical Thought Cards before Lens ordering?
 - Should the app collect feedback on the answer itself, the hidden Lens behind it, or the next Line of Inquiry?
 
 ## Related
 
 - `087-generate-lines-of-inquiry-from-thought-cards.md`
 - `/home/peter/continuum/docs/issues/040-synthesized-answer-first-public-mvp.md`
-
