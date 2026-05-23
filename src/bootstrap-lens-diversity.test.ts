@@ -33,6 +33,7 @@ describe("bootstrap Lens diversity", () => {
           sourceName: "wikipedia",
           subject: "Extended mind",
           text: "Extended thought and extended mind theory.",
+          createdAt: "2026-05-23T08:20:00.000Z",
         }),
         publicEvent({
           id: "wikimedia:distributed-cognition",
@@ -40,6 +41,7 @@ describe("bootstrap Lens diversity", () => {
           sourceName: "wikipedia",
           subject: "Distributed cognition",
           text: "Distributed cognition studies how thought is spread across people and tools.",
+          createdAt: "2026-05-23T08:20:00.000Z",
         }),
         publicEvent({
           id: "public_archive:intelligence-amplification",
@@ -47,6 +49,7 @@ describe("bootstrap Lens diversity", () => {
           sourceName: "internet_archive",
           subject: "Intelligence amplification",
           text: "Intelligence amplification explores computers as tools for extending thought.",
+          createdAt: "2026-05-23T08:20:00.000Z",
         }),
         publicEvent({
           id: "scholarly_metadata:brain-computer-interface",
@@ -54,6 +57,7 @@ describe("bootstrap Lens diversity", () => {
           sourceName: "openalex",
           subject: "Brain-computer interface",
           text: "Brain-computer interface research studies brain augmentation and neurotechnology.",
+          createdAt: "2026-05-23T08:20:00.000Z",
         }),
       ],
       "2026-05-23T08:30:00.000Z",
@@ -97,6 +101,69 @@ describe("bootstrap Lens diversity", () => {
       { key: "ordering", value: "scope_signal_strength" },
     ]);
   });
+
+  it("keeps Loom distinct when all active sources share one source family", () => {
+    const outputs = createDefaultPublicLensOutputs(
+      bootstrapScope,
+      bootstrapQuery,
+      [
+        publicEvent({
+          id: "wikimedia:augmented-cognition",
+          sourceFamily: "wikimedia",
+          sourceName: "wikipedia",
+          subject: "Augmented cognition",
+          text: "Augmented cognition supports extended thought.",
+          createdAt: "2025-11-25T01:10:39.000Z",
+        }),
+        publicEvent({
+          id: "wikimedia:distributed-cognition",
+          sourceFamily: "wikimedia",
+          sourceName: "wikipedia",
+          subject: "Distributed cognition",
+          text: "Distributed cognition studies extended mind and situated cognition.",
+          createdAt: "2026-05-11T16:38:07.000Z",
+        }),
+        publicEvent({
+          id: "wikimedia:intelligence-amplification",
+          sourceFamily: "wikimedia",
+          sourceName: "wikipedia",
+          subject: "Intelligence amplification",
+          text: "Intelligence amplification and brain-computer interface research support cognitive augmentation.",
+          createdAt: "2026-04-20T11:08:26.000Z",
+        }),
+      ],
+      "2026-05-23T08:30:00.000Z",
+    );
+
+    expect(outputs.map((output) => output.sourceEventIds)).toEqual([
+      [
+        "wikimedia:augmented-cognition",
+        "wikimedia:distributed-cognition",
+        "wikimedia:intelligence-amplification",
+      ],
+      [
+        "wikimedia:augmented-cognition",
+        "wikimedia:intelligence-amplification",
+        "wikimedia:distributed-cognition",
+      ],
+      [
+        "wikimedia:intelligence-amplification",
+        "wikimedia:augmented-cognition",
+        "wikimedia:distributed-cognition",
+      ],
+    ]);
+    expect(findRedundantLensOutputs(outputs)).toMatchObject({
+      redundantLensOutputIds: [],
+    });
+    expect(
+      outputs[1]?.generation.parameters.find(
+        (parameter) => parameter.key === "ordering",
+      ),
+    ).toEqual({
+      key: "ordering",
+      value: "source_family_interleave_time_fallback",
+    });
+  });
 });
 
 function publicEvent(input: {
@@ -105,6 +172,7 @@ function publicEvent(input: {
   sourceName: string;
   subject: string;
   text: string;
+  createdAt: string;
 }): CanonicalEvent {
   return {
     id: input.id,
@@ -128,7 +196,7 @@ function publicEvent(input: {
       license: "test fixture",
     },
     time: {
-      createdAt: "2026-05-23T08:20:00.000Z",
+      createdAt: input.createdAt,
       createdAtConfidence: "exact",
     },
     actor: {

@@ -1200,7 +1200,7 @@ export const defaultPublicLensDefinitions: LensDefinition[] = [
     version: "1.0.0",
     userBlurb: "A woven view that emphasises how people, works, and ideas connect.",
     technicalBlurb:
-      "Graph-biased projection: groups source event ids by shared identities, creators, works, and provenance lineage.",
+      "Graph-biased projection: interleaves source families, with an Occurrence Time fallback when every active event comes from one source family.",
   },
   {
     id: "beacon",
@@ -1250,7 +1250,7 @@ export function createDefaultPublicLensOutputs(
           },
           {
             key: "ordering",
-            value: defaultLensOrderingName(lens.id),
+            value: defaultLensOrderingName(lens.id, events),
           },
         ],
       },
@@ -1682,12 +1682,19 @@ function defaultLensOrderedEvents(
   throw new Error(`Unknown default Lens id: ${lensId}`);
 }
 
-function defaultLensOrderingName(lensId: string): string {
+function defaultLensOrderingName(
+  lensId: string,
+  events: CanonicalEvent[],
+): string {
   if (lensId === "atlas") {
     return "source_trail";
   }
 
   if (lensId === "loom") {
+    if (sourceFamilyCount(events) <= 1) {
+      return "source_family_interleave_time_fallback";
+    }
+
     return "source_family_interleave";
   }
 
@@ -1702,6 +1709,10 @@ function interleaveEventsBySourceFamily(
   scope: ImportScope,
   events: CanonicalEvent[],
 ): CanonicalEvent[] {
+  if (sourceFamilyCount(events) <= 1) {
+    return orderEventsByOccurrenceTime(events);
+  }
+
   const allowedSourceFamilies: string[] = scope.sourceFamilies;
   const familyOrder = [
     ...scope.sourceFamilies,
@@ -1744,6 +1755,33 @@ function interleaveEventsBySourceFamily(
   }
 
   return orderedEvents;
+}
+
+function sourceFamilyCount(events: CanonicalEvent[]): number {
+  return new Set(events.map((event) => event.provenance.sourceFamily)).size;
+}
+
+function orderEventsByOccurrenceTime(events: CanonicalEvent[]): CanonicalEvent[] {
+  return [...events].sort((left, right) => {
+    const timeDifference =
+      sortableOccurrenceTime(left) - sortableOccurrenceTime(right);
+
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
+
+    return events.indexOf(left) - events.indexOf(right);
+  });
+}
+
+function sortableOccurrenceTime(event: CanonicalEvent): number {
+  const milliseconds = Date.parse(event.time.createdAt);
+
+  if (Number.isFinite(milliseconds)) {
+    return milliseconds;
+  }
+
+  return Number.MAX_SAFE_INTEGER;
 }
 
 function scopeSignalStrength(scope: ImportScope, event: CanonicalEvent): number {
