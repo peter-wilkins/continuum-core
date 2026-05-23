@@ -60,6 +60,14 @@ _Avoid_: tone as truth, emotion diagnosis, overwriting transcript, ungrounded in
 A paragraph-sized, referenceable segment of source text preserved for provenance during import. A Source Paragraph may ground a **Thought Card**, but importing Source Paragraphs is not the same as creating Thought Cards. A Source Paragraph should preserve a stable document reference, paragraph index, source fingerprint, and any unavoidable source context needed to interpret that locator.
 _Avoid_: card at import, whole-page pointer when a paragraph is known, arbitrary chunk without source position, hidden out-of-band context
 
+**Source Support**:
+The **Thought Cards**, **Source Paragraphs**, or other source refs that back a generated answer, **Line of Inquiry**, **Continuation Candidate**, or explanation. User-facing copy should usually say **Sources** or **Thoughts used** rather than evidence, provenance, citation, or rationale.
+_Avoid_: provenance in normal UI, citation, rationale, unsupported answer
+
+**Source Trail**:
+A rebuildable explanation path from original **Source** to **Source Paragraph** to **Thought Card** to generated answer or **Line of Inquiry**. The user-facing action for this is usually **Why this?**, with **Sources** shown first.
+_Avoid_: hidden chain of inference, copied source text as truth, model-only explanation
+
 **File System Membrane**:
 A membrane that controls which raw artifacts may be written to local disk, at what quality, under what path, with what retention, checksum, quota, and later erasure behaviour. A File System Membrane can be permissive for a local dogfooding setup and stricter for other users.
 _Avoid_: unlimited writes without policy, storage as source truth, silent artifact loss
@@ -157,7 +165,7 @@ A rebuildable projection produced from source truth for stable display, inspecti
 _Avoid_: copied memory, canonical generated text, unrebuildable cache, hidden source
 
 **Thought Card**:
-A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. For the public MVP, a Thought Card stores stable generated display text and is grounded by one or more **Source Paragraphs**. Later Thought Cards may be grounded in Entries, events, audio, or several linked source records, but provenance should stay visible and generated text should not become source truth.
+A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. For the public MVP, a Thought Card stores stable generated display text and is grounded by one or more **Source Paragraphs**. Later Thought Cards may be grounded in Entries, events, audio, or several linked source records, but sources should stay visible and generated text should not become source truth.
 _Avoid_: document row, full source record as the display unit, copied memory
 
 **Synthesis Move**:

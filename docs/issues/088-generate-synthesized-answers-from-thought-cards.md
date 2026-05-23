@@ -10,14 +10,14 @@ TDD.
 
 The public MVP is moving from card-first to answer-first.
 
-Thought Cards remain the source-backed units of evidence, but the first user-visible result should be a concise synthesized answer to a seed or spoken query. Cards, Lens variants, and source paragraphs become drill-down evidence.
+Thought Cards remain the source-backed units of support, but the first user-visible result should be a concise synthesized answer to a seed or spoken query. Cards, Lens variants, and source paragraphs become a `Why this?` / `Sources` drill-down.
 
 This keeps the UI closer to thinking:
 
 ```text
 query
 -> synthesized answer
--> evidence drill-down
+-> Why this? / Sources drill-down
 -> Line of Inquiry
 ```
 
@@ -28,6 +28,8 @@ A synthesized answer is not source truth. It is a rebuildable Lens/projection ov
 The answer must carry references to the Thought Cards or source paragraphs that support it. If there is not enough evidence, the answer should say so instead of pretending.
 
 The answer synthesis baseline should run over canonical Thought Cards before Lens ordering. Lens outputs can remain comparison/evidence/debug views, but answer generation should not depend on selecting one Lens first.
+
+User-facing explanation language should be `Why this?` and `Sources`. Platform/domain language can use `Source Support` and `Source Trail`. Avoid `provenance`, `citation`, and `rationale` in normal UI copy.
 
 The MVP answer can be deterministic and plain. An LLM can improve wording later, but the baseline should be testable without network calls.
 

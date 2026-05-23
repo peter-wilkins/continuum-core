@@ -20,7 +20,7 @@ Next MVP slice should generate Lines of Inquiry from clustered Thought Cards rat
 
 The first clustering shape should use Synthesis Moves rather than topic buckets. Topic buckets make better folders; Synthesis Moves make the product feel like thinking.
 
-Synthesis Move names should be mostly hidden in the normal UI. The user should see the question first; a lightweight `why this?` reveal can expose the move and source evidence when useful.
+Synthesis Move names should be mostly hidden in the normal UI. The user should see the question first; a lightweight `Why this?` reveal can expose the move and source support when useful.
 
 The MVP baseline should start with three Synthesis Moves:
 
