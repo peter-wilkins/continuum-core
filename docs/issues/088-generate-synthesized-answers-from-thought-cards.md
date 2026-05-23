@@ -1,6 +1,6 @@
 # 088: Generate Synthesized Answers From Thought Cards
 
-Status: planning
+Status: ready
 
 ## Type
 
@@ -56,6 +56,10 @@ It synthesizes a short answer from canonical Thought Cards and preserves the sup
 ## Open Questions
 
 None.
+
+## Blocked by
+
+None - can start immediately.
 
 ## Related
 

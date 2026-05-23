@@ -1,6 +1,6 @@
 # 087: Generate Lines Of Inquiry From Thought Cards
 
-Status: planning
+Status: ready
 
 ## Type
 
@@ -12,7 +12,7 @@ The public MVP currently renders Wikipedia-derived Thought Cards. That proves so
 
 The product should move from facts to synthesis: cluster related Thought Cards, generate the next useful question, and help the human work toward agreement, a decision, or a sharper open thread.
 
-The app direction is answer-first rather than card-first: the user sees a synthesized answer, can dig into evidence, then receives one Line of Inquiry. This issue owns the Line of Inquiry part of that flow.
+The app direction is answer-first rather than card-first: the user sees a synthesized answer, can use `Why this?` / `Sources`, can compare Lenses, then receives one Line of Inquiry. This issue owns the Line of Inquiry part of that flow.
 
 ## Product Decision
 
@@ -32,9 +32,11 @@ Question Card UX should align with Workflow Manager's Brain Dump Ingestion forma
 
 A Line of Inquiry is good enough to ask the human when it is source-grounded, answerable now, small enough for one response, and likely to move synthesis forward rather than only request more facts.
 
+The `Why this?` reveal for a Line should show the Synthesis Move and Source Support that made the question useful. It should not expose the raw branch map by default.
+
 ## First Failing Test
 
-TBD after grilling.
+It generates a recommended Line of Inquiry from canonical Thought Cards using a Synthesis Move and preserves the supporting Thought Card ids.
 
 ## Acceptance Criteria
 
@@ -49,4 +51,8 @@ TBD after grilling.
 
 ## Open Questions
 
-- What should `why this?` reveal include?
+None.
+
+## Blocked by
+
+- `088-generate-synthesized-answers-from-thought-cards.md`
