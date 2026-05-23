@@ -16,6 +16,10 @@ The product should move from facts to synthesis: cluster related Thought Cards, 
 
 Next MVP slice should generate Lines of Inquiry from clustered Thought Cards rather than only cleaning paragraph extraction.
 
+The first clustering shape should use Synthesis Moves rather than topic buckets. Topic buckets make better folders; Synthesis Moves make the product feel like thinking.
+
+Synthesis Move names should be mostly hidden in the normal UI. The user should see the question first; a lightweight `why this?` reveal can expose the move and source evidence when useful.
+
 ## First Failing Test
 
 TBD after grilling.
@@ -31,6 +35,6 @@ TBD after grilling.
 
 ## Open Questions
 
-- What kind of clustering should the first baseline use?
 - What makes a Line of Inquiry "good enough" to ask the human?
-- Does the app show one next question, several candidate questions, or a clustered map first?
+- Which Synthesis Moves should the MVP baseline support first?
+- What should `why this?` reveal include?

@@ -160,6 +160,14 @@ _Avoid_: copied memory, canonical generated text, unrebuildable cache, hidden so
 A small user-facing unit on a **Continuation Surface** that presents one query-relevant thought. For the public MVP, a Thought Card stores stable generated display text and is grounded by one or more **Source Paragraphs**. Later Thought Cards may be grounded in Entries, events, audio, or several linked source records, but provenance should stay visible and generated text should not become source truth.
 _Avoid_: document row, full source record as the display unit, copied memory
 
+**Synthesis Move**:
+A reasoning operation applied to source-backed material, such as naming the core claim, finding a tension, identifying a mechanism, tracing a consequence, spotting a missing piece, or turning evidence into the next useful question. Synthesis Moves should usually shape the next **Line of Inquiry** without becoming loud UI labels.
+_Avoid_: topic tag, category, school lesson label, visible taxonomy as the product
+
+**Guided Inquiry**:
+The user-facing experience where Continuum quietly teaches better thinking by offering one useful next question, preserving redirects, and helping the user reach a **Decision**, **Open Thread**, or parked **Line**. Guided Inquiry may reveal why a question was chosen, but it should not require the user to enter an explicit teacher mode.
+_Avoid_: teacher mode as default, lesson UI, quiz flow, patronising explanation
+
 **Human Brain Stack**:
 The user's limited working-memory stack at a given moment. When the Human Brain Stack is close to overflow, Continuum should reduce visible choices, preserve side branches, and guide the user toward one resumable next step.
 _Avoid_: unlimited dashboard, exposing every branch, treating overload as a productivity problem
