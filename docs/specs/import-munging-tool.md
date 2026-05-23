@@ -284,6 +284,8 @@ Public MVP Thought Cards cite one or more Source Paragraphs only. Broader source
 
 Public MVP Thought Cards may store generated display text, such as title and body, for stable swiping, inspection, and feedback. That text is rebuildable Materialized View output; Source Paragraph references remain the source truth.
 
+Public Continuum materialization is a rebuildable preview over public source records. It evaluates source documents against an Import Scope, stores active/review/excluded membership as event id lists, generates Source Paragraphs only for active records, then generates Lens outputs and Thought Cards from those active Source Paragraphs. Review candidates stay inspectable but are not automatically promoted into active Thought Cards.
+
 Accepted MVP Thought Card shape:
 
 ```ts

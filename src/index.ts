@@ -417,6 +417,31 @@ export type LensRedundancyReport = {
   findings: LensRedundancyFinding[];
 };
 
+export type PublicContinuumMaterializationDecision = {
+  eventId: CanonicalEventId;
+  decision: PublicScopeEventDecision;
+};
+
+export type PublicContinuumMaterializationInput = {
+  scope: ImportScope;
+  query: PublicContinuumQuery;
+  documents: PublicDocumentNormalizationInput[];
+  generatedAt: string;
+};
+
+export type PublicContinuumMaterialization = {
+  generatedAt: KnowledgeTime;
+  events: CanonicalEvent[];
+  decisions: PublicContinuumMaterializationDecision[];
+  activeEventIds: CanonicalEventId[];
+  reviewEventIds: CanonicalEventId[];
+  excludedEventIds: CanonicalEventId[];
+  sourceParagraphs: SourceParagraph[];
+  lensOutputs: LensOutput[];
+  thoughtCards: ThoughtCard[];
+  redundancy: LensRedundancyReport;
+};
+
 export type LensFeedbackSignal = {
   id: string;
   userId: string;
@@ -1271,6 +1296,74 @@ export function createDefaultPublicThoughtCards(
       generatedAt: lensOutput.generatedAt,
     }),
   );
+}
+
+export function createPublicContinuumMaterialization(
+  input: PublicContinuumMaterializationInput,
+): PublicContinuumMaterialization {
+  const generatedAt = knowledgeTime(
+    "Public Continuum materialization generatedAt",
+    input.generatedAt,
+  );
+  const records = input.documents.map((document) => ({
+    document,
+    event: normalizePublicDocument(document),
+  }));
+  const decisions = records.map<PublicContinuumMaterializationDecision>(
+    ({ event }) => ({
+      eventId: canonicalEventId(event.id),
+      decision: evaluatePublicScopeEvent(input.scope, event),
+    }),
+  );
+  const activeEventIds = eventIdsForDecisionAction(decisions, "include");
+  const reviewEventIds = eventIdsForDecisionAction(decisions, "needs_review");
+  const excludedEventIds = eventIdsForDecisionAction(decisions, "exclude");
+
+  if (activeEventIds.length === 0) {
+    throw new Error(
+      "Public Continuum materialization requires at least one included event.",
+    );
+  }
+
+  const activeEventIdSet = new Set<string>(activeEventIds);
+  const activeRecords = records.filter(({ event }) =>
+    activeEventIdSet.has(event.id),
+  );
+  const activeEvents = activeRecords.map(({ event }) => event);
+  const sourceParagraphs = activeRecords.flatMap(({ document }) =>
+    extractSourceParagraphsFromPublicDocument(document),
+  );
+  const lensOutputs = createDefaultPublicLensOutputs(
+    input.scope,
+    input.query,
+    activeEvents,
+    input.generatedAt,
+  );
+  const thoughtCards = lensOutputs.flatMap((lensOutput) =>
+    createDefaultPublicThoughtCards(lensOutput, sourceParagraphs),
+  );
+
+  return {
+    generatedAt,
+    events: records.map(({ event }) => event),
+    decisions,
+    activeEventIds,
+    reviewEventIds,
+    excludedEventIds,
+    sourceParagraphs,
+    lensOutputs,
+    thoughtCards,
+    redundancy: findRedundantLensOutputs(lensOutputs),
+  };
+}
+
+function eventIdsForDecisionAction(
+  decisions: PublicContinuumMaterializationDecision[],
+  action: PublicScopeEventDecision["action"],
+): CanonicalEventId[] {
+  return decisions
+    .filter((decision) => decision.decision.action === action)
+    .map((decision) => decision.eventId);
 }
 
 export function findRedundantLensOutputs(
