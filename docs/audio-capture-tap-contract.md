@@ -11,6 +11,7 @@ Capture stays source-tool-owned.
 Continuum receives:
 
 - an audio artifact reference
+- audio capture health evidence
 - raw transcript text
 - the text the source tool intended to insert
 - capture context
@@ -69,6 +70,27 @@ This means:
 
 Current code note: WhisperWayLand's `AudioProcessor.transcribe_audio(...)` currently collapses raw transcript and post-processed text into one string. The tap should preserve both values before insertion.
 
+## Audio Capture Health
+
+The source tool is responsible for cheap capture-health checks because it is closest to the microphone and raw WAV bytes. Continuum is responsible for ingestion decisions, review queues, and later user notifications.
+
+WhisperWayLand should compute these values from the WAV bytes before writing the envelope:
+
+- `durationSeconds`
+- `byteLength`
+- `rmsAmplitude`
+- `peakAmplitude`
+- `clippingRatio`
+- `likelySilent`
+- `likelyClipped`
+
+Suggested starting thresholds:
+
+- `likelySilent`: `rmsAmplitude < 0.003` or `peakAmplitude < 0.01`
+- `likelyClipped`: `clippingRatio > 0.001`
+
+These are calibration hints, not product truth. If a capture looks bad, still write the artifact and envelope. Mark it as `needs_review` or add health flags; do not silently drop it.
+
 ## Envelope
 
 All fields are required. Use discriminated unions later when a field genuinely has different variants.
@@ -95,6 +117,23 @@ All fields are required. Use discriminated unions later when a field genuinely h
     "durationSeconds": 3.42,
     "byteLength": 109484,
     "sha256": "hex-encoded-sha256"
+  },
+  "captureHealth": {
+    "durationSeconds": 3.42,
+    "byteLength": 109484,
+    "rmsAmplitude": 0.026,
+    "peakAmplitude": 0.41,
+    "clippingRatio": 0,
+    "likelySilent": false,
+    "likelyClipped": false,
+    "checks": [
+      {
+        "kind": "rms_level",
+        "status": "pass",
+        "text": "RMS amplitude is above the likely-silent threshold.",
+        "confidence": 1
+      }
+    ]
   },
   "transcript": {
     "rawTranscriptText": "closest transcript from the transcription provider",
@@ -134,6 +173,7 @@ This is raw private audio. The local dogfooding membrane is permissive, but the 
 - write only local files
 - no network call to Continuum
 - no silent dropping after the artifact is accepted
+- likely-silent or clipped captures are still written with Capture Health
 - envelope must preserve enough provenance to erase or rebuild later
 
 ## First Consumer

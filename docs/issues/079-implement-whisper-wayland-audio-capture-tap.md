@@ -10,6 +10,8 @@ Cross-repo.
 
 The priority is to start capturing real dogfooding audio so Continuum can build a private local dataset. WhisperWayLand already owns Linux microphone capture and has the right batch-mode point where WAV bytes and transcript text are both available.
 
+Audio quality responsibility is split: WhisperWayLand owns cheap capture-health evidence because it is closest to the microphone; Continuum owns ingestion judgement, review, quarantine, and later user notifications.
+
 Core contract:
 
 - `docs/audio-capture-tap-contract.md`
@@ -35,6 +37,8 @@ In WhisperWayLand, add an opt-in Capture Tap that writes local WAV artifacts and
 - [ ] Tap writes one envelope to `envelopes/*.json` using atomic `*.tmp` then rename.
 - [ ] Envelope follows `docs/audio-capture-tap-contract.md`.
 - [ ] Envelope includes both Raw Transcript Text and insertion text.
+- [ ] Envelope includes Capture Health: duration, byte length, RMS amplitude, peak amplitude, clipping ratio, likely-silent flag, and likely-clipped flag.
+- [ ] Likely-silent or clipped captures are still written; do not silently drop them.
 - [ ] Batch mode preserves raw transcript before post-processing.
 - [ ] Capture id does not use UUID; use timestamp + process id + counter or equivalent inspectable id.
 - [ ] Existing text insertion behaviour is unchanged.

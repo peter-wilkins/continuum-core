@@ -44,6 +44,10 @@ _Avoid_: blob as Entry, hidden file path, copied payload without provenance
 A kind of **Artifact Reference** for raw captured audio, such as a WAV file from a Host App, Capture Tap, or import. Audio Artifacts should preserve format, sample rate, duration, channel count, capture context, file-system membrane decision, and provenance before any transcription, cleanup, or tone analysis runs over them.
 _Avoid_: transcript as audio source truth, microphone capture hidden inside core, unlabeled recording blob
 
+**Audio Capture Health**:
+Cheap source-side evidence about whether an **Audio Artifact** is likely usable, such as RMS level, peak level, clipping ratio, duration, and flags like likely silent or likely clipped. Capture Health is not tone analysis and not a user-facing judgement; it helps membranes, ingestion, and later notifications catch broken capture such as a muted microphone.
+_Avoid_: emotion inference, quality score as truth, silent bad captures
+
 **Audio Processing Job**:
 A bounded request to run one audio processor over an **Audio Artifact** or segment. An Audio Processing Job names the processor, processor version, configuration fingerprint, input artifact or segment, and Knowledge Time so outputs can be rebuilt or compared later.
 _Avoid_: hidden background inference, provider call without provenance, processor output detached from input
