@@ -20,6 +20,14 @@ The first clustering shape should use Synthesis Moves rather than topic buckets.
 
 Synthesis Move names should be mostly hidden in the normal UI. The user should see the question first; a lightweight `why this?` reveal can expose the move and source evidence when useful.
 
+The MVP baseline should start with three Synthesis Moves:
+
+- Core Claim
+- Tension
+- Next Question
+
+Question Card UX should align with Workflow Manager's Brain Dump Ingestion format: show the question, recommended answer, and Thought Journey Progress by default. Hide rationale, rejected options, and the branch map unless requested. The old suggested-next-step footer is retired for grilling surfaces.
+
 ## First Failing Test
 
 TBD after grilling.
@@ -36,5 +44,4 @@ TBD after grilling.
 ## Open Questions
 
 - What makes a Line of Inquiry "good enough" to ask the human?
-- Which Synthesis Moves should the MVP baseline support first?
 - What should `why this?` reveal include?
