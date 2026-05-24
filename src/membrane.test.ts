@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applySecretSpillMembrane,
   applyErasureRequest,
   discloseThroughMembrane,
   protectPayload,
@@ -50,6 +51,59 @@ const privateEmailEvent: CanonicalEvent = {
 };
 
 describe("privacy membranes", () => {
+  it("redacts a pasted Supabase token before text enters the store", () => {
+    const pastedToken = `sbp_${"a".repeat(40)}`;
+
+    const result = applySecretSpillMembrane({
+      text: `Please use ${pastedToken} for the Supabase MCP.`,
+      fallbackClassification: "private",
+      checkedAt: "2026-05-24T11:45:00.000Z",
+    });
+
+    expect(result.text).toBe(
+      "Please use [REDACTED_SUPABASE_PAT] for the Supabase MCP.",
+    );
+    expect(result.text).not.toContain(pastedToken);
+    expect(result.classification).toBe("secret");
+    expect(result.decision).toEqual({
+      action: "redacted",
+      reason: "secret_detected",
+      classification: "secret",
+      decidedAt: "2026-05-24T11:45:00.000Z",
+      findingCount: 1,
+    });
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]).toMatchObject({
+      kind: "supabase_personal_access_token",
+      startIndex: 11,
+      endIndex: 55,
+      redaction: "[REDACTED_SUPABASE_PAT]",
+    });
+    expect(result.findings[0]?.fingerprint).toMatch(/^sha256:/);
+    expect(result.findings[0]?.fingerprint).not.toContain(pastedToken);
+  });
+
+  it("allows ordinary text through the secret spill membrane unchanged", () => {
+    const result = applySecretSpillMembrane({
+      text: "Please make the app kinder when humans make mistakes.",
+      fallbackClassification: "private",
+      checkedAt: "2026-05-24T11:46:00.000Z",
+    });
+
+    expect(result).toEqual({
+      text: "Please make the app kinder when humans make mistakes.",
+      classification: "private",
+      findings: [],
+      decision: {
+        action: "allowed",
+        reason: "no_secret_detected",
+        classification: "private",
+        decidedAt: "2026-05-24T11:46:00.000Z",
+        findingCount: 0,
+      },
+    });
+  });
+
   it("erases protected payloads while preserving an immutable tombstone", () => {
     const protectedPayload = protectPayload({
       id: "payload_private_1",

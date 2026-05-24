@@ -1,6 +1,7 @@
 import {
   createCipheriv,
   createDecipheriv,
+  createHash,
   randomBytes,
 } from "node:crypto";
 import { z } from "zod";
@@ -3803,6 +3804,40 @@ export type DisclosureMembraneResult = {
   decisions: MembraneDecision[];
 };
 
+export type SecretSpillKind =
+  | "supabase_personal_access_token"
+  | "openai_api_key"
+  | "private_key_block";
+
+export type SecretSpillFinding = {
+  kind: SecretSpillKind;
+  startIndex: number;
+  endIndex: number;
+  fingerprint: string;
+  redaction: string;
+};
+
+export type SecretSpillMembraneDecision = {
+  action: "allowed" | "redacted";
+  reason: "no_secret_detected" | "secret_detected";
+  classification: PayloadClassification;
+  decidedAt: string;
+  findingCount: number;
+};
+
+export type SecretSpillMembraneInput = {
+  text: string;
+  fallbackClassification: PayloadClassification;
+  checkedAt: string;
+};
+
+export type SecretSpillMembraneResult = {
+  text: string;
+  classification: PayloadClassification;
+  findings: SecretSpillFinding[];
+  decision: SecretSpillMembraneDecision;
+};
+
 export const debugRankingProfiles: Record<RankingProfileName, RankingProfile> = {
   balanced: {
     name: "balanced",
@@ -4139,6 +4174,146 @@ export function applyErasureRequest(
       status: "erased",
       requestedAt: request.requestedAt,
       reason: request.reason,
+    },
+  };
+}
+
+type SecretSpillPattern = {
+  kind: SecretSpillKind;
+  pattern: RegExp;
+  redaction: string;
+};
+
+type DetectedSecretSpillFinding = SecretSpillFinding & {
+  plaintext: string;
+};
+
+const secretSpillPatterns: SecretSpillPattern[] = [
+  {
+    kind: "supabase_personal_access_token",
+    pattern: /\bsbp_[A-Za-z0-9]{40,}\b/g,
+    redaction: "[REDACTED_SUPABASE_PAT]",
+  },
+  {
+    kind: "openai_api_key",
+    pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/g,
+    redaction: "[REDACTED_OPENAI_API_KEY]",
+  },
+  {
+    kind: "private_key_block",
+    pattern:
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+    redaction: "[REDACTED_PRIVATE_KEY]",
+  },
+];
+
+function secretFingerprint(plaintext: string): string {
+  return `sha256:${createHash("sha256").update(plaintext).digest("hex")}`;
+}
+
+function detectSecretSpillFindings(
+  text: string,
+): DetectedSecretSpillFinding[] {
+  const findings: DetectedSecretSpillFinding[] = [];
+
+  for (const secretPattern of secretSpillPatterns) {
+    secretPattern.pattern.lastIndex = 0;
+
+    for (
+      let match = secretPattern.pattern.exec(text);
+      match !== null;
+      match = secretPattern.pattern.exec(text)
+    ) {
+      const plaintext = match[0] ?? "";
+
+      findings.push({
+        kind: secretPattern.kind,
+        startIndex: match.index,
+        endIndex: match.index + plaintext.length,
+        fingerprint: secretFingerprint(plaintext),
+        redaction: secretPattern.redaction,
+        plaintext,
+      });
+    }
+  }
+
+  return findings
+    .sort((left, right) => {
+      if (left.startIndex !== right.startIndex) {
+        return left.startIndex - right.startIndex;
+      }
+
+      return right.endIndex - left.endIndex;
+    })
+    .reduce<DetectedSecretSpillFinding[]>((selected, finding) => {
+      const previous = selected[selected.length - 1] ?? null;
+
+      if (previous !== null && finding.startIndex < previous.endIndex) {
+        return selected;
+      }
+
+      return [...selected, finding];
+    }, []);
+}
+
+function redactDetectedSecretSpills(
+  text: string,
+  findings: DetectedSecretSpillFinding[],
+): string {
+  let cursor = 0;
+  let redacted = "";
+
+  for (const finding of findings) {
+    redacted += text.slice(cursor, finding.startIndex);
+    redacted += finding.redaction;
+    cursor = finding.endIndex;
+  }
+
+  return redacted + text.slice(cursor);
+}
+
+function publicSecretSpillFinding(
+  finding: DetectedSecretSpillFinding,
+): SecretSpillFinding {
+  return {
+    kind: finding.kind,
+    startIndex: finding.startIndex,
+    endIndex: finding.endIndex,
+    fingerprint: finding.fingerprint,
+    redaction: finding.redaction,
+  };
+}
+
+export function applySecretSpillMembrane(
+  input: SecretSpillMembraneInput,
+): SecretSpillMembraneResult {
+  const findings = detectSecretSpillFindings(input.text);
+
+  if (findings.length === 0) {
+    return {
+      text: input.text,
+      classification: input.fallbackClassification,
+      findings: [],
+      decision: {
+        action: "allowed",
+        reason: "no_secret_detected",
+        classification: input.fallbackClassification,
+        decidedAt: input.checkedAt,
+        findingCount: 0,
+      },
+    };
+  }
+
+  return {
+    text: redactDetectedSecretSpills(input.text, findings),
+    classification: "secret",
+    findings: findings.map(publicSecretSpillFinding),
+    decision: {
+      action: "redacted",
+      reason: "secret_detected",
+      classification: "secret",
+      decidedAt: input.checkedAt,
+      findingCount: findings.length,
     },
   };
 }
