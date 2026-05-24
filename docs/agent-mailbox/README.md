@@ -67,3 +67,4 @@ Do not use them for live coordination while `main` requires PRs. Updating them n
 - Include exact file paths, commands, commits, and observed failures when useful.
 - Treat this as importable project history, not private chat.
 - Do not include secrets, credentials, raw private data, or large pasted artifacts.
+- If an agent needs a token or credential, create a local `0600` env file and ask Peter to put the value there. Never ask for a secret in chat, GitHub, docs, or mailbox text.

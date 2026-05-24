@@ -37,12 +37,26 @@ Design rule:
 
 > Immutable means changes are represented as later events. It does not mean payloads are recoverable forever.
 
+## Secret Spills
+
+Secrets should not enter chat, docs, GitHub, import fixtures, logs, or mailbox messages. When a tool needs a credential, the preferred handoff is a private local env file with `0600` permissions.
+
+If a secret does cross a membrane by mistake:
+
+- mark the captured item as `secret`
+- redact copies in local logs, history, previews, and generated summaries
+- keep only a tombstone and membrane decision in durable history
+- rotate the credential if it crossed any external or shared boundary
+
+Permissive membranes may temporarily allow sensitive material for local dogfooding, but retention must be explicit and short. A secret that is only needed for an agent task should live in an env file, not in Continuum source truth.
+
 ## Later Work
 
 - Store key material outside event records.
 - Purge derived search indexes, embeddings, Local Source Cache rows, caches, and previews on erasure.
 - Replay erasure ledger after backup restore.
 - Add classification at import time.
+- Add automatic secret-spill detection for capture inlets, chat imports, logs, and agent coordination messages.
 - Add prompt-specific disclosure policies.
 - Add export/share policies for docs, GitHub, and public web.
 
