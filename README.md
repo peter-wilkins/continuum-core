@@ -1,6 +1,6 @@
 # Continuum Core
 
-Shared inference, memory, retrieval, and context-resume engine for apps such as **Jobs Done** and **Continuant**.
+Shared inference, memory, retrieval, and context-resume engine for apps such as **Jobs Done** and **Continuum**.
 
 This repository is not primarily a UI project. It is the common intelligence layer for apps that want to feel as if they remember, resume, and surface context without making the human maintain a filing system.
 
@@ -48,7 +48,7 @@ Every manual control should be treated as an admission that inference, retrieval
 
 A trades/job-context app. It may use this core to infer current job context, retrieve prior customer/property/job notes, surface unresolved tasks, and support hands-free context before action.
 
-### Continuant
+### Continuum
 
 A thought-continuity app. It may use this core to support ambient capture, automatic organisation, and spoken resume commands such as `Resume advert ideas` or `Resume boiler quote`.
 
