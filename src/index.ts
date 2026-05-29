@@ -1023,6 +1023,62 @@ export type AudioSignalObservationInput = {
   }>;
 };
 
+export type RavdessModalityLabel = "full_av" | "video_only" | "audio_only";
+export type RavdessVocalChannelLabel = "speech" | "song";
+export type RavdessEmotionLabel =
+  | "neutral"
+  | "calm"
+  | "happy"
+  | "sad"
+  | "angry"
+  | "fearful"
+  | "disgust"
+  | "surprised";
+export type RavdessEmotionalIntensityLabel = "normal" | "strong";
+export type RavdessStatementLabel =
+  | "kids_are_talking_by_the_door"
+  | "dogs_are_sitting_by_the_door";
+export type RavdessRepetitionLabel = "first" | "second";
+
+export type RavdessFilenameLabels = {
+  filename: string;
+  modality: {
+    code: string;
+    label: RavdessModalityLabel;
+  };
+  vocalChannel: {
+    code: string;
+    label: RavdessVocalChannelLabel;
+  };
+  emotion: {
+    code: string;
+    label: RavdessEmotionLabel;
+  };
+  emotionalIntensity: {
+    code: string;
+    label: RavdessEmotionalIntensityLabel;
+  };
+  statement: {
+    code: string;
+    label: RavdessStatementLabel;
+  };
+  repetition: {
+    code: string;
+    label: RavdessRepetitionLabel;
+  };
+  actor: {
+    code: string;
+    number: number;
+  };
+};
+
+export type RavdessBenchmarkLabelObservationInput = {
+  id: string;
+  filename: string;
+  artifact: AudioArtifact;
+  job: AudioProcessingJob;
+};
+
 export type Pcm16WavAudioSignalAnalysisInput = {
   id: string;
   artifact: AudioArtifact;
@@ -1259,6 +1315,124 @@ export function analyzePcm16WavAudioSignal(
         confidence: 1,
         evidence: "Share of samples at PCM16 full-scale limits.",
       },
+    ],
+  });
+}
+
+export function parseRavdessFilenameLabels(
+  filename: string,
+): RavdessFilenameLabels {
+  const baseName = filename.split(/[\\/]/).at(-1) ?? filename;
+  const match =
+    /^(?<modality>\d{2})-(?<vocalChannel>\d{2})-(?<emotion>\d{2})-(?<emotionalIntensity>\d{2})-(?<statement>\d{2})-(?<repetition>\d{2})-(?<actor>\d{2})\.wav$/i.exec(
+      baseName,
+    );
+
+  if (match?.groups === undefined) {
+    throw new Error("RAVDESS filename must match 03-01-05-02-01-01-01.wav.");
+  }
+
+  const actorCode = match.groups.actor ?? "";
+  const actorNumber = Number.parseInt(actorCode, 10);
+
+  if (!Number.isInteger(actorNumber) || actorNumber < 1 || actorNumber > 24) {
+    throw new Error("RAVDESS actor code must be between 01 and 24.");
+  }
+
+  return {
+    filename: baseName,
+    modality: {
+      code: match.groups.modality ?? "",
+      label: ravdessCode(
+        "RAVDESS modality",
+        match.groups.modality ?? "",
+        ravdessModalityLabels,
+      ),
+    },
+    vocalChannel: {
+      code: match.groups.vocalChannel ?? "",
+      label: ravdessCode(
+        "RAVDESS vocal channel",
+        match.groups.vocalChannel ?? "",
+        ravdessVocalChannelLabels,
+      ),
+    },
+    emotion: {
+      code: match.groups.emotion ?? "",
+      label: ravdessCode(
+        "RAVDESS emotion",
+        match.groups.emotion ?? "",
+        ravdessEmotionLabels,
+      ),
+    },
+    emotionalIntensity: {
+      code: match.groups.emotionalIntensity ?? "",
+      label: ravdessCode(
+        "RAVDESS emotional intensity",
+        match.groups.emotionalIntensity ?? "",
+        ravdessEmotionalIntensityLabels,
+      ),
+    },
+    statement: {
+      code: match.groups.statement ?? "",
+      label: ravdessCode(
+        "RAVDESS statement",
+        match.groups.statement ?? "",
+        ravdessStatementLabels,
+      ),
+    },
+    repetition: {
+      code: match.groups.repetition ?? "",
+      label: ravdessCode(
+        "RAVDESS repetition",
+        match.groups.repetition ?? "",
+        ravdessRepetitionLabels,
+      ),
+    },
+    actor: {
+      code: actorCode,
+      number: actorNumber,
+    },
+  };
+}
+
+export function createRavdessBenchmarkLabelObservation(
+  input: RavdessBenchmarkLabelObservationInput,
+): AudioSignalObservation {
+  if (input.job.processor.processorKind !== "benchmark_label") {
+    throw new Error("RAVDESS benchmark labels require a benchmark_label job.");
+  }
+
+  const labels = parseRavdessFilenameLabels(input.filename);
+  const evidence = `RAVDESS filename ${labels.filename}.`;
+
+  return createAudioSignalObservation({
+    id: input.id,
+    jobId: input.job.id,
+    artifactId: input.artifact.id,
+    processor: input.job.processor,
+    signalKind: "benchmark_label",
+    labelScheme: {
+      id: "ravdess.filename-labels",
+      version: "1.0.0",
+      labels: ravdessBenchmarkLabelScheme,
+    },
+    signals: [
+      ravdessBenchmarkSignal("modality", labels.modality.label, evidence),
+      ravdessBenchmarkSignal(
+        "vocal_channel",
+        labels.vocalChannel.label,
+        evidence,
+      ),
+      ravdessBenchmarkSignal("emotion", labels.emotion.label, evidence),
+      ravdessBenchmarkSignal(
+        "emotional_intensity",
+        labels.emotionalIntensity.label,
+        evidence,
+      ),
+      ravdessBenchmarkSignal("statement", labels.statement.label, evidence),
+      ravdessBenchmarkSignal("repetition", labels.repetition.label, evidence),
+      ravdessBenchmarkSignal("actor", labels.actor.code, evidence),
     ],
   });
 }
@@ -2737,6 +2911,91 @@ type ParsedPcm16Wav = {
   dataOffset: number;
   dataSize: number;
 };
+
+const ravdessModalityLabels: Record<string, RavdessModalityLabel> = {
+  "01": "full_av",
+  "02": "video_only",
+  "03": "audio_only",
+};
+
+const ravdessVocalChannelLabels: Record<string, RavdessVocalChannelLabel> = {
+  "01": "speech",
+  "02": "song",
+};
+
+const ravdessEmotionLabels: Record<string, RavdessEmotionLabel> = {
+  "01": "neutral",
+  "02": "calm",
+  "03": "happy",
+  "04": "sad",
+  "05": "angry",
+  "06": "fearful",
+  "07": "disgust",
+  "08": "surprised",
+};
+
+const ravdessEmotionalIntensityLabels: Record<
+  string,
+  RavdessEmotionalIntensityLabel
+> = {
+  "01": "normal",
+  "02": "strong",
+};
+
+const ravdessStatementLabels: Record<string, RavdessStatementLabel> = {
+  "01": "kids_are_talking_by_the_door",
+  "02": "dogs_are_sitting_by_the_door",
+};
+
+const ravdessRepetitionLabels: Record<string, RavdessRepetitionLabel> = {
+  "01": "first",
+  "02": "second",
+};
+
+const ravdessBenchmarkLabelScheme = [
+  ...Object.values(ravdessModalityLabels).map((label) => `modality:${label}`),
+  ...Object.values(ravdessVocalChannelLabels).map(
+    (label) => `vocal_channel:${label}`,
+  ),
+  ...Object.values(ravdessEmotionLabels).map((label) => `emotion:${label}`),
+  ...Object.values(ravdessEmotionalIntensityLabels).map(
+    (label) => `emotional_intensity:${label}`,
+  ),
+  ...Object.values(ravdessStatementLabels).map((label) => `statement:${label}`),
+  ...Object.values(ravdessRepetitionLabels).map(
+    (label) => `repetition:${label}`,
+  ),
+  ...Array.from({ length: 24 }, (_, index) =>
+    `actor:${String(index + 1).padStart(2, "0")}`,
+  ),
+];
+
+function ravdessCode<T extends string>(
+  fieldName: string,
+  code: string,
+  mapping: Record<string, T>,
+): T {
+  const label = mapping[code];
+
+  if (label === undefined) {
+    throw new Error(`${fieldName} code is not supported.`);
+  }
+
+  return label;
+}
+
+function ravdessBenchmarkSignal(
+  fieldName: string,
+  value: string,
+  evidence: string,
+): AudioSignalObservationInput["signals"][number] {
+  return {
+    label: `${fieldName}:${value}`,
+    value: 1,
+    confidence: 1,
+    evidence,
+  };
+}
 
 function parsePcm16Wav(bytes: Uint8Array): ParsedPcm16Wav {
   if (bytes.length < 44) {

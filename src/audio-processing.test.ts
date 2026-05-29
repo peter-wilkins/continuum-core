@@ -7,6 +7,8 @@ import {
   createAudioProcessingJob,
   createAudioSignalObservation,
   createAudioTranscriptObservation,
+  createRavdessBenchmarkLabelObservation,
+  parseRavdessFilenameLabels,
 } from "./index";
 
 const validArtifactInput = {
@@ -195,6 +197,114 @@ describe("Audio Processing", () => {
         { label: "clipping_ratio", value: 0.5, confidence: 1 },
       ],
     });
+  });
+
+  it("maps one RAVDESS filename into benchmark label Audio Observations", () => {
+    const labels = parseRavdessFilenameLabels("03-01-05-02-01-01-01.wav");
+
+    expect(labels).toEqual({
+      filename: "03-01-05-02-01-01-01.wav",
+      modality: {
+        code: "03",
+        label: "audio_only",
+      },
+      vocalChannel: {
+        code: "01",
+        label: "speech",
+      },
+      emotion: {
+        code: "05",
+        label: "angry",
+      },
+      emotionalIntensity: {
+        code: "02",
+        label: "strong",
+      },
+      statement: {
+        code: "01",
+        label: "kids_are_talking_by_the_door",
+      },
+      repetition: {
+        code: "01",
+        label: "first",
+      },
+      actor: {
+        code: "01",
+        number: 1,
+      },
+    });
+
+    const artifact = createAudioArtifact({
+      ...validArtifactInput,
+      id: "audio-artifact:ravdess:03-01-05-02-01-01-01",
+      provenance: {
+        sourceName: "RAVDESS",
+        sourceRecordId: "03-01-05-02-01-01-01.wav",
+        sourceUrl:
+          "https://smartlaboratory.org/resources/speech-song-database-ravdess/",
+        license: "CC BY-NC-SA 4.0 unless a commercial licence is purchased.",
+        retrievedAt: "2026-05-22T22:30:00.000Z",
+      },
+    });
+    const job = createAudioProcessingJob({
+      id: "audio-processing-job:ravdess-labels:fixture",
+      artifactId: artifact.id,
+      segment: null,
+      processor: {
+        provider: "continuum-core",
+        processorId: "processor:continuum:ravdess-filename-labels",
+        processorVersion: "1.0.0",
+        processorKind: "benchmark_label",
+        configurationFingerprint: "0000000000000002",
+        knowledgeTime: "2026-05-22T22:31:00.000Z",
+      },
+    });
+
+    const observation = createRavdessBenchmarkLabelObservation({
+      id: "audio-observation:ravdess-labels:fixture",
+      filename: "03-01-05-02-01-01-01.wav",
+      artifact,
+      job,
+    });
+
+    expect(observation).toMatchObject({
+      kind: "signals",
+      signalKind: "benchmark_label",
+      labelScheme: {
+        id: "ravdess.filename-labels",
+        version: "1.0.0",
+      },
+      signals: [
+        {
+          label: "modality:audio_only",
+          value: 1,
+          confidence: 1,
+          evidence: "RAVDESS filename 03-01-05-02-01-01-01.wav.",
+        },
+        {
+          label: "vocal_channel:speech",
+        },
+        {
+          label: "emotion:angry",
+        },
+        {
+          label: "emotional_intensity:strong",
+        },
+        {
+          label: "statement:kids_are_talking_by_the_door",
+        },
+        {
+          label: "repetition:first",
+        },
+        {
+          label: "actor:01",
+        },
+      ],
+    });
+    expect(observation.labelScheme.labels).toContain("emotion:angry");
+    expect(observation.labelScheme.labels).toContain(
+      "emotional_intensity:strong",
+    );
   });
 });
 

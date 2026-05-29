@@ -1,6 +1,6 @@
 # 078: Map RAVDESS Labels To Audio Observations
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -22,13 +22,26 @@ Add a small RAVDESS benchmark adapter that reads one WAV path or zip member name
 
 ## Acceptance Criteria
 
-- [ ] Parse one RAVDESS filename such as `03-01-05-02-01-01-01.wav`.
-- [ ] Decode modality, vocal channel, emotion, emotional intensity, statement, repetition, and actor.
-- [ ] Create a `benchmark_label` Audio Observation with explicit label scheme and confidence.
-- [ ] Preserve the source filename as evidence.
-- [ ] Do not infer sentiment or tone beyond the dataset label scheme.
-- [ ] Add a fixture or test that does not require unpacking the full dataset.
-- [ ] Document RAVDESS licence as non-commercial by default.
+- [x] Parse one RAVDESS filename such as `03-01-05-02-01-01-01.wav`.
+- [x] Decode modality, vocal channel, emotion, emotional intensity, statement, repetition, and actor.
+- [x] Create a `benchmark_label` Audio Observation with explicit label scheme and confidence.
+- [x] Preserve the source filename as evidence.
+- [x] Do not infer sentiment or tone beyond the dataset label scheme.
+- [x] Add a fixture or test that does not require unpacking the full dataset.
+- [x] Document RAVDESS licence as non-commercial by default.
+
+## Implementation
+
+Added:
+
+- `parseRavdessFilenameLabels`
+- `createRavdessBenchmarkLabelObservation`
+
+The adapter maps filename fields into `benchmark_label` signals such as `emotion:angry` and `emotional_intensity:strong`. It uses confidence `1` only for the dataset label extraction itself. It does not infer tone, sentiment, or intent.
+
+## Verification
+
+- `maps one RAVDESS filename into benchmark label Audio Observations`
 
 ## Blocked by
 
