@@ -1,6 +1,6 @@
 # 048: Wire Email MBOX Into CLI
 
-Status: in_progress
+Status: done
 
 ## Type
 
@@ -20,7 +20,7 @@ Make raw MBOX email imports usable through `continuum-import`.
 - [x] CLI imports the committed MBOX fixture into JSONL.
 - [x] CLI dry-run writes a preview with one email event.
 - [x] Malformed MBOX input quarantines instead of throwing.
-- [ ] Folder/zip routing detects `.mbox` files.
+- [x] Folder/zip routing detects `.mbox` files.
 - [x] CLI usage docs mention `email-mbox`.
 
 ## Blocked by
@@ -31,4 +31,4 @@ Make raw MBOX email imports usable through `continuum-import`.
 
 Do not add Gmail-specific filtering here. Import profiles already exist at the normalized email-message level.
 
-Direct `email-mbox` import is implemented. Folder/zip `.mbox` routing remains open because real Takeout mailboxes can be multi-GB and must use the streaming path rather than the archive reader's current whole-file loading.
+Direct `email-mbox` import is implemented. Folder/zip `.mbox` routing now works for small fixture-sized Takeout archives. Real multi-GB Takeout mailboxes should still use direct `email-mbox` import until the archive reader has a streaming large-file path.

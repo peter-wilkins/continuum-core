@@ -1329,6 +1329,94 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("routes an MBOX file inside a Google Takeout folder", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const previewPath = join(dir, "preview.json");
+
+    try {
+      const mailDir = join(dir, "Takeout", "Mail");
+      await mkdir(mailDir, { recursive: true });
+      await writeFile(
+        join(mailDir, "All mail Including Spam and Trash.mbox"),
+        await readFile(emailMboxFixturePath, "utf8"),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-folder",
+        dir,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Mail/All mail Including Spam and Trash.mbox",
+          source: "email-mbox",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+      expect(preview.events[0]).toMatchObject({
+        platform: "email",
+        subject: "Boiler quote",
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes an MBOX file inside a Google Takeout zip", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-takeout-"));
+    const previewPath = join(dir, "preview.json");
+    const zipPath = join(dir, "takeout.zip");
+
+    try {
+      const zipped = zipSync({
+        "Takeout/Mail/All mail Including Spam and Trash.mbox": strToU8(
+          await readFile(emailMboxFixturePath, "utf8"),
+        ),
+      });
+      await writeFile(zipPath, zipped);
+
+      const result = await runContinuumImportCli([
+        "dry-run",
+        "google-takeout-zip",
+        zipPath,
+        "--out",
+        previewPath,
+      ]);
+
+      expect(result.command).toBe("dry-run");
+      if (result.command !== "dry-run") {
+        throw new Error("Expected dry-run result.");
+      }
+      expect(result.batch.stats.eventsCreated).toBe(1);
+
+      const preview = JSON.parse(await readFile(previewPath, "utf8"));
+      expect(preview.sourceFiles).toEqual([
+        {
+          path: "Takeout/Mail/All mail Including Spam and Trash.mbox",
+          source: "email-mbox",
+          status: "matched",
+          eventsCreated: 1,
+          quarantineRecords: 0,
+        },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("quarantines malformed MBOX email during dry-run", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
     const inputPath = join(dir, "broken.mbox");

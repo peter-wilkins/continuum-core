@@ -171,7 +171,7 @@ export async function runImportCommand(
     return dryRunImport(command, sourceInput);
   }
 
-  const { incomingEvents, quarantine, warnings } = normalizeCommandInput(
+  const { incomingEvents, quarantine, warnings } = await normalizeCommandInput(
     command.source,
     command.inputPath,
     sourceInput,
@@ -221,11 +221,11 @@ async function readExistingEvents(outputPath: string): Promise<CanonicalEvent[]>
   }
 }
 
-function normalizeCommandInput(
+async function normalizeCommandInput(
   source: ImportCommand,
   inputPath: string,
   input: SourceInput,
-): NormalizedSourceInput {
+): Promise<NormalizedSourceInput> {
   if (input.parseError !== null) {
     return {
       incomingEvents: [],
@@ -352,11 +352,15 @@ function parseErrorToQuarantine(
   ];
 }
 
-function inspectSource(
+async function inspectSource(
   command: Extract<ImportRunnerCommand, { kind: "inspect" }>,
   input: SourceInput,
-): InspectCliResult {
-  const normalized = normalizeCommandInput(command.source, command.inputPath, input);
+): Promise<InspectCliResult> {
+  const normalized = await normalizeCommandInput(
+    command.source,
+    command.inputPath,
+    input,
+  );
   const { incomingEvents, quarantine, sourceFiles, warnings } =
     applySecretSpillMembranesToImportEvents({
       incomingEvents: normalized.incomingEvents,
@@ -389,7 +393,11 @@ async function dryRunImport(
   command: Extract<ImportRunnerCommand, { kind: "dry-run" }>,
   input: SourceInput,
 ): Promise<DryRunCliResult> {
-  const normalized = normalizeCommandInput(command.source, command.inputPath, input);
+  const normalized = await normalizeCommandInput(
+    command.source,
+    command.inputPath,
+    input,
+  );
   const { incomingEvents, quarantine, sourceFiles, warnings } =
     applySecretSpillMembranesToImportEvents({
       incomingEvents: normalized.incomingEvents,

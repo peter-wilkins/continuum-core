@@ -586,7 +586,7 @@ const sourceAdapters: SourceAdapter[] = [
   {
     source: "email-mbox",
     parseMode: "text",
-    fileMatches: () => false,
+    fileMatches: (file) => file.relativePath.toLowerCase().endsWith(".mbox"),
     prepareInput: (parsed) => parsed,
     normalize: (parsed) => {
       const result = parsed as MboxParseResult;

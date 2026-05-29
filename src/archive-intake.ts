@@ -4,6 +4,7 @@ import { resolve, join } from "node:path";
 import { strFromU8, unzipSync } from "fflate";
 
 import { type CanonicalEvent, type ImportErrorRecord } from "./index";
+import { parseMboxText } from "./email-mbox";
 import {
   classifySourceFile,
   normalizeSourceInput,
@@ -159,9 +160,9 @@ async function readTakeoutFolder(
   );
 }
 
-export function normalizeArchiveFiles(
+export async function normalizeArchiveFiles(
   files: ArchiveSourceFile[],
-): ArchiveNormalizeResult {
+): Promise<ArchiveNormalizeResult> {
   const incomingEvents: CanonicalEvent[] = [];
   const quarantine: ImportErrorRecord[] = [];
   const sourceFiles: SourceFilePreview[] = [];
@@ -185,13 +186,19 @@ export function normalizeArchiveFiles(
     let parsed: unknown;
 
     try {
-      parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
-      parsed = prepareSourceInput(source, parsed, {
-        inputPath: file.path,
-        relativePath: file.relativePath,
-        modifiedAt: "1970-01-01T00:00:00.000Z",
-        modifiedAtConfidence: "unknown",
-      });
+      if (source === "email-mbox") {
+        parsed = await parseMboxText(file.raw, {
+          mailboxPath: file.relativePath,
+        });
+      } else {
+        parsed = sourceInputNeedsJson(source) ? JSON.parse(file.raw) as unknown : file.raw;
+        parsed = prepareSourceInput(source, parsed, {
+          inputPath: file.path,
+          relativePath: file.relativePath,
+          modifiedAt: "1970-01-01T00:00:00.000Z",
+          modifiedAtConfidence: "unknown",
+        });
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
