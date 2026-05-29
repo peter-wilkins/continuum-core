@@ -2,7 +2,7 @@
 
 ## Status
 
-Open
+Done
 
 ## Context
 
@@ -44,14 +44,34 @@ Add a phone-friendly voice conversation surface that:
 
 ## Acceptance Criteria
 
-- [ ] User can speak a turn without typing.
-- [ ] Dictation appears in an editable text box before send.
-- [ ] Send creates a query/turn event that can be linked to a Continuation or Line.
-- [ ] The response includes a synthesized answer, not just document cards.
-- [ ] The response includes one next question or Line of Inquiry.
-- [ ] Secret-spill membrane runs over the transcript before persistence/display.
-- [ ] The mode does not make the chat transcript source truth.
-- [ ] The UI can feel like chat, but domain docs continue to call it a Continuation Surface or Voice Conversation Mode.
+- [x] User can speak a turn without typing.
+- [x] Dictation appears in an editable text box before send.
+- [x] Send creates a query/turn event that can be linked to a Continuation or Line.
+- [x] The response includes a synthesized answer, not just document cards.
+- [x] The response includes one next question or Line of Inquiry.
+- [x] Secret-spill membrane runs over the transcript before persistence/display.
+- [x] The mode does not make the chat transcript source truth.
+- [x] The UI can feel like chat, but domain docs continue to call it a Continuation Surface or Voice Conversation Mode.
+
+## Implementation
+
+Core now exports a `VoiceConversationTurn` contract and `createVoiceConversationTurn`.
+
+The contract links:
+
+- the public query
+- the synthesized answer
+- the recommended Line of Inquiry
+- the raw and reviewed transcript text after secret-spill membrane processing
+- a quarantine/recovery record when secret-looking text is redacted
+- explicit persistence flags saying the transcript and model reply are not source truth
+
+The host Continuum app already implements the browser-speech and editable-review UI in `/home/peter/continuum/docs/issues/039-voice-first-public-query-entry.md` and `/home/peter/continuum/docs/issues/041-phone-concierge-thought-journey-v0.md`.
+
+## Verification
+
+- `creates a voice turn with an answer, next question, and no source-truth transcript claim`
+- `redacts secret-looking dictation before a voice turn can be persisted`
 
 ## Notes
 

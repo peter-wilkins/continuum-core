@@ -535,6 +535,44 @@ export type PublicLinesOfInquiry = {
   };
 };
 
+export type VoiceConversationInputMode = "speech" | "text";
+
+export type VoiceConversationTurnInput = {
+  id: string;
+  query: PublicContinuumQuery;
+  synthesizedAnswer: PublicSynthesizedAnswer;
+  linesOfInquiry: PublicLinesOfInquiry;
+  rawTranscriptText: string;
+  reviewedText: string;
+  inputMode: VoiceConversationInputMode;
+  createdAt: string;
+};
+
+export type VoiceConversationTurn = {
+  id: string;
+  queryId: string;
+  lineId: PublicLineOfInquiryId;
+  inputMode: VoiceConversationInputMode;
+  rawTranscriptText: HumanText;
+  reviewedText: HumanText;
+  response: {
+    synthesizedAnswerId: PublicSynthesizedAnswerId;
+    answer: HumanText;
+    nextQuestion: HumanText;
+  };
+  membrane: {
+    classification: PayloadClassification;
+    decisions: SecretSpillMembraneDecision[];
+    findings: SecretSpillFinding[];
+    quarantine: ImportErrorRecord | null;
+  };
+  persistence: {
+    transcriptSourceTruth: false;
+    modelReplySourceTruth: false;
+  };
+  createdAt: KnowledgeTime;
+};
+
 export type LensFeedbackSignal = {
   id: string;
   userId: string;
@@ -1526,6 +1564,108 @@ export function createDefaultPublicLinesOfInquiry(
         },
       ],
     },
+  };
+}
+
+export function createVoiceConversationTurn(
+  input: VoiceConversationTurnInput,
+): VoiceConversationTurn {
+  validateNonBlank("VoiceConversationTurn id", input.id);
+  validateNonBlank("PublicContinuumQuery id", input.query.id);
+  validateNonBlank("PublicContinuumQuery scopeId", input.query.scopeId);
+  validateNonBlank("PublicContinuumQuery text", input.query.text);
+
+  if (Number.isNaN(new Date(input.query.createdAt).getTime())) {
+    throw new Error(
+      "PublicContinuumQuery createdAt must be an ISO-compatible date.",
+    );
+  }
+
+  if (input.synthesizedAnswer.queryId !== input.query.id) {
+    throw new Error("VoiceConversationTurn answer queryId must match query id.");
+  }
+
+  if (input.linesOfInquiry.queryId !== input.query.id) {
+    throw new Error("VoiceConversationTurn lines queryId must match query id.");
+  }
+
+  if (input.inputMode !== "speech" && input.inputMode !== "text") {
+    throw new Error("VoiceConversationTurn inputMode is not supported.");
+  }
+
+  const recommendedLine = input.linesOfInquiry.lines.find(
+    (line) => line.id === input.linesOfInquiry.recommendedLineId,
+  );
+
+  if (recommendedLine === undefined) {
+    throw new Error(
+      "VoiceConversationTurn requires the recommended Line of Inquiry.",
+    );
+  }
+
+  const rawTranscript = applySecretSpillMembrane({
+    text: input.rawTranscriptText,
+    fallbackClassification: "private",
+    checkedAt: input.createdAt,
+  });
+  const reviewed = applySecretSpillMembrane({
+    text: input.reviewedText,
+    fallbackClassification: "private",
+    checkedAt: input.createdAt,
+  });
+  const findings = [...rawTranscript.findings, ...reviewed.findings];
+  const classification: PayloadClassification =
+    findings.length > 0 ? "secret" : "private";
+
+  return {
+    id: humanText("VoiceConversationTurn id", input.id),
+    queryId: humanText("VoiceConversationTurn queryId", input.query.id),
+    lineId: recommendedLine.id,
+    inputMode: input.inputMode,
+    rawTranscriptText: humanText(
+      "VoiceConversationTurn rawTranscriptText",
+      rawTranscript.text,
+    ),
+    reviewedText: humanText(
+      "VoiceConversationTurn reviewedText",
+      reviewed.text,
+    ),
+    response: {
+      synthesizedAnswerId: input.synthesizedAnswer.id,
+      answer: input.synthesizedAnswer.answer,
+      nextQuestion: recommendedLine.question,
+    },
+    membrane: {
+      classification,
+      decisions: [rawTranscript.decision, reviewed.decision],
+      findings,
+      quarantine:
+        findings.length === 0
+          ? null
+          : secretSpillVoiceTurnQuarantineRecord(input, findings),
+    },
+    persistence: {
+      transcriptSourceTruth: false,
+      modelReplySourceTruth: false,
+    },
+    createdAt: knowledgeTime("VoiceConversationTurn createdAt", input.createdAt),
+  };
+}
+
+function secretSpillVoiceTurnQuarantineRecord(
+  input: VoiceConversationTurnInput,
+  findings: SecretSpillFinding[],
+): ImportErrorRecord {
+  const summary = findings
+    .map((finding) => `${finding.kind}:${finding.fingerprint}`)
+    .join(", ");
+
+  return {
+    sourcePath: input.id,
+    recordIndex: null,
+    errorCode: "secret_spill_redacted",
+    message: `Secret spill redacted from Voice Conversation Turn (${summary}). Rotate the credential if it crossed chat, GitHub, docs, or another shared boundary.`,
+    recoverable: true,
   };
 }
 
