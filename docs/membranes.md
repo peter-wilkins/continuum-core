@@ -41,6 +41,22 @@ Design rule:
 
 Secrets should not enter chat, docs, GitHub, import fixtures, logs, or mailbox messages. When a tool needs a credential, the preferred handoff is a private local env file with `0600` permissions.
 
+Safe credential handoff:
+
+1. The agent creates the env file path and permissions, for example:
+
+   ```bash
+   install -d -m 700 "$HOME/.config/continuum"
+   touch "$HOME/.config/continuum/supabase-mcp.env"
+   chmod 600 "$HOME/.config/continuum/supabase-mcp.env"
+   ```
+
+2. The human writes the secret into that file locally.
+3. The agent reads only whether the expected environment variable is present, not the value.
+4. The agent tests the integration without printing the credential.
+
+Wrapper policy is not credential power. For example, a Supabase MCP URL with `read_only=true` is useful because it constrains that MCP session. It does not make the underlying personal access token read-only if the raw token leaks somewhere else. Treat a leaked full-power token as a leaked full-power token and rotate it.
+
 If a secret does cross a membrane by mistake:
 
 - mark the captured item as `secret`

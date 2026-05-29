@@ -3838,6 +3838,26 @@ export type SecretSpillMembraneResult = {
   decision: SecretSpillMembraneDecision;
 };
 
+export type SecretSpillCanonicalEventFinding = SecretSpillFinding & {
+  field: "subject" | "text";
+};
+
+export type SecretSpillCanonicalEventResult = {
+  event: CanonicalEvent;
+  classification: PayloadClassification;
+  findings: SecretSpillCanonicalEventFinding[];
+  decisions: SecretSpillMembraneDecision[];
+  quarantine: ImportErrorRecord | null;
+};
+
+export type SecretSpillCanonicalEventInput = {
+  event: CanonicalEvent;
+  fallbackClassification: PayloadClassification;
+  checkedAt: string;
+  sourcePath: string;
+  recordIndex: number | null;
+};
+
 export const debugRankingProfiles: Record<RankingProfileName, RankingProfile> = {
   balanced: {
     name: "balanced",
@@ -3930,20 +3950,29 @@ export function canonicalEventToLocalSourceCacheEventRow(
   event: CanonicalEvent,
   ingestedAt: string,
 ): LocalSourceCacheEventRow {
+  const membrane = applySecretSpillMembraneToCanonicalEvent({
+    event,
+    fallbackClassification: "private",
+    checkedAt: ingestedAt,
+    sourcePath: event.source.key,
+    recordIndex: null,
+  });
+  const safeEvent = membrane.event;
+
   return {
-    id: event.id,
-    sourcePlatform: event.source.platform,
-    sourceName: event.provenance.sourceName,
-    sourceKey: event.source.key,
-    externalConversationId: event.source.externalConversationId,
-    externalMessageId: event.source.externalMessageId,
-    createdAt: event.time.createdAt,
-    createdAtConfidence: event.time.createdAtConfidence,
+    id: safeEvent.id,
+    sourcePlatform: safeEvent.source.platform,
+    sourceName: safeEvent.provenance.sourceName,
+    sourceKey: safeEvent.source.key,
+    externalConversationId: safeEvent.source.externalConversationId,
+    externalMessageId: safeEvent.source.externalMessageId,
+    createdAt: safeEvent.time.createdAt,
+    createdAtConfidence: safeEvent.time.createdAtConfidence,
     ingestedAt,
-    actorRole: event.actor.role,
-    subject: event.content.subject,
-    text: event.content.text,
-    eventJson: JSON.stringify(event),
+    actorRole: safeEvent.actor.role,
+    subject: safeEvent.content.subject,
+    text: safeEvent.content.text,
+    eventJson: JSON.stringify(safeEvent),
   };
 }
 
@@ -4315,6 +4344,77 @@ export function applySecretSpillMembrane(
       decidedAt: input.checkedAt,
       findingCount: findings.length,
     },
+  };
+}
+
+export function applySecretSpillMembraneToCanonicalEvent(
+  input: SecretSpillCanonicalEventInput,
+): SecretSpillCanonicalEventResult {
+  const subject =
+    input.event.content.subject === null
+      ? null
+      : applySecretSpillMembrane({
+          text: input.event.content.subject,
+          fallbackClassification: input.fallbackClassification,
+          checkedAt: input.checkedAt,
+        });
+  const text = applySecretSpillMembrane({
+    text: input.event.content.text,
+    fallbackClassification: input.fallbackClassification,
+    checkedAt: input.checkedAt,
+  });
+  const decisions =
+    subject === null ? [text.decision] : [subject.decision, text.decision];
+  const findings: SecretSpillCanonicalEventFinding[] = [
+    ...(subject?.findings.map((finding) => ({
+      ...finding,
+      field: "subject" as const,
+    })) ?? []),
+    ...text.findings.map((finding) => ({
+      ...finding,
+      field: "text" as const,
+    })),
+  ];
+  const classification: PayloadClassification =
+    findings.length > 0 ? "secret" : input.fallbackClassification;
+  const event: CanonicalEvent =
+    findings.length === 0
+      ? input.event
+      : {
+          ...input.event,
+          content: {
+            ...input.event.content,
+            subject: subject?.text ?? null,
+            text: text.text,
+          },
+        };
+
+  return {
+    event,
+    classification,
+    findings,
+    decisions,
+    quarantine:
+      findings.length === 0
+        ? null
+        : secretSpillQuarantineRecord(input, findings),
+  };
+}
+
+function secretSpillQuarantineRecord(
+  input: SecretSpillCanonicalEventInput,
+  findings: SecretSpillCanonicalEventFinding[],
+): ImportErrorRecord {
+  const summary = findings
+    .map((finding) => `${finding.field}:${finding.kind}:${finding.fingerprint}`)
+    .join(", ");
+
+  return {
+    sourcePath: input.sourcePath,
+    recordIndex: input.recordIndex,
+    errorCode: "secret_spill_redacted",
+    message: `Secret spill redacted before persistence (${summary}). Rotate the credential if it crossed chat, GitHub, docs, or another shared boundary.`,
+    recoverable: true,
   };
 }
 

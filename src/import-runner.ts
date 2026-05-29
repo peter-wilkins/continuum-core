@@ -4,6 +4,7 @@ import { basename } from "node:path";
 
 import {
   buildEmailEngagementIndex,
+  applySecretSpillMembraneToCanonicalEvent,
   createImportScope,
   evaluateCanonicalEventImportProfile,
   evaluateEmailImportProfile,
@@ -175,8 +176,19 @@ export async function runImportCommand(
     command.inputPath,
     sourceInput,
   );
+  const safeInput = applySecretSpillMembranesToImportEvents({
+    incomingEvents,
+    quarantine,
+    sourceFiles: [],
+    warnings,
+    inputPath: command.inputPath,
+    checkedAt: new Date().toISOString(),
+  });
   const existingEvents = await readExistingEvents(command.outputPath);
-  const { events, report } = mergeCanonicalEvents(existingEvents, incomingEvents);
+  const { events, report } = mergeCanonicalEvents(
+    existingEvents,
+    safeInput.incomingEvents,
+  );
   const jsonl = events.map((event) => JSON.stringify(event)).join("\n");
 
   await writeFile(command.outputPath, `${jsonl}\n`, "utf8");
@@ -186,7 +198,7 @@ export async function runImportCommand(
     eventsWritten: report.new,
     outputPath: command.outputPath,
     report,
-    quarantine,
+    quarantine: safeInput.quarantine,
     warnings,
   };
 }
@@ -344,8 +356,16 @@ function inspectSource(
   command: Extract<ImportRunnerCommand, { kind: "inspect" }>,
   input: SourceInput,
 ): InspectCliResult {
+  const normalized = normalizeCommandInput(command.source, command.inputPath, input);
   const { incomingEvents, quarantine, sourceFiles, warnings } =
-    normalizeCommandInput(command.source, command.inputPath, input);
+    applySecretSpillMembranesToImportEvents({
+      incomingEvents: normalized.incomingEvents,
+      quarantine: normalized.quarantine,
+      sourceFiles: normalized.sourceFiles,
+      warnings: normalized.warnings,
+      inputPath: command.inputPath,
+      checkedAt: new Date().toISOString(),
+    });
   const conversationsSeen =
     command.source !== "google-takeout-folder" && Array.isArray(input.parsed)
       ? input.parsed.length
@@ -369,8 +389,16 @@ async function dryRunImport(
   command: Extract<ImportRunnerCommand, { kind: "dry-run" }>,
   input: SourceInput,
 ): Promise<DryRunCliResult> {
+  const normalized = normalizeCommandInput(command.source, command.inputPath, input);
   const { incomingEvents, quarantine, sourceFiles, warnings } =
-    normalizeCommandInput(command.source, command.inputPath, input);
+    applySecretSpillMembranesToImportEvents({
+      incomingEvents: normalized.incomingEvents,
+      quarantine: normalized.quarantine,
+      sourceFiles: normalized.sourceFiles,
+      warnings: normalized.warnings,
+      inputPath: command.inputPath,
+      checkedAt: new Date().toISOString(),
+    });
   const importProfile: ImportProfile = "intentional_context";
   const importScope = await readImportScope(command.importScopePath);
   const filterDecisions = dryRunFilterDecisions(
@@ -428,6 +456,41 @@ async function dryRunImport(
     report,
     quarantine,
     filterSummary,
+  };
+}
+
+function applySecretSpillMembranesToImportEvents(input: {
+  incomingEvents: CanonicalEvent[];
+  quarantine: ImportErrorRecord[];
+  sourceFiles: SourceFilePreview[];
+  warnings: number;
+  inputPath: string;
+  checkedAt: string;
+}): NormalizedSourceInput {
+  const safeEvents: CanonicalEvent[] = [];
+  const quarantine = [...input.quarantine];
+
+  input.incomingEvents.forEach((event, index) => {
+    const result = applySecretSpillMembraneToCanonicalEvent({
+      event,
+      fallbackClassification: "private",
+      checkedAt: input.checkedAt,
+      sourcePath: basename(input.inputPath),
+      recordIndex: index,
+    });
+
+    safeEvents.push(result.event);
+
+    if (result.quarantine !== null) {
+      quarantine.push(result.quarantine);
+    }
+  });
+
+  return {
+    incomingEvents: safeEvents,
+    quarantine,
+    sourceFiles: input.sourceFiles,
+    warnings: input.warnings,
   };
 }
 

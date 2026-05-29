@@ -200,6 +200,70 @@ describe("continuum-import CLI", () => {
     }
   });
 
+  it("redacts a pasted token during import before writing event JSONL", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const inputPath = join(dir, "chatgpt-secret.json");
+    const outputPath = join(dir, "events.jsonl");
+    const pastedToken = `sbp_${"d".repeat(40)}`;
+
+    try {
+      await writeFile(
+        inputPath,
+        JSON.stringify([
+          {
+            id: "conv_secret",
+            title: "Supabase token",
+            create_time: 1779360000,
+            update_time: 1779360300,
+            mapping: {
+              msg_secret: {
+                id: "msg_secret",
+                parent: "msg_root",
+                children: [],
+                message: {
+                  id: "msg_secret",
+                  create_time: 1779360123,
+                  author: { role: "user" },
+                  content: {
+                    content_type: "text",
+                    parts: [`Use ${pastedToken} for the MCP.`],
+                  },
+                },
+              },
+            },
+          },
+        ]),
+        "utf8",
+      );
+
+      const result = await runContinuumImportCli([
+        "chatgpt",
+        inputPath,
+        "--out",
+        outputPath,
+      ]);
+      const output = await readFile(outputPath, "utf8");
+
+      expect(result.command).toBe("import");
+      if (result.command !== "import") {
+        throw new Error("Expected import result.");
+      }
+      expect(result.quarantine).toHaveLength(1);
+      expect(result.quarantine[0]).toMatchObject({
+        sourcePath: "chatgpt-secret.json",
+        recordIndex: 0,
+        errorCode: "secret_spill_redacted",
+        recoverable: true,
+      });
+      expect(result.quarantine[0]?.message).toContain("Rotate the credential");
+      expect(result.quarantine[0]?.message).not.toContain(pastedToken);
+      expect(output).toContain("[REDACTED_SUPABASE_PAT]");
+      expect(output).not.toContain(pastedToken);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("imports the same ChatGPT fixture twice without duplicating canonical events", async () => {
     const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
     const outputPath = join(dir, "events.jsonl");

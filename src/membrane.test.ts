@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applySecretSpillMembraneToCanonicalEvent,
   applySecretSpillMembrane,
   applyErasureRequest,
   discloseThroughMembrane,
@@ -102,6 +103,43 @@ describe("privacy membranes", () => {
         findingCount: 0,
       },
     });
+  });
+
+  it("redacts a secret spill from a Canonical Event and returns a recovery quarantine record", () => {
+    const pastedToken = `sbp_${"b".repeat(40)}`;
+    const result = applySecretSpillMembraneToCanonicalEvent({
+      event: {
+        ...privateEmailEvent,
+        content: {
+          ...privateEmailEvent.content,
+          text: `Use ${pastedToken} for AFK MCP.`,
+        },
+      },
+      fallbackClassification: "private",
+      checkedAt: "2026-05-24T11:47:00.000Z",
+      sourcePath: "codex-chat",
+      recordIndex: 0,
+    });
+
+    expect(result.event.content.text).toBe(
+      "Use [REDACTED_SUPABASE_PAT] for AFK MCP.",
+    );
+    expect(result.event.content.text).not.toContain(pastedToken);
+    expect(result.classification).toBe("secret");
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]).toMatchObject({
+      field: "text",
+      kind: "supabase_personal_access_token",
+      redaction: "[REDACTED_SUPABASE_PAT]",
+    });
+    expect(result.quarantine).toMatchObject({
+      sourcePath: "codex-chat",
+      recordIndex: 0,
+      errorCode: "secret_spill_redacted",
+      recoverable: true,
+    });
+    expect(result.quarantine?.message).toContain("Rotate the credential");
+    expect(result.quarantine?.message).not.toContain(pastedToken);
   });
 
   it("erases protected payloads while preserving an immutable tombstone", () => {

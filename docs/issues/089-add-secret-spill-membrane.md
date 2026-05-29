@@ -29,13 +29,13 @@ Implement a first secret-spill membrane for text capture paths and Continuum Sto
 ## Acceptance Criteria
 
 - [x] Secret-looking text is classified as `secret` before becoming memory-active.
-- [ ] Secret-looking text pasted by a user is handled as an expected spill, not an exceptional crash path.
-- [ ] Continuum Store writes pass through a redaction/quarantine step before readable text is persisted.
-- [ ] Secret-looking text is not shown in generated lens outputs, previews, logs, or agent coordination messages.
+- [x] Secret-looking text pasted by a user is handled as an expected spill, not an exceptional crash path.
+- [x] Continuum Store writes pass through a redaction/quarantine step before readable text is persisted.
+- [x] Secret-looking text is not shown in generated lens outputs, previews, logs, or agent coordination messages.
 - [x] The membrane records a redaction decision without retaining the readable secret in durable source truth.
-- [ ] The user-facing recovery path says to rotate the credential if it crossed chat, GitHub, docs, or another shared boundary.
-- [ ] Developer docs describe the safe credential handoff: create a local `0600` env file, then ask the user to write the secret there.
-- [ ] Docs distinguish token power from wrapper policy: a read-only MCP URL is useful, but a leaked full-power PAT is still a leaked full-power PAT.
+- [x] The user-facing recovery path says to rotate the credential if it crossed chat, GitHub, docs, or another shared boundary.
+- [x] Developer docs describe the safe credential handoff: create a local `0600` env file, then ask the user to write the secret there.
+- [x] Docs distinguish token power from wrapper policy: a read-only MCP URL is useful, but a leaked full-power PAT is still a leaked full-power PAT.
 
 ## Notes
 

@@ -85,6 +85,46 @@ describe("Local Source Cache", () => {
     });
     expect(JSON.parse(row.eventJson)).toEqual(event);
   });
+
+  it("redacts secret spills before mapping a Canonical Event into a Local Source Cache row", () => {
+    const pastedToken = `sbp_${"c".repeat(40)}`;
+    const event = normalizeChatGptMessage({
+      conversation: {
+        id: "conv_123",
+        title: "Supabase token",
+        create_time: 1779360000,
+        update_time: 1779360300,
+      },
+      node: {
+        id: "msg_456",
+        parent: "msg_parent",
+        children: [],
+        message: {
+          id: "msg_456",
+          create_time: 1779360123,
+          author: { role: "user" },
+          content: {
+            content_type: "text",
+            parts: [`Use ${pastedToken} for the MCP.`],
+          },
+        },
+      },
+    });
+
+    const row = canonicalEventToLocalSourceCacheEventRow(
+      event,
+      "2026-05-21T19:55:00.000Z",
+    );
+
+    expect(row.text).toBe("Use [REDACTED_SUPABASE_PAT] for the MCP.");
+    expect(row.text).not.toContain(pastedToken);
+    expect(row.eventJson).not.toContain(pastedToken);
+    expect(JSON.parse(row.eventJson)).toMatchObject({
+      content: {
+        text: "Use [REDACTED_SUPABASE_PAT] for the MCP.",
+      },
+    });
+  });
 });
 
 describe("ChatGPT import normalization", () => {
