@@ -1,6 +1,6 @@
 # 079: Implement WhisperWayLand Audio Capture Tap
 
-Status: ready
+Status: done
 
 ## Type
 
@@ -32,17 +32,46 @@ In WhisperWayLand, add an opt-in Capture Tap that writes local WAV artifacts and
 
 ## Acceptance Criteria
 
-- [ ] Tap is disabled when `CONTINUUM_CAPTURE_INLET_DIR` is unset.
-- [ ] Tap writes the WAV bytes to `artifacts/YYYY-MM-DD/*.wav`.
-- [ ] Tap writes one envelope to `envelopes/*.json` using atomic `*.tmp` then rename.
-- [ ] Envelope follows `docs/audio-capture-tap-contract.md`.
-- [ ] Envelope includes both Raw Transcript Text and insertion text.
-- [ ] Envelope includes Capture Health: duration, byte length, RMS amplitude, peak amplitude, clipping ratio, likely-silent flag, and likely-clipped flag.
-- [ ] Likely-silent or clipped captures are still written; do not silently drop them.
-- [ ] Batch mode preserves raw transcript before post-processing.
-- [ ] Capture id does not use UUID; use timestamp + process id + counter or equivalent inspectable id.
-- [ ] Existing text insertion behaviour is unchanged.
-- [ ] Unit tests cover disabled tap, enabled tap, and atomic envelope write.
+- [x] Tap is disabled when `CONTINUUM_CAPTURE_INLET_DIR` is unset.
+- [x] Tap writes the WAV bytes to `artifacts/YYYY-MM-DD/*.wav`.
+- [x] Tap writes one envelope to `envelopes/*.json` using atomic `*.tmp` then rename.
+- [x] Envelope follows `docs/audio-capture-tap-contract.md`.
+- [x] Envelope includes both Raw Transcript Text and insertion text.
+- [x] Envelope includes Capture Health: duration, byte length, RMS amplitude, peak amplitude, clipping ratio, likely-silent flag, and likely-clipped flag.
+- [x] Likely-silent or clipped captures are still written; do not silently drop them.
+- [x] Batch mode preserves raw transcript before post-processing.
+- [x] Capture id does not use UUID; use timestamp + process id + counter or equivalent inspectable id.
+- [x] Existing text insertion behaviour is unchanged.
+- [x] Unit tests cover disabled tap, enabled tap, and atomic envelope write.
+
+## Implementation
+
+Implemented in `/home/peter/whisper-wayland` on branch:
+
+```text
+roland/ad-hoc/continuum-audio-capture-metadata
+```
+
+Current verified commit:
+
+```text
+4877c8e Guard ydotool insertion against stuck modifiers
+```
+
+Relevant files:
+
+- `whisper_wayland/application/capture_tap.py`
+- `whisper_wayland/application/transcription_processor.py`
+- `whisper_wayland/application/audio_processor.py`
+- `tests/unit/test_capture_tap.py`
+
+## Verification
+
+```bash
+.venv/bin/python -m pytest tests/unit/test_capture_tap.py
+```
+
+Result: 11 passed.
 
 ## Blocked by
 
