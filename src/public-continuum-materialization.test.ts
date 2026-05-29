@@ -109,8 +109,9 @@ describe("public Continuum materialization", () => {
       "atlas",
       "loom",
       "beacon",
+      "prism",
     ]);
-    expect(materialization.thoughtCards).toHaveLength(6);
+    expect(materialization.thoughtCards).toHaveLength(8);
     expect(
       new Set(materialization.thoughtCards.map((card) => card.lensOutputId)),
     ).toEqual(

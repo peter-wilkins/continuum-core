@@ -78,6 +78,7 @@ describe("default public Lens output generation", () => {
       "atlas",
       "loom",
       "beacon",
+      "prism",
     ]);
 
     for (const output of outputs) {

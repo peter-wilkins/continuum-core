@@ -12,6 +12,7 @@ describe("Lens projections", () => {
       "Atlas",
       "Loom",
       "Beacon",
+      "Prism",
     ]);
 
     for (const lens of defaultPublicLensDefinitions) {

@@ -1515,6 +1515,14 @@ export const defaultPublicLensDefinitions: LensDefinition[] = [
     technicalBlurb:
       "Signal-biased projection: ranks source event ids by focus-identity overlap and concise explainability.",
   },
+  {
+    id: "prism",
+    name: "Prism",
+    version: "1.0.0",
+    userBlurb: "A balanced view that blends several signals and avoids showing the same kind of source too often.",
+    technicalBlurb:
+      "Rank-fusion projection: combines source order, source-family interleaving, scope signal strength, and query term overlap using deterministic reciprocal-rank fusion with a small source-diversity penalty.",
+  },
 ];
 
 export function createLensOutput(input: LensOutput): LensOutput {
@@ -1534,7 +1542,7 @@ export function createDefaultPublicLensOutputs(
   }
 
   return defaultPublicLensDefinitions.map((lens) => {
-    const orderedEvents = defaultLensOrderedEvents(lens.id, scope, events);
+    const orderedEvents = defaultLensOrderedEvents(lens.id, scope, query, events);
 
     return createLensOutput({
       id: `lens-output:${query.id}:${lens.id}:${lens.version}`,
@@ -2207,12 +2215,23 @@ function defaultLensSections(
     ];
   }
 
+  if (lensId === "prism") {
+    return [
+      {
+        id: "prism:fused-signals",
+        title: "Fused Signals",
+        eventIds: events.map((event) => event.id),
+      },
+    ];
+  }
+
   throw new Error(`Unknown default Lens id: ${lensId}`);
 }
 
 function defaultLensOrderedEvents(
   lensId: string,
   scope: ImportScope,
+  query: PublicContinuumQuery,
   events: CanonicalEvent[],
 ): CanonicalEvent[] {
   if (lensId === "atlas") {
@@ -2234,6 +2253,10 @@ function defaultLensOrderedEvents(
 
       return events.indexOf(left) - events.indexOf(right);
     });
+  }
+
+  if (lensId === "prism") {
+    return orderEventsByRankFusion(scope, query, events);
   }
 
   throw new Error(`Unknown default Lens id: ${lensId}`);
@@ -2259,7 +2282,153 @@ function defaultLensOrderingName(
     return "scope_signal_strength";
   }
 
+  if (lensId === "prism") {
+    if (sourceFamilyCount(events) <= 1) {
+      return "reciprocal_rank_fusion_time_diversity_fallback";
+    }
+
+    return "reciprocal_rank_fusion_with_source_diversity";
+  }
+
   throw new Error(`Unknown default Lens id: ${lensId}`);
+}
+
+function orderEventsByRankFusion(
+  scope: ImportScope,
+  query: PublicContinuumQuery,
+  events: CanonicalEvent[],
+): CanonicalEvent[] {
+  if (sourceFamilyCount(events) <= 1) {
+    return orderEventsByOccurrenceTime(events).reverse();
+  }
+
+  const rankings = [
+    [...events],
+    interleaveEventsBySourceFamily(scope, events),
+    [...events].sort((left, right) => {
+      const scoreDifference =
+        scopeSignalStrength(scope, right) - scopeSignalStrength(scope, left);
+
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      return events.indexOf(left) - events.indexOf(right);
+    }),
+    [...events].sort((left, right) => {
+      const scoreDifference =
+        querySignalStrength(query, right) - querySignalStrength(query, left);
+
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      return events.indexOf(left) - events.indexOf(right);
+    }),
+  ];
+  const rankByEventIdByRanking = rankings.map((ranking) => {
+    const ranks = new Map<string, number>();
+
+    ranking.forEach((event, index) => {
+      ranks.set(event.id, index + 1);
+    });
+
+    return ranks;
+  });
+  const remaining = [...events];
+  const selected: CanonicalEvent[] = [];
+  const selectedCountBySourceFamily = new Map<string, number>();
+
+  while (remaining.length > 0) {
+    const next = remaining
+      .slice()
+      .sort((left, right) => {
+        const scoreDifference =
+          fusedEventScore(right, rankByEventIdByRanking, selectedCountBySourceFamily) -
+          fusedEventScore(left, rankByEventIdByRanking, selectedCountBySourceFamily);
+
+        if (scoreDifference !== 0) {
+          return scoreDifference;
+        }
+
+        return events.indexOf(left) - events.indexOf(right);
+      })[0]!;
+
+    selected.push(next);
+    selectedCountBySourceFamily.set(
+      next.provenance.sourceFamily,
+      (selectedCountBySourceFamily.get(next.provenance.sourceFamily) ?? 0) + 1,
+    );
+    remaining.splice(remaining.indexOf(next), 1);
+  }
+
+  return selected;
+}
+
+function fusedEventScore(
+  event: CanonicalEvent,
+  rankByEventIdByRanking: Array<Map<string, number>>,
+  selectedCountBySourceFamily: Map<string, number>,
+): number {
+  const reciprocalRankFusionK = 60;
+  const rankFusionScore = rankByEventIdByRanking.reduce((score, ranks) => {
+    const rank = ranks.get(event.id);
+
+    return rank === undefined ? score : score + 1 / (reciprocalRankFusionK + rank);
+  }, 0);
+  const sameFamilyAlreadySelected =
+    selectedCountBySourceFamily.get(event.provenance.sourceFamily) ?? 0;
+
+  return rankFusionScore - sameFamilyAlreadySelected * 0.002;
+}
+
+function querySignalStrength(
+  query: PublicContinuumQuery,
+  event: CanonicalEvent,
+): number {
+  const queryTerms = meaningfulTerms(query.text);
+  const eventTerms = meaningfulTerms(canonicalEventSearchText(event));
+  let score = 0;
+
+  for (const term of queryTerms) {
+    if (eventTerms.has(term)) {
+      score += 1;
+    }
+  }
+
+  return score;
+}
+
+function meaningfulTerms(text: string): Set<string> {
+  const stopWords = new Set([
+    "about",
+    "after",
+    "again",
+    "also",
+    "and",
+    "are",
+    "been",
+    "for",
+    "from",
+    "have",
+    "how",
+    "into",
+    "people",
+    "that",
+    "the",
+    "their",
+    "this",
+    "through",
+    "tried",
+    "with",
+  ]);
+
+  return new Set(
+    text
+      .toLocaleLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((term) => term.length > 2 && !stopWords.has(term)),
+  );
 }
 
 function interleaveEventsBySourceFamily(

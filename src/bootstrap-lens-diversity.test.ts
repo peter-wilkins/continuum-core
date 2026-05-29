@@ -67,6 +67,7 @@ describe("bootstrap Lens diversity", () => {
       "atlas",
       "loom",
       "beacon",
+      "prism",
     ]);
     expect(outputs.map((output) => output.sourceEventIds)).toEqual([
       [
@@ -87,6 +88,12 @@ describe("bootstrap Lens diversity", () => {
         "wikimedia:distributed-cognition",
         "public_archive:intelligence-amplification",
       ],
+      [
+        "wikimedia:extended-mind",
+        "scholarly_metadata:brain-computer-interface",
+        "public_archive:intelligence-amplification",
+        "wikimedia:distributed-cognition",
+      ],
     ]);
     expect(findRedundantLensOutputs(outputs)).toMatchObject({
       redundantLensOutputIds: [],
@@ -99,6 +106,7 @@ describe("bootstrap Lens diversity", () => {
       { key: "ordering", value: "source_trail" },
       { key: "ordering", value: "source_family_interleave" },
       { key: "ordering", value: "scope_signal_strength" },
+      { key: "ordering", value: "reciprocal_rank_fusion_with_source_diversity" },
     ]);
   });
 
@@ -150,6 +158,11 @@ describe("bootstrap Lens diversity", () => {
         "wikimedia:intelligence-amplification",
         "wikimedia:augmented-cognition",
         "wikimedia:distributed-cognition",
+      ],
+      [
+        "wikimedia:distributed-cognition",
+        "wikimedia:intelligence-amplification",
+        "wikimedia:augmented-cognition",
       ],
     ]);
     expect(findRedundantLensOutputs(outputs)).toMatchObject({
