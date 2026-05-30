@@ -1,0 +1,11 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:Ada Lovelace
+EMAIL;TYPE=INTERNET:ada@example.test
+TEL;TYPE=CELL:+44 20 7946 0000
+ORG:Analytical Engines
+TITLE:Correspondent
+NOTE:Discussed mechanical calculation
+REV:20260521T104203Z
+UID:google-contact-ada
+END:VCARD

@@ -139,6 +139,7 @@ export type CanonicalSourcePlatform =
   | "github"
   | "google_activity"
   | "google_chrome"
+  | "google_contacts"
   | "icalendar"
   | "markdown"
   | "public_archive"
@@ -4032,6 +4033,28 @@ export type GoogleMyActivityNormalizationInput = {
   activity: GoogleMyActivityRecord;
 };
 
+export type GoogleContactRecord = {
+  fullName: string;
+  emails: string[];
+  phones: string[];
+  organization: string | null;
+  title: string | null;
+  note: string | null;
+  updatedAt: string | null;
+  rawUid: string | null;
+};
+
+export type GoogleContactsExport = {
+  contacts: GoogleContactRecord[];
+};
+
+export type GoogleContactNormalizationInput = {
+  contact: GoogleContactRecord;
+  sourcePath: string;
+  modifiedAt: string;
+  modifiedAtConfidence: TimeConfidence;
+};
+
 export type ICalendarEventRecord = {
   uid: string;
   dtstamp: string | null;
@@ -5523,6 +5546,209 @@ export function parseGoogleMyActivityExport(
   };
 }
 
+function unfoldVCardLines(input: string): string[] {
+  const lines = input.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
+  const unfolded: string[] = [];
+
+  for (const line of lines) {
+    if ((line.startsWith(" ") || line.startsWith("\t")) && unfolded.length > 0) {
+      unfolded[unfolded.length - 1] += line.slice(1);
+      continue;
+    }
+
+    unfolded.push(line);
+  }
+
+  return unfolded;
+}
+
+function decodeVCardText(value: string): string {
+  return value
+    .replaceAll("\\n", "\n")
+    .replaceAll("\\N", "\n")
+    .replaceAll("\\,", ",")
+    .replaceAll("\\;", ";")
+    .replaceAll("\\\\", "\\")
+    .trim();
+}
+
+function parseVCardDate(value: string): string | null {
+  const match = value.match(
+    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,
+  );
+
+  if (match) {
+    const [, year, month, day, hour, minute, second] = match;
+
+    return new Date(
+      `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`,
+    ).toISOString();
+  }
+
+  const parsed = Date.parse(value);
+
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
+}
+
+function propertyNameFromVCardLine(line: string): string | null {
+  const separatorIndex = line.indexOf(":");
+
+  if (separatorIndex < 0) {
+    return null;
+  }
+
+  const [propertyName] = line.slice(0, separatorIndex).split(";");
+
+  return propertyName?.toUpperCase() ?? null;
+}
+
+function propertyValueFromVCardLine(line: string): string | null {
+  const separatorIndex = line.indexOf(":");
+
+  if (separatorIndex < 0) {
+    return null;
+  }
+
+  return decodeVCardText(line.slice(separatorIndex + 1));
+}
+
+function normalizeVCardEmail(value: string): string {
+  return value.replace(/^mailto:/i, "").trim();
+}
+
+function parseGoogleContactCard(
+  lines: string[],
+  cardIndex: number,
+): SourceValidationResult<GoogleContactRecord> {
+  let fullName: string | null = null;
+  let organization: string | null = null;
+  let title: string | null = null;
+  let note: string | null = null;
+  let updatedAt: string | null = null;
+  let rawUid: string | null = null;
+  const emails: string[] = [];
+  const phones: string[] = [];
+
+  for (const line of lines) {
+    const propertyName = propertyNameFromVCardLine(line);
+    const propertyValue = propertyValueFromVCardLine(line);
+
+    if (propertyName === null || propertyValue === null) {
+      continue;
+    }
+
+    if (propertyName === "FN") {
+      fullName = propertyValue;
+    } else if (propertyName === "EMAIL") {
+      emails.push(normalizeVCardEmail(propertyValue));
+    } else if (propertyName === "TEL") {
+      phones.push(propertyValue);
+    } else if (propertyName === "ORG") {
+      organization = propertyValue;
+    } else if (propertyName === "TITLE") {
+      title = propertyValue;
+    } else if (propertyName === "NOTE") {
+      note = propertyValue;
+    } else if (propertyName === "REV") {
+      updatedAt = parseVCardDate(propertyValue);
+    } else if (propertyName === "UID") {
+      rawUid = propertyValue;
+    }
+  }
+
+  const displayName = fullName ?? emails[0] ?? rawUid;
+
+  if (!displayName) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: `contacts.${cardIndex}`,
+          message: "vCard contact needs FN, EMAIL, or UID",
+        },
+      ],
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      fullName: displayName,
+      emails,
+      phones,
+      organization,
+      title,
+      note,
+      updatedAt,
+      rawUid,
+    },
+  };
+}
+
+export function parseGoogleContactsExport(
+  input: string,
+): SourceValidationResult<GoogleContactsExport> {
+  const lines = unfoldVCardLines(input);
+  const contacts: GoogleContactRecord[] = [];
+  const errors: SourceValidationError[] = [];
+  let activeCard: string[] | null = null;
+
+  for (const line of lines) {
+    const propertyName = propertyNameFromVCardLine(line);
+    const propertyValue = propertyValueFromVCardLine(line);
+
+    if (propertyName === "BEGIN" && propertyValue === "VCARD") {
+      activeCard = [];
+      continue;
+    }
+
+    if (propertyName === "END" && propertyValue === "VCARD") {
+      if (activeCard !== null) {
+        const parsed = parseGoogleContactCard(activeCard, contacts.length);
+
+        if (parsed.ok) {
+          contacts.push(parsed.value);
+        } else {
+          errors.push(...parsed.errors);
+        }
+      }
+
+      activeCard = null;
+      continue;
+    }
+
+    if (activeCard !== null) {
+      activeCard.push(line);
+    }
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errors,
+    };
+  }
+
+  if (contacts.length === 0) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "contacts",
+          message: "No vCard contacts found",
+        },
+      ],
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      contacts,
+    },
+  };
+}
+
 export function parseMediaWikiRevision(
   input: unknown,
 ): SourceValidationResult<MediaWikiRevisionNormalizationInput> {
@@ -6151,6 +6377,35 @@ function googleMyActivitySourceFingerprint(
       imageFile: input.activity.imageFile,
       audioFiles: input.activity.audioFiles,
       attachedFiles: input.activity.attachedFiles,
+    }),
+  );
+}
+
+function googleContactExternalMessageId(
+  input: GoogleContactNormalizationInput,
+): string {
+  return input.contact.rawUid ?? input.contact.emails[0] ?? input.contact.fullName;
+}
+
+function googleContactSourceKey(input: GoogleContactNormalizationInput): string {
+  return `google_contact:${googleContactExternalMessageId(input)}`;
+}
+
+function googleContactSourceFingerprint(
+  input: GoogleContactNormalizationInput,
+): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "google_contacts",
+      sourcePath: input.sourcePath,
+      fullName: input.contact.fullName,
+      emails: input.contact.emails,
+      phones: input.contact.phones,
+      organization: input.contact.organization,
+      title: input.contact.title,
+      note: input.contact.note,
+      updatedAt: input.contact.updatedAt,
+      rawUid: input.contact.rawUid,
     }),
   );
 }
@@ -7536,6 +7791,66 @@ export function normalizeGoogleMyActivityRecord(
   });
 }
 
+function googleContactText(input: GoogleContactNormalizationInput): string {
+  return [
+    `Contact: ${input.contact.fullName}`,
+    ...input.contact.emails.map((email) => `Email: ${email}`),
+    ...input.contact.phones.map((phone) => `Phone: ${phone}`),
+    input.contact.organization === null
+      ? null
+      : `Organization: ${input.contact.organization}`,
+    input.contact.title === null ? null : `Title: ${input.contact.title}`,
+    input.contact.note === null ? null : `Note: ${input.contact.note}`,
+  ]
+    .filter((value): value is string => value !== null && value.length > 0)
+    .join("\n");
+}
+
+export function normalizeGoogleContactRecord(
+  input: GoogleContactNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = googleContactSourceKey(input);
+
+  return buildCanonicalEvent({
+    source: {
+      platform: "google_contacts",
+      key: sourceKey,
+      fingerprint: googleContactSourceFingerprint(input),
+      externalConversationId: "contacts",
+      externalMessageId: googleContactExternalMessageId(input),
+      artifactId: input.contact.rawUid,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "identity_graph",
+      sourceName: "google_contacts",
+      upstreamSources: ["google_takeout"],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: input.contact.updatedAt ?? input.modifiedAt,
+      createdAtConfidence:
+        input.contact.updatedAt === null ? input.modifiedAtConfidence : "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: input.contact.emails.map((email) => ({
+      role: "author",
+      name: input.contact.fullName,
+      address: email,
+    })),
+    content: {
+      kind: "text",
+      subject: input.contact.fullName,
+      text: googleContactText(input),
+    },
+  });
+}
+
 export function normalizeICalendarEvent(
   input: ICalendarEventNormalizationInput,
 ): CanonicalEvent {
@@ -8000,6 +8315,24 @@ export function normalizeGoogleMyActivityExport(
 ): CanonicalEvent[] {
   return activityExport.map((activity) =>
     normalizeGoogleMyActivityRecord({ activity }),
+  );
+}
+
+export function normalizeGoogleContactsExport(
+  contactsExport: GoogleContactsExport,
+  context: {
+    sourcePath: string;
+    modifiedAt: string;
+    modifiedAtConfidence: TimeConfidence;
+  },
+): CanonicalEvent[] {
+  return contactsExport.contacts.map((contact) =>
+    normalizeGoogleContactRecord({
+      contact,
+      sourcePath: context.sourcePath,
+      modifiedAt: context.modifiedAt,
+      modifiedAtConfidence: context.modifiedAtConfidence,
+    }),
   );
 }
 

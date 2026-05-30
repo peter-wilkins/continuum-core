@@ -36,7 +36,7 @@ Public-first source queue:
 | 11 | Google Chrome reading list | implemented fixture | high | medium | high | Chrome reading list entry | `src/fixtures/google-chrome-reading-list-one-record.html` |
 | 12 | Google My Activity / Search / Gemini | implemented fixture | high | high | high | Google activity record | `src/fixtures/google-my-activity-three-records.json` |
 | 13 | YouTube history | implemented fixture | high | medium | high | YouTube watch/search activity | `src/fixtures/google-my-activity-three-records.json` |
-| 14 | Google Contacts | needs user export | high | high | high | Contact identity snapshot | none yet |
+| 14 | Google Contacts | implemented fixture | high | high | high | Contact identity snapshot | `src/fixtures/google-contacts-one-record.vcf` |
 | 15 | Google Maps / location activity | implemented fixture | high | high | high | Maps activity or location visit | `src/fixtures/google-my-activity-three-records.json` |
 | 16 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
 
@@ -83,7 +83,7 @@ Google Takeout is not one schema:
 - Chrome reading list: saved-reference snapshots pointing at URLs.
 - My Activity: timestamped product activity across Search, Maps, YouTube, Play, Ads, and related products.
 - YouTube history: imported through My Activity watch/search records for now; product-specific uploads, comments, subscriptions, and media metadata are not imported yet.
-- Contacts: identity graph snapshots, blocked until the identity model exists.
+- Contacts: identity graph snapshots imported from vCard; these are identity evidence, not activity evidence.
 - Maps/location activity: Maps My Activity is imported; precise location timeline/trips are blocked until stricter location membranes exist.
 - Chrome Autofill, extensions, settings, dictionary: blocked until non-event configuration and secrets-adjacent data are classified.
 

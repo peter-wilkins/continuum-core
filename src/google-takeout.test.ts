@@ -11,15 +11,19 @@ import myActivityFixture from "./fixtures/google-my-activity-three-records.json"
 import {
   type GoogleChromeBookmarkNormalizationInput,
   type GoogleChromeHistoryNormalizationInput,
+  type GoogleContactNormalizationInput,
   type GoogleMyActivityNormalizationInput,
   normalizeGoogleChromeBookmarkRecord,
   normalizeGoogleChromeHistoryRecord,
   normalizeGoogleChromeReadingListRecord,
+  normalizeGoogleContactRecord,
+  normalizeGoogleContactsExport,
   normalizeGoogleMyActivityExport,
   normalizeGoogleMyActivityRecord,
   parseGoogleChromeBookmarksExport,
   parseGoogleChromeHistoryExport,
   parseGoogleChromeReadingListExport,
+  parseGoogleContactsExport,
   parseGoogleMyActivityExport,
 } from "./index";
 
@@ -35,6 +39,12 @@ const readingListFixture = readFileSync(
       "./fixtures/google-chrome-reading-list-one-record.html",
       import.meta.url,
     ),
+  ),
+  "utf8",
+);
+const contactsFixture = readFileSync(
+  fileURLToPath(
+    new URL("./fixtures/google-contacts-one-record.vcf", import.meta.url),
   ),
   "utf8",
 );
@@ -352,5 +362,120 @@ describe("Google Takeout Chrome reading list import", () => {
       },
     });
     expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
+  });
+});
+
+describe("Google Takeout Contacts import", () => {
+  it("parses one Google Contacts vCard record", () => {
+    expect(parseGoogleContactsExport(contactsFixture)).toEqual({
+      ok: true,
+      value: {
+        contacts: [
+          {
+            fullName: "Ada Lovelace",
+            emails: ["ada@example.test"],
+            phones: ["+44 20 7946 0000"],
+            organization: "Analytical Engines",
+            title: "Correspondent",
+            note: "Discussed mechanical calculation",
+            updatedAt: "2026-05-21T10:42:03.000Z",
+            rawUid: "google-contact-ada",
+          },
+        ],
+      },
+    });
+  });
+
+  it("imports one Google Contacts vCard record into the canonical event model", () => {
+    const parsed = parseGoogleContactsExport(contactsFixture);
+
+    if (!parsed.ok) {
+      throw new Error("Fixture should parse.");
+    }
+
+    const event = normalizeGoogleContactRecord({
+      contact: parsed.value.contacts[0],
+      sourcePath: "Takeout/Contacts/Contacts.vcf",
+      modifiedAt: "2026-05-30T12:00:00.000Z",
+      modifiedAtConfidence: "exact",
+    } as GoogleContactNormalizationInput);
+
+    expect(event).toMatchObject({
+      id: "google_contact:google-contact-ada",
+      source: {
+        platform: "google_contacts",
+        key: "google_contact:google-contact-ada",
+        externalConversationId: "contacts",
+        externalMessageId: "google-contact-ada",
+        artifactId: "google-contact-ada",
+        externalParentId: null,
+        canonicalParentEventId: null,
+      },
+      provenance: {
+        sourceFamily: "identity_graph",
+        sourceName: "google_contacts",
+        upstreamSources: ["google_takeout"],
+        derivedFrom: [],
+        retrievedAt: "unknown",
+        license: null,
+      },
+      time: {
+        createdAt: "2026-05-21T10:42:03.000Z",
+        createdAtConfidence: "exact",
+      },
+      actor: {
+        role: "other",
+      },
+      participants: [
+        {
+          role: "author",
+          name: "Ada Lovelace",
+          address: "ada@example.test",
+        },
+      ],
+      content: {
+        kind: "text",
+        subject: "Ada Lovelace",
+        text: [
+          "Contact: Ada Lovelace",
+          "Email: ada@example.test",
+          "Phone: +44 20 7946 0000",
+          "Organization: Analytical Engines",
+          "Title: Correspondent",
+          "Note: Discussed mechanical calculation",
+        ].join("\n"),
+      },
+    });
+    expect(event.source.fingerprint).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it("normalizes a Google Contacts export", () => {
+    const parsed = parseGoogleContactsExport(contactsFixture);
+
+    if (!parsed.ok) {
+      throw new Error("Fixture should parse.");
+    }
+
+    const events = normalizeGoogleContactsExport(parsed.value, {
+      sourcePath: "Takeout/Contacts/Contacts.vcf",
+      modifiedAt: "2026-05-30T12:00:00.000Z",
+      modifiedAtConfidence: "exact",
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.source.platform).toBe("google_contacts");
+    expect(events[0]?.content.subject).toBe("Ada Lovelace");
+  });
+
+  it("rejects vCard data without contacts", () => {
+    expect(parseGoogleContactsExport("VERSION:3.0\nFN:Ada Lovelace\n")).toEqual({
+      ok: false,
+      errors: [
+        {
+          path: "contacts",
+          message: "No vCard contacts found",
+        },
+      ],
+    });
   });
 });

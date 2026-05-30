@@ -9,6 +9,7 @@ import {
   normalizeGoogleChromeBookmarkRecord,
   normalizeGoogleChromeHistoryRecord,
   normalizeGoogleChromeReadingListRecord,
+  normalizeGoogleContactRecord,
   normalizeGoogleMyActivityRecord,
   normalizeGitCommit,
   normalizeGitHubIssue,
@@ -25,6 +26,7 @@ import {
   parseGoogleChromeBookmarksExport,
   parseGoogleChromeHistoryExport,
   parseGoogleChromeReadingListExport,
+  parseGoogleContactsExport,
   parseGoogleMyActivityExport,
   parseGitHubIssues,
   parseGitHubIssueComments,
@@ -42,6 +44,7 @@ export type SourceImportCommand =
   | "google-chrome-history"
   | "google-chrome-bookmarks"
   | "google-chrome-reading-list"
+  | "google-contacts"
   | "google-my-activity"
   | "email-mbox"
   | "git-log"
@@ -301,6 +304,57 @@ const sourceAdapters: SourceAdapter[] = [
         "google-my-activity",
         result.value,
         (activity) => normalizeGoogleMyActivityRecord({ activity }),
+      );
+    },
+  },
+  {
+    source: "google-contacts",
+    parseMode: "text",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".vcf") &&
+        (lowerPath.includes("contact") || lowerPath.includes("people"))
+      );
+    },
+    prepareInput: (raw, context) => ({
+      sourcePath: context.relativePath,
+      modifiedAt: context.modifiedAt,
+      modifiedAtConfidence: context.modifiedAtConfidence,
+      raw: String(raw),
+    }),
+    normalize: (parsed) => {
+      const input = parsed as {
+        sourcePath: string;
+        modifiedAt: string;
+        modifiedAtConfidence: "exact" | "unknown";
+        raw: string;
+      };
+      const result = parseGoogleContactsExport(input.raw);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine(
+            "google-contacts",
+            result.errors,
+          ),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return normalizeRecordsWithQuarantine(
+        "google-contacts",
+        result.value.contacts,
+        (contact) =>
+          normalizeGoogleContactRecord({
+            contact,
+            sourcePath: input.sourcePath,
+            modifiedAt: input.modifiedAt,
+            modifiedAtConfidence: input.modifiedAtConfidence,
+          }),
       );
     },
   },
