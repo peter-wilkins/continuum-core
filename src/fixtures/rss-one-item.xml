@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>Continuum Notes</title>
+    <item>
+      <title>Extended thought needs receipts</title>
+      <link>https://example.test/extended-thought-receipts</link>
+      <guid>continuum-notes-001</guid>
+      <pubDate>Thu, 21 May 2026 10:42:03 GMT</pubDate>
+      <description>Short notes should stay connected to evidence.</description>
+    </item>
+  </channel>
+</rss>

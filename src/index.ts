@@ -143,6 +143,7 @@ export type CanonicalSourcePlatform =
   | "icalendar"
   | "markdown"
   | "public_archive"
+  | "rss"
   | "slack"
   | "wikimedia";
 
@@ -4001,6 +4002,27 @@ export type SlackMessageNormalizationInput = {
   message: SlackMessageRecord;
 };
 
+export type WebFeedItemRecord = {
+  feedTitle: string;
+  title: string;
+  url: string | null;
+  id: string;
+  publishedAt: string | null;
+  summary: string | null;
+};
+
+export type WebFeedExport = {
+  feedTitle: string;
+  items: WebFeedItemRecord[];
+};
+
+export type WebFeedItemNormalizationInput = {
+  feedPath: string;
+  retrievedAt: string;
+  retrievedAtConfidence: TimeConfidence;
+  item: WebFeedItemRecord;
+};
+
 export type GoogleChromeHistoryRecord = {
   title: string;
   url: string;
@@ -5498,6 +5520,121 @@ export function parseSlackChannelExport(
   };
 }
 
+function decodeXmlEntities(value: string): string {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", "\"")
+    .replaceAll("&apos;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+    .trim();
+}
+
+function xmlText(block: string, tagName: string): string | null {
+  const pattern = new RegExp(`<${tagName}(?:\\s[^>]*)?>([\\s\\S]*?)</${tagName}>`, "i");
+  const match = block.match(pattern);
+  const value = match?.[1];
+
+  return value === undefined ? null : decodeXmlEntities(value);
+}
+
+function xmlAttribute(block: string, tagName: string, attributeName: string): string | null {
+  const tagPattern = new RegExp(`<${tagName}\\s+([^>]*)>`, "i");
+  const tagMatch = block.match(tagPattern);
+  const attributes = tagMatch?.[1];
+
+  if (attributes === undefined) {
+    return null;
+  }
+
+  const attributePattern = new RegExp(`${attributeName}="([^"]*)"`, "i");
+  const attributeMatch = attributes.match(attributePattern);
+  const value = attributeMatch?.[1];
+
+  return value === undefined ? null : decodeXmlEntities(value);
+}
+
+function xmlBlocks(input: string, tagName: string): string[] {
+  const pattern = new RegExp(`<${tagName}(?:\\s[^>]*)?>[\\s\\S]*?</${tagName}>`, "gi");
+
+  return [...input.matchAll(pattern)].map((match) => match[0]);
+}
+
+function isoOrNull(value: string | null): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Date.parse(value);
+
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
+}
+
+function parseRssFeed(input: string): WebFeedExport | null {
+  const channel = xmlBlocks(input, "channel")[0] ?? input;
+  const feedTitle = xmlText(channel, "title") ?? "RSS feed";
+  const items = xmlBlocks(channel, "item").map((block): WebFeedItemRecord => {
+    const title = xmlText(block, "title") ?? "Untitled item";
+    const url = xmlText(block, "link");
+    const guid = xmlText(block, "guid");
+
+    return {
+      feedTitle,
+      title,
+      url,
+      id: guid ?? url ?? title,
+      publishedAt: isoOrNull(xmlText(block, "pubDate")),
+      summary: xmlText(block, "description"),
+    };
+  });
+
+  return items.length === 0 ? null : { feedTitle, items };
+}
+
+function parseAtomFeed(input: string): WebFeedExport | null {
+  const feedTitle = xmlText(input, "title") ?? "Atom feed";
+  const items = xmlBlocks(input, "entry").map((block): WebFeedItemRecord => {
+    const title = xmlText(block, "title") ?? "Untitled entry";
+    const url = xmlAttribute(block, "link", "href");
+    const id = xmlText(block, "id") ?? url ?? title;
+
+    return {
+      feedTitle,
+      title,
+      url,
+      id,
+      publishedAt: isoOrNull(xmlText(block, "published") ?? xmlText(block, "updated")),
+      summary: xmlText(block, "summary") ?? xmlText(block, "content"),
+    };
+  });
+
+  return items.length === 0 ? null : { feedTitle, items };
+}
+
+export function parseWebFeedExport(
+  input: string,
+): SourceValidationResult<WebFeedExport> {
+  const parsed = parseRssFeed(input) ?? parseAtomFeed(input);
+
+  if (parsed === null) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "items",
+          message: "No RSS item or Atom entry records found",
+        },
+      ],
+    };
+  }
+
+  return {
+    ok: true,
+    value: parsed,
+  };
+}
+
 export function parseGoogleChromeHistoryExport(
   input: unknown,
 ): SourceValidationResult<GoogleChromeHistoryExport> {
@@ -6354,6 +6491,29 @@ function slackSourceFingerprint(input: SlackMessageNormalizationInput): string {
       ts: input.message.ts,
       threadTs: input.message.threadTs,
       parentUserId: input.message.parentUserId,
+    }),
+  );
+}
+
+function webFeedExternalMessageId(input: WebFeedItemNormalizationInput): string {
+  return input.item.id;
+}
+
+function webFeedSourceKey(input: WebFeedItemNormalizationInput): string {
+  return `rss:${webFeedExternalMessageId(input)}`;
+}
+
+function webFeedSourceFingerprint(input: WebFeedItemNormalizationInput): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "rss",
+      feedPath: input.feedPath,
+      feedTitle: input.item.feedTitle,
+      title: input.item.title,
+      url: input.item.url,
+      id: input.item.id,
+      publishedAt: input.item.publishedAt,
+      summary: input.item.summary,
     }),
   );
 }
@@ -7738,6 +7898,54 @@ export function normalizeSlackMessage(
   });
 }
 
+export function normalizeWebFeedItem(
+  input: WebFeedItemNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = webFeedSourceKey(input);
+
+  return buildCanonicalEvent({
+    source: {
+      platform: "rss",
+      key: sourceKey,
+      fingerprint: webFeedSourceFingerprint(input),
+      externalConversationId: input.item.feedTitle,
+      externalMessageId: webFeedExternalMessageId(input),
+      artifactId: input.item.url,
+      externalParentId: null,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "web_feed",
+      sourceName: "rss_atom_feed",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: input.retrievedAt,
+      license: null,
+    },
+    time: {
+      createdAt: input.item.publishedAt ?? input.retrievedAt,
+      createdAtConfidence:
+        input.item.publishedAt === null ? input.retrievedAtConfidence : "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: [],
+    content: {
+      kind: "text",
+      subject: input.item.title,
+      text: [
+        input.item.feedTitle,
+        input.item.title,
+        input.item.url,
+        input.item.summary,
+      ]
+        .filter((value): value is string => value !== null && value.length > 0)
+        .join("\n"),
+    },
+  });
+}
+
 export function normalizeEmailMessage(
   input: EmailMessageNormalizationInput,
 ): CanonicalEvent {
@@ -8467,6 +8675,24 @@ export function normalizeSlackChannelExport(
         name: context.channelName,
       },
       message,
+    }),
+  );
+}
+
+export function normalizeWebFeedExport(
+  feedExport: WebFeedExport,
+  context: {
+    feedPath: string;
+    retrievedAt: string;
+    retrievedAtConfidence: TimeConfidence;
+  },
+): CanonicalEvent[] {
+  return feedExport.items.map((item) =>
+    normalizeWebFeedItem({
+      feedPath: context.feedPath,
+      retrievedAt: context.retrievedAt,
+      retrievedAtConfidence: context.retrievedAtConfidence,
+      item,
     }),
   );
 }

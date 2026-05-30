@@ -370,11 +370,33 @@ export const sourceCatalogue = [
       overlapWarning: "Notion pages may embed synced docs, GitHub issues, or pasted chat outputs.",
     },
   },
+  {
+    rank: 17,
+    id: "rss-atom-feeds",
+    name: "RSS / Atom feeds",
+    status: "implemented_fixture",
+    personalContinuityValue: "medium",
+    schemaStressValue: "medium",
+    privacyRisk: "low",
+    nextEventTarget: "Feed item",
+    exampleDataPath: "src/fixtures/rss-one-item.xml",
+    officialDocs: [
+      "https://www.rssboard.org/rss-specification",
+      "https://www.rfc-editor.org/rfc/rfc4287",
+    ],
+    provenance: {
+      sourceFamily: "web_feed",
+      sourceName: "rss_atom_feed",
+      upstreamSources: [],
+      derivedFrom: [],
+      overlapWarning: "Feed items usually point at web documents; count the feed item as notification evidence, not independent page content.",
+    },
+  },
 ] as const satisfies SourceCatalogueEntry[];
 
 export const postponedSourceCatalogue = [
   {
-    rank: 17,
+    rank: 18,
     id: "chatgpt-export",
     name: "ChatGPT export",
     status: "postponed",

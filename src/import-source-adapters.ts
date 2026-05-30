@@ -20,6 +20,7 @@ import {
   normalizeMediaWikiRevision,
   normalizePublicDocument,
   normalizeSlackMessage,
+  normalizeWebFeedItem,
   normalizeWikidataEntity,
   normalizeEmailMessage,
   parseClaudeConversationsWithQuarantine,
@@ -36,6 +37,7 @@ import {
   parseMediaWikiRevision,
   parsePublicDocument,
   parseSlackChannelExport,
+  parseWebFeedExport,
   parseWikidataEntity,
   type MboxParseResult,
 } from "./index";
@@ -53,6 +55,7 @@ export type SourceImportCommand =
   | "icalendar"
   | "markdown"
   | "slack"
+  | "rss-feed"
   | "github-issues"
   | "github-issue-comments"
   | "github-pulls"
@@ -484,6 +487,55 @@ const sourceAdapters: SourceAdapter[] = [
               name: input.channelName,
             },
             message,
+          }),
+      );
+    },
+  },
+  {
+    source: "rss-feed",
+    parseMode: "text",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return (
+        lowerPath.endsWith(".rss") ||
+        lowerPath.endsWith(".atom") ||
+        lowerPath.endsWith(".xml")
+      );
+    },
+    prepareInput: (raw, context) => ({
+      feedPath: context.relativePath,
+      retrievedAt: context.modifiedAt,
+      retrievedAtConfidence: context.modifiedAtConfidence,
+      raw: String(raw),
+    }),
+    normalize: (parsed) => {
+      const input = parsed as {
+        feedPath: string;
+        retrievedAt: string;
+        retrievedAtConfidence: "exact" | "unknown";
+        raw: string;
+      };
+      const result = parseWebFeedExport(input.raw);
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine("rss-feed", result.errors),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return normalizeRecordsWithQuarantine(
+        "rss-feed",
+        result.value.items,
+        (item) =>
+          normalizeWebFeedItem({
+            feedPath: input.feedPath,
+            retrievedAt: input.retrievedAt,
+            retrievedAtConfidence: input.retrievedAtConfidence,
+            item,
           }),
       );
     },

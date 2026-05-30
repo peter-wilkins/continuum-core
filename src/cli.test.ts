@@ -73,6 +73,9 @@ const emailMboxFixturePath = fileURLToPath(
 const slackFixturePath = fileURLToPath(
   new URL("./fixtures/slack-one-channel-message.json", import.meta.url),
 );
+const rssFixturePath = fileURLToPath(
+  new URL("./fixtures/rss-one-item.xml", import.meta.url),
+);
 
 describe("continuum-import CLI", () => {
   it("formats inspect output with warnings and source file counts", () => {
@@ -461,6 +464,46 @@ describe("continuum-import CLI", () => {
         },
         content: {
           subject: "#slack-one-channel-message",
+        },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports one RSS feed item fixture through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "rss-feed",
+        rssFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        outputPath,
+        report: {
+          new: 1,
+          known: 0,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "rss",
+          externalConversationId: "Continuum Notes",
+        },
+        content: {
+          subject: "Extended thought needs receipts",
         },
       });
     } finally {

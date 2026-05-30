@@ -39,6 +39,7 @@ Public-first source queue:
 | 14 | Google Contacts | implemented fixture | high | high | high | Contact identity snapshot | `src/fixtures/google-contacts-one-record.vcf` |
 | 15 | Google Maps / location activity | implemented fixture | high | high | high | Maps activity or location visit | `src/fixtures/google-my-activity-three-records.json` |
 | 16 | Notion export / API pages | needs user export | medium | high | high | Notion markdown page | none yet |
+| 17 | RSS / Atom feeds | implemented fixture | medium | medium | low | Feed item | `src/fixtures/rss-one-item.xml` |
 
 ## Provenance Rules
 
@@ -62,7 +63,7 @@ GitHub pull-request metadata can point at Git commits through head/base/merge SH
 
 | Rank | Source | Reason |
 | --- | --- | --- |
-| 17 | ChatGPT export | Peter is waiting on export delivery. Keep fixture coverage, but do not spend the next real-data cycle here. |
+| 18 | ChatGPT export | Peter is waiting on export delivery. Keep fixture coverage, but do not spend the next real-data cycle here. |
 
 ## Wikimedia Family
 
@@ -102,6 +103,8 @@ Google Takeout is not one schema:
 - iCalendar: https://www.rfc-editor.org/rfc/rfc5545
 - Slack exports: https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports
 - CommonMark: https://spec.commonmark.org/
+- RSS 2.0: https://www.rssboard.org/rss-specification
+- Atom: https://www.rfc-editor.org/rfc/rfc4287
 - Google My Activity schema: https://developers.google.com/data-portability/schema-reference/my_activity
 - Google Chrome schema: https://developers.google.com/data-portability/schema-reference/chrome
 - YouTube schema: https://developers.google.com/data-portability/schema-reference/youtube
