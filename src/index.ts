@@ -576,6 +576,44 @@ export type VoiceConversationTurn = {
   createdAt: KnowledgeTime;
 };
 
+export type GuidedInquiryStepKind =
+  | "clarify"
+  | "assumption"
+  | "evidence"
+  | "alternative"
+  | "consequence"
+  | "meta";
+
+export type GuidedInquiryStep = {
+  id: string;
+  kind: GuidedInquiryStepKind;
+  question: HumanText;
+  agreementTemplate: HumanText;
+  progressAfterAnswer: Confidence;
+};
+
+export type GuidedInquiryJourney = {
+  id: string;
+  title: HumanText;
+  topic: HumanText;
+  steps: NonEmptyArray<GuidedInquiryStep>;
+};
+
+export type GuidedInquiryAdvanceInput = {
+  journey: GuidedInquiryJourney;
+  currentStepId: string;
+  userAnswer: string;
+};
+
+export type GuidedInquiryAdvanceResult = {
+  journeyId: string;
+  answeredStepId: string;
+  agreement: HumanText;
+  nextStep: GuidedInquiryStep | null;
+  progress: Confidence;
+  progressLabel: HumanText;
+};
+
 export type LensFeedbackSignal = {
   id: string;
   userId: string;
@@ -1834,6 +1872,129 @@ export function createVoiceConversationTurn(
       modelReplySourceTruth: false,
     },
     createdAt: knowledgeTime("VoiceConversationTurn createdAt", input.createdAt),
+  };
+}
+
+export const extendedThoughtGuidedInquiryJourney: GuidedInquiryJourney = {
+  id: "guided-inquiry:extended-thought:socratic-v0",
+  title: humanText("GuidedInquiryJourney title", "Extended thought"),
+  topic: humanText("GuidedInquiryJourney topic", "How tools extend human thought"),
+  steps: [
+    {
+      id: "guided-inquiry-step:extended-thought:clarify",
+      kind: "clarify",
+      question: humanText(
+        "GuidedInquiryStep question",
+        "When does a tool stop being separate from thought?",
+      ),
+      agreementTemplate: humanText(
+        "GuidedInquiryStep agreementTemplate",
+        "You are drawing the boundary around: {answer}",
+      ),
+      progressAfterAnswer: confidence(0.25),
+    },
+    {
+      id: "guided-inquiry-step:extended-thought:assumption",
+      kind: "assumption",
+      question: humanText(
+        "GuidedInquiryStep question",
+        "What are you assuming a mind can do on its own?",
+      ),
+      agreementTemplate: humanText(
+        "GuidedInquiryStep agreementTemplate",
+        "Current assumption captured: {answer}",
+      ),
+      progressAfterAnswer: confidence(0.42),
+    },
+    {
+      id: "guided-inquiry-step:extended-thought:evidence",
+      kind: "evidence",
+      question: humanText(
+        "GuidedInquiryStep question",
+        "What would count as evidence that the tool changed the thinking?",
+      ),
+      agreementTemplate: humanText(
+        "GuidedInquiryStep agreementTemplate",
+        "Evidence standard captured: {answer}",
+      ),
+      progressAfterAnswer: confidence(0.6),
+    },
+    {
+      id: "guided-inquiry-step:extended-thought:alternative",
+      kind: "alternative",
+      question: humanText(
+        "GuidedInquiryStep question",
+        "What else could explain the better thinking besides the tool?",
+      ),
+      agreementTemplate: humanText(
+        "GuidedInquiryStep agreementTemplate",
+        "Alternative explanation captured: {answer}",
+      ),
+      progressAfterAnswer: confidence(0.75),
+    },
+    {
+      id: "guided-inquiry-step:extended-thought:consequence",
+      kind: "consequence",
+      question: humanText(
+        "GuidedInquiryStep question",
+        "If that is true, what should Continuum help a person do next?",
+      ),
+      agreementTemplate: humanText(
+        "GuidedInquiryStep agreementTemplate",
+        "Design consequence captured: {answer}",
+      ),
+      progressAfterAnswer: confidence(0.9),
+    },
+    {
+      id: "guided-inquiry-step:extended-thought:meta",
+      kind: "meta",
+      question: humanText(
+        "GuidedInquiryStep question",
+        "Which question changed your understanding the most?",
+      ),
+      agreementTemplate: humanText(
+        "GuidedInquiryStep agreementTemplate",
+        "Most useful question captured: {answer}",
+      ),
+      progressAfterAnswer: confidence(1),
+    },
+  ],
+};
+
+export function advanceGuidedInquiryJourney(
+  input: GuidedInquiryAdvanceInput,
+): GuidedInquiryAdvanceResult {
+  validateNonBlank("GuidedInquiry currentStepId", input.currentStepId);
+  validateNonBlank("GuidedInquiry userAnswer", input.userAnswer);
+
+  const stepIndex = input.journey.steps.findIndex(
+    (step) => step.id === input.currentStepId,
+  );
+
+  if (stepIndex < 0) {
+    throw new Error("Guided Inquiry step was not found in this journey.");
+  }
+
+  const answeredStep = input.journey.steps[stepIndex];
+
+  if (!answeredStep) {
+    throw new Error("Guided Inquiry step was not found in this journey.");
+  }
+
+  const nextStep = input.journey.steps[stepIndex + 1] ?? null;
+  const answer = input.userAnswer.trim().replace(/\s+/g, " ");
+  const agreement = answeredStep.agreementTemplate.replace("{answer}", answer);
+
+  return {
+    journeyId: input.journey.id,
+    answeredStepId: answeredStep.id,
+    agreement: humanText("GuidedInquiryAdvance agreement", agreement),
+    nextStep,
+    progress: answeredStep.progressAfterAnswer,
+    progressLabel: humanText(
+      "GuidedInquiryAdvance progressLabel",
+      nextStep === null ? "Journey complete" : "Next question ready",
+    ),
   };
 }
 
