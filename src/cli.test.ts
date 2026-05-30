@@ -70,6 +70,9 @@ const bootstrapImportScopeFixturePath = fileURLToPath(
 const emailMboxFixturePath = fileURLToPath(
   new URL("./fixtures/email-one-message.mbox", import.meta.url),
 );
+const slackFixturePath = fileURLToPath(
+  new URL("./fixtures/slack-one-channel-message.json", import.meta.url),
+);
 
 describe("continuum-import CLI", () => {
   it("formats inspect output with warnings and source file counts", () => {
@@ -420,6 +423,46 @@ describe("continuum-import CLI", () => {
       });
       expect(preview.events).toHaveLength(2);
       expect(preview.quarantine).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("imports one Slack channel message fixture through the CLI", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "continuum-import-"));
+    const outputPath = join(dir, "events.jsonl");
+
+    try {
+      const result = await runContinuumImportCli([
+        "slack",
+        slackFixturePath,
+        "--out",
+        outputPath,
+      ]);
+
+      expect(result).toMatchObject({
+        command: "import",
+        eventsWritten: 1,
+        outputPath,
+        report: {
+          new: 1,
+          known: 0,
+          changed: 0,
+          uncertain: 0,
+        },
+      });
+
+      const lines = (await readFile(outputPath, "utf8")).trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        source: {
+          platform: "slack",
+          externalConversationId: "1779360123.000000",
+        },
+        content: {
+          subject: "#slack-one-channel-message",
+        },
+      });
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

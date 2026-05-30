@@ -19,6 +19,7 @@ import {
   normalizeMarkdownDocument,
   normalizeMediaWikiRevision,
   normalizePublicDocument,
+  normalizeSlackMessage,
   normalizeWikidataEntity,
   normalizeEmailMessage,
   parseClaudeConversationsWithQuarantine,
@@ -34,6 +35,7 @@ import {
   parseICalendarEvents,
   parseMediaWikiRevision,
   parsePublicDocument,
+  parseSlackChannelExport,
   parseWikidataEntity,
   type MboxParseResult,
 } from "./index";
@@ -50,6 +52,7 @@ export type SourceImportCommand =
   | "git-log"
   | "icalendar"
   | "markdown"
+  | "slack"
   | "github-issues"
   | "github-issue-comments"
   | "github-pulls"
@@ -151,6 +154,17 @@ function normalizeRecordsWithQuarantine<T>(
     sourceFiles: [],
     warnings: 0,
   };
+}
+
+function slackChannelNameFromPath(relativePath: string): string {
+  const parts = relativePath.split(/[\\/]/).filter((part) => part.length > 0);
+  const filename = parts.at(-1) ?? relativePath;
+
+  if (/^\d{4}-\d{2}-\d{2}\.json$/i.test(filename) && parts.length >= 2) {
+    return parts.at(-2) ?? "unknown";
+  }
+
+  return basename(filename, ".json");
 }
 
 const sourceAdapters: SourceAdapter[] = [
@@ -424,6 +438,54 @@ const sourceAdapters: SourceAdapter[] = [
           content: input.raw,
         }),
       ]);
+    },
+  },
+  {
+    source: "slack",
+    parseMode: "json",
+    fileMatches: (file) => {
+      const lowerPath = file.relativePath.toLowerCase();
+
+      return lowerPath.endsWith(".json") && lowerPath.includes("slack");
+    },
+    prepareInput: (parsed, context) => ({
+      workspaceName: "slack-export",
+      channelName: slackChannelNameFromPath(context.relativePath),
+      parsed,
+    }),
+    normalize: (parsed) => {
+      const input = parsed as {
+        workspaceName: string;
+        channelName: string;
+        parsed: unknown;
+      };
+      const result = parseSlackChannelExport(input.parsed, {
+        channelName: input.channelName,
+      });
+
+      if (!result.ok) {
+        return {
+          incomingEvents: [],
+          quarantine: validationErrorsToQuarantine("slack", result.errors),
+          sourceFiles: [],
+          warnings: 0,
+        };
+      }
+
+      return normalizeRecordsWithQuarantine(
+        "slack",
+        result.value,
+        (message) =>
+          normalizeSlackMessage({
+            workspace: {
+              name: input.workspaceName,
+            },
+            channel: {
+              name: input.channelName,
+            },
+            message,
+          }),
+      );
     },
   },
   {

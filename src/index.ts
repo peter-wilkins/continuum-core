@@ -143,6 +143,7 @@ export type CanonicalSourcePlatform =
   | "icalendar"
   | "markdown"
   | "public_archive"
+  | "slack"
   | "wikimedia";
 
 export type CanonicalParticipantRole =
@@ -3976,6 +3977,30 @@ export type EmailMessageNormalizationInput = {
   };
 };
 
+export type SlackMessageRecord = {
+  type: string;
+  subtype: string | null;
+  user: string | null;
+  username: string | null;
+  text: string;
+  ts: string;
+  threadTs: string | null;
+  parentUserId: string | null;
+  channelName: string;
+};
+
+export type SlackChannelExport = SlackMessageRecord[];
+
+export type SlackMessageNormalizationInput = {
+  workspace: {
+    name: string;
+  };
+  channel: {
+    name: string;
+  };
+  message: SlackMessageRecord;
+};
+
 export type GoogleChromeHistoryRecord = {
   title: string;
   url: string;
@@ -5123,6 +5148,26 @@ const stringArrayFromMissingSchema = z.preprocess(
   z.array(z.string()),
 );
 
+const slackNullableStringFromMissingSchema = z.preprocess(
+  (value) => value ?? null,
+  z.string().nullable(),
+);
+
+const slackRawMessageSchema = z
+  .object({
+    type: z.string(),
+    subtype: slackNullableStringFromMissingSchema,
+    user: slackNullableStringFromMissingSchema,
+    username: slackNullableStringFromMissingSchema,
+    text: z.string(),
+    ts: z.string(),
+    thread_ts: slackNullableStringFromMissingSchema,
+    parent_user_id: slackNullableStringFromMissingSchema,
+  })
+  .passthrough();
+
+const slackChannelExportSchema = z.array(slackRawMessageSchema);
+
 const googleMyActivityRecordSchema = z
   .object({
     header: z.string(),
@@ -5417,6 +5462,40 @@ export function parseClaudeConversationsWithQuarantine(
   });
 
   return { conversations, quarantine };
+}
+
+export function parseSlackChannelExport(
+  input: unknown,
+  context: {
+    channelName: string;
+  },
+): SourceValidationResult<SlackChannelExport> {
+  const result = slackChannelExportSchema.safeParse(input);
+
+  if (result.success) {
+    return {
+      ok: true,
+      value: result.data.map((message) => ({
+        type: message.type,
+        subtype: message.subtype,
+        user: message.user,
+        username: message.username,
+        text: message.text,
+        ts: message.ts,
+        threadTs: message.thread_ts,
+        parentUserId: message.parent_user_id,
+        channelName: context.channelName,
+      })),
+    };
+  }
+
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) => ({
+      path: validationPath(issue.path),
+      message: issue.message,
+    })),
+  };
 }
 
 export function parseGoogleChromeHistoryExport(
@@ -6239,6 +6318,42 @@ function claudeSourceFingerprint(input: ClaudeMessageNormalizationInput): string
       content: input.message.content,
       attachments: input.message.attachments,
       files: input.message.files,
+    }),
+  );
+}
+
+function slackTimestampToIso(ts: string): string {
+  const seconds = Number(ts);
+
+  if (Number.isNaN(seconds)) {
+    return new Date(ts).toISOString();
+  }
+
+  return new Date(seconds * 1000).toISOString();
+}
+
+function slackExternalMessageId(input: SlackMessageNormalizationInput): string {
+  return `${input.channel.name}:${input.message.ts}`;
+}
+
+function slackSourceKey(input: SlackMessageNormalizationInput): string {
+  return `slack:${slackExternalMessageId(input)}`;
+}
+
+function slackSourceFingerprint(input: SlackMessageNormalizationInput): string {
+  return stableHash(
+    JSON.stringify({
+      platform: "slack",
+      workspace: input.workspace.name,
+      channel: input.channel.name,
+      type: input.message.type,
+      subtype: input.message.subtype,
+      user: input.message.user,
+      username: input.message.username,
+      text: input.message.text,
+      ts: input.message.ts,
+      threadTs: input.message.threadTs,
+      parentUserId: input.message.parentUserId,
     }),
   );
 }
@@ -7573,6 +7688,56 @@ export function normalizeClaudeMessage(
   });
 }
 
+export function normalizeSlackMessage(
+  input: SlackMessageNormalizationInput,
+): CanonicalEvent {
+  const sourceKey = slackSourceKey(input);
+  const userId = input.message.user ?? input.message.username ?? "unknown";
+
+  return buildCanonicalEvent({
+    source: {
+      platform: "slack",
+      key: sourceKey,
+      fingerprint: slackSourceFingerprint(input),
+      externalConversationId: input.message.threadTs ?? input.channel.name,
+      externalMessageId: slackExternalMessageId(input),
+      artifactId: null,
+      externalParentId:
+        input.message.threadTs === null || input.message.threadTs === input.message.ts
+          ? null
+          : `${input.channel.name}:${input.message.threadTs}`,
+      canonicalParentEventId: null,
+    },
+    provenance: {
+      sourceFamily: "team_communications",
+      sourceName: "slack",
+      upstreamSources: [],
+      derivedFrom: [],
+      retrievedAt: "unknown",
+      license: null,
+    },
+    time: {
+      createdAt: slackTimestampToIso(input.message.ts),
+      createdAtConfidence: "exact",
+    },
+    actor: {
+      role: "other",
+    },
+    participants: [
+      {
+        role: "author",
+        name: input.message.username,
+        address: `slack:${userId}`,
+      },
+    ],
+    content: {
+      kind: "text",
+      subject: `#${input.channel.name}`,
+      text: input.message.text,
+    },
+  });
+}
+
 export function normalizeEmailMessage(
   input: EmailMessageNormalizationInput,
 ): CanonicalEvent {
@@ -8283,6 +8448,26 @@ export function normalizeClaudeConversations(
         message,
       }),
     ),
+  );
+}
+
+export function normalizeSlackChannelExport(
+  messages: SlackChannelExport,
+  context: {
+    workspaceName: string;
+    channelName: string;
+  },
+): CanonicalEvent[] {
+  return messages.map((message) =>
+    normalizeSlackMessage({
+      workspace: {
+        name: context.workspaceName,
+      },
+      channel: {
+        name: context.channelName,
+      },
+      message,
+    }),
   );
 }
 

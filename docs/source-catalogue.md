@@ -29,7 +29,7 @@ Public-first source queue:
 | 4 | GitHub issues, pull requests, reviews, commits, discussions | implemented fixture | high | high | medium | GitHub issue comment | `src/fixtures/github-one-issue-comment.json` |
 | 5 | Wikimedia / Wikipedia / Wikidata | implemented fixture | low | high | low | Wikidata entity snapshot | `src/fixtures/wikidata-ada-lovelace-entity.json` |
 | 6 | Calendar / iCalendar | implemented fixture | high | medium | high | Calendar event | `src/fixtures/calendar-one-event.ics` |
-| 7 | Slack export | needs user export | high | high | high | Slack channel message | none yet |
+| 7 | Slack export | implemented fixture | high | high | high | Slack channel message | `src/fixtures/slack-one-channel-message.json` |
 | 8 | Markdown / Obsidian / local docs | implemented fixture | high | medium | medium | Markdown file revision snapshot | `src/fixtures/markdown-one-note.md` |
 | 9 | Google Chrome history | implemented fixture | high | medium | high | Chrome browser history visit | `src/fixtures/google-chrome-history-one-record.json` |
 | 10 | Google Chrome bookmarks | implemented fixture | high | medium | high | Chrome bookmark snapshot | `src/fixtures/google-chrome-bookmarks-one-record.html` |
