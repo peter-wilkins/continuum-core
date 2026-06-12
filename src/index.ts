@@ -8988,3 +8988,10 @@ export {
   type ProjectionEstimate,
   type SizeHistogramBucket,
 } from "./codex-session-mirror-audit";
+
+export {
+  extractCodexConversationFlow,
+  writeCodexConversationFlow,
+  type CodexConversationFlowCommand,
+  type CodexConversationFlowStats,
+} from "./codex-conversation-flow";
