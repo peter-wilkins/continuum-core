@@ -19,7 +19,8 @@
     "continuum-audio-signals": "./dist/audio-signal-cli.js",
     "continuum-codex-session-mirror-audit": "./dist/codex-session-mirror-audit-cli.js",
     "continuum-codex-conversation-flow": "./dist/codex-conversation-flow-cli.js",
-    "continuum-codex-conversation-flow-batch": "./dist/codex-conversation-flow-batch-cli.js"
+    "continuum-codex-conversation-flow-batch": "./dist/codex-conversation-flow-batch-cli.js",
+    "continuum-codex-conversation-search": "./dist/codex-conversation-search-cli.js"
   },
   "files": [
     "dist",
@@ -29,7 +30,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && tsup src/cli.ts --format esm --dts --sourcemap && tsup src/audio-signal-cli.ts --format esm --dts --sourcemap && tsup src/codex-session-mirror-audit-cli.ts --format esm --dts --sourcemap && tsup src/codex-conversation-flow-cli.ts --format esm --dts --sourcemap && tsup src/codex-conversation-flow-batch-cli.ts --format esm --dts --sourcemap",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap --platform node && tsup src/cli.ts --format esm --dts --sourcemap --platform node && tsup src/audio-signal-cli.ts --format esm --dts --sourcemap --platform node && tsup src/codex-session-mirror-audit-cli.ts --format esm --dts --sourcemap --platform node && tsup src/codex-conversation-flow-cli.ts --format esm --dts --sourcemap --platform node && tsup src/codex-conversation-flow-batch-cli.ts --format esm --dts --sourcemap --platform node && tsup src/codex-conversation-search-cli.ts --format esm --dts --sourcemap --platform node",
     "audio:signals": "node dist/audio-signal-cli.js",
     "codex:session-mirror:audit": "npm run build && node dist/codex-session-mirror-audit-cli.js data/codex/session-mirror",
     "audio-datasets:fetch": "node scripts/fetch-audio-datasets.mjs",

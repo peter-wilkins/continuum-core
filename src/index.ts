@@ -8999,3 +8999,13 @@ export {
   type CodexConversationFlowCommand,
   type CodexConversationFlowStats,
 } from "./codex-conversation-flow";
+
+export {
+  indexCodexConversationFlow,
+  parseConversationFlowMessages,
+  searchCodexConversationFlow,
+  type CodexConversationSearchCommand,
+  type CodexConversationSearchIndexCommand,
+  type CodexConversationSearchIndexResult,
+  type CodexConversationSearchResult,
+} from "./codex-conversation-search";
