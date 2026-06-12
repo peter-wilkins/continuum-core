@@ -16,7 +16,8 @@
   },
   "bin": {
     "continuum-import": "./dist/cli.js",
-    "continuum-audio-signals": "./dist/audio-signal-cli.js"
+    "continuum-audio-signals": "./dist/audio-signal-cli.js",
+    "continuum-codex-session-mirror-audit": "./dist/codex-session-mirror-audit-cli.js"
   },
   "files": [
     "dist",
@@ -26,8 +27,9 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && tsup src/cli.ts --format esm --dts --sourcemap && tsup src/audio-signal-cli.ts --format esm --dts --sourcemap",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && tsup src/cli.ts --format esm --dts --sourcemap && tsup src/audio-signal-cli.ts --format esm --dts --sourcemap && tsup src/codex-session-mirror-audit-cli.ts --format esm --dts --sourcemap",
     "audio:signals": "node dist/audio-signal-cli.js",
+    "codex:session-mirror:audit": "npm run build && node dist/codex-session-mirror-audit-cli.js data/codex/session-mirror",
     "audio-datasets:fetch": "node scripts/fetch-audio-datasets.mjs",
     "bootstrap:preview": "node scripts/materialize-bootstrap-public-preview.mjs",
     "schema:dev": "vite --config schema-workbench/vite.config.ts schema-workbench --host 127.0.0.1 --port 5173",

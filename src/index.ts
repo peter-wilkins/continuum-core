@@ -8973,3 +8973,18 @@ export function mergeCanonicalEvents(
 
   return { events, report };
 }
+
+export {
+  auditCodexSessionMirror,
+  createCodexSessionMirrorAuditCommand,
+  createTimestampedCodexSessionMirrorReportDirectory,
+  renderCodexSessionMirrorAuditMarkdown,
+  writeCodexSessionMirrorAuditReport,
+  type CodexSessionMirrorAuditCommand,
+  type CodexSessionMirrorAuditReport,
+  type DuplicateSummary,
+  type FileSummary,
+  type JsonlShapeSummary,
+  type ProjectionEstimate,
+  type SizeHistogramBucket,
+} from "./codex-session-mirror-audit";
