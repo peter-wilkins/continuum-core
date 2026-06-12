@@ -51,3 +51,26 @@ local/reports/codex-conversation-flow-review/latest/summary.json
 ```
 
 The output is private and local-only. `local/` is gitignored.
+
+## Emergency Batch Mode
+
+Use this only when Peter has explicitly approved deleting raw mirror blobs after
+projection.
+
+```bash
+node dist/codex-conversation-flow-batch-cli.js data/codex/session-mirror/blobs \
+  --delete-raw-after-projection \
+  --limit 25 \
+  --minimum-source-bytes 1048576 \
+  --out local/codex-session-conversations/conversation-flow \
+  --manifest local/codex-session-conversations/conversation-flow-manifest.jsonl
+```
+
+Deletion guard:
+
+- write one projection file
+- verify the projection has at least one kept Peter/Agent message
+- append a local manifest record
+- delete that one raw blob
+
+If a blob produces no kept messages, the raw blob is left in place.

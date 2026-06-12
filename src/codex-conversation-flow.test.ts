@@ -1,10 +1,11 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
 import {
   extractCodexConversationFlow,
+  runCodexConversationFlowBatch,
   writeCodexConversationFlow,
 } from "./codex-conversation-flow";
 
@@ -133,5 +134,70 @@ describe("Codex conversation flow projection", () => {
     expect(await readFile(outputPath, "utf8")).toContain("Peter:\ny");
     expect(stats.keptMessageCount).toBe(1);
     expect(stats.outputBytes).toBeGreaterThan(0);
+  });
+
+  it("batch mode deletes a raw blob only after a non-empty projection is written", async () => {
+    const root = await mkdtemp(join(tmpdir(), "continuum-conversation-batch-"));
+    const blobs = join(root, "blobs");
+    await mkdir(blobs, { recursive: true });
+    const deletablePath = join(blobs, "deletable.jsonl");
+    const retainedPath = join(blobs, "retained.jsonl");
+    await writeFile(
+      deletablePath,
+      `${JSON.stringify({
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "Keep this conversation." }],
+        },
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      retainedPath,
+      `${JSON.stringify({
+        type: "response_item",
+        payload: {
+          type: "function_call_output",
+          output: "tool noise only",
+        },
+      })}\n`,
+      "utf8",
+    );
+
+    const result = await runCodexConversationFlowBatch({
+      rootPath: blobs,
+      outputDirectory: join(root, "projection"),
+      manifestPath: join(root, "projection", "manifest.jsonl"),
+      limit: 2,
+      minimumSourceBytes: 0,
+      maxMessageBytes: 1000,
+      deleteRawAfterProjection: true,
+      generatedAt: "2026-06-12T08:10:00.000Z",
+    });
+
+    await expect(access(deletablePath)).rejects.toThrow();
+    await expect(access(retainedPath)).resolves.toBeUndefined();
+    expect(result.deletedCount).toBe(1);
+    expect(result.records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceRelativePath: "deletable.jsonl",
+          keptMessageCount: 1,
+          deletedRawBlob: true,
+          skippedDeletionReason: null,
+        }),
+        expect.objectContaining({
+          sourceRelativePath: "retained.jsonl",
+          keptMessageCount: 0,
+          deletedRawBlob: false,
+          skippedDeletionReason: "projection-kept-no-messages",
+        }),
+      ]),
+    );
+    expect(await readFile(join(root, "projection", "deletable.conversation-flow.txt"), "utf8")).toContain(
+      "Peter:\nKeep this conversation.",
+    );
   });
 });

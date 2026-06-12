@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { appendFile, mkdir, opendir, stat, unlink, writeFile } from "node:fs/promises";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
 
 export type CodexConversationFlowCommand = {
@@ -19,6 +19,44 @@ export type CodexConversationFlowStats = {
   skippedRecordCount: number;
   truncatedMessageCount: number;
   outputBytes: number;
+};
+
+export type CodexConversationFlowBatchCommand = {
+  rootPath: string;
+  outputDirectory: string;
+  manifestPath: string;
+  limit: number;
+  minimumSourceBytes: number;
+  maxMessageBytes: number;
+  deleteRawAfterProjection: boolean;
+  generatedAt: string;
+};
+
+export type CodexConversationFlowBatchRecord = {
+  sourcePath: string;
+  sourceRelativePath: string;
+  sourceBytes: number;
+  outputPath: string;
+  outputBytes: number;
+  keptMessageCount: number;
+  skippedRecordCount: number;
+  malformedLineCount: number;
+  truncatedMessageCount: number;
+  deletedRawBlob: boolean;
+  skippedDeletionReason: string | null;
+};
+
+export type CodexConversationFlowBatchResult = {
+  generatedAt: string;
+  rootPath: string;
+  outputDirectory: string;
+  manifestPath: string;
+  processedCount: number;
+  deletedCount: number;
+  sourceBytesProcessed: number;
+  sourceBytesDeleted: number;
+  outputBytesWritten: number;
+  records: CodexConversationFlowBatchRecord[];
 };
 
 type ConversationMessage = {
@@ -44,6 +82,83 @@ export async function writeCodexConversationFlow(
     skippedRecordCount: result.stats.skippedRecordCount,
     truncatedMessageCount: result.stats.truncatedMessageCount,
     outputBytes: Buffer.byteLength(result.text, "utf8"),
+  };
+}
+
+export async function runCodexConversationFlowBatch(
+  command: CodexConversationFlowBatchCommand,
+): Promise<CodexConversationFlowBatchResult> {
+  if (command.limit < 1) {
+    throw new Error("limit must be at least 1");
+  }
+
+  if (command.minimumSourceBytes < 0) {
+    throw new Error("minimumSourceBytes must be zero or greater");
+  }
+
+  const rootPath = resolve(command.rootPath);
+  const outputDirectory = resolve(command.outputDirectory);
+  const manifestPath = resolve(command.manifestPath);
+  await mkdir(outputDirectory, { recursive: true });
+  await mkdir(dirname(manifestPath), { recursive: true });
+  const sources = (await discoverConversationFlowSources(rootPath))
+    .filter((source) => source.sourceBytes >= command.minimumSourceBytes)
+    .sort((left, right) => right.sourceBytes - left.sourceBytes || left.sourcePath.localeCompare(right.sourcePath))
+    .slice(0, command.limit);
+  const records: CodexConversationFlowBatchRecord[] = [];
+
+  for (const source of sources) {
+    const outputPath = join(outputDirectory, `${sourceDigestLabel(source.sourcePath)}.conversation-flow.txt`);
+    const stats = await writeCodexConversationFlow({
+      inputPath: source.sourcePath,
+      outputPath,
+      sourceLabel: source.sourceRelativePath,
+      maxMessageBytes: command.maxMessageBytes,
+    });
+    let deletedRawBlob = false;
+    let skippedDeletionReason: string | null = null;
+
+    if (!command.deleteRawAfterProjection) {
+      skippedDeletionReason = "deleteRawAfterProjection=false";
+    } else if (stats.keptMessageCount < 1) {
+      skippedDeletionReason = "projection-kept-no-messages";
+    } else if (stats.outputBytes < 1) {
+      skippedDeletionReason = "projection-output-empty";
+    } else {
+      await unlink(source.sourcePath);
+      deletedRawBlob = true;
+    }
+
+    const record: CodexConversationFlowBatchRecord = {
+      sourcePath: source.sourcePath,
+      sourceRelativePath: source.sourceRelativePath,
+      sourceBytes: source.sourceBytes,
+      outputPath,
+      outputBytes: stats.outputBytes,
+      keptMessageCount: stats.keptMessageCount,
+      skippedRecordCount: stats.skippedRecordCount,
+      malformedLineCount: stats.malformedLineCount,
+      truncatedMessageCount: stats.truncatedMessageCount,
+      deletedRawBlob,
+      skippedDeletionReason,
+    };
+    records.push(record);
+    await appendFile(manifestPath, `${JSON.stringify({ generatedAt: command.generatedAt, ...record })}\n`, "utf8");
+  }
+
+  return {
+    generatedAt: command.generatedAt,
+    rootPath,
+    outputDirectory,
+    manifestPath,
+    processedCount: records.length,
+    deletedCount: records.filter((record) => record.deletedRawBlob).length,
+    sourceBytesProcessed: records.reduce((sum, record) => sum + record.sourceBytes, 0),
+    sourceBytesDeleted: records
+      .filter((record) => record.deletedRawBlob)
+      .reduce((sum, record) => sum + record.sourceBytes, 0),
+    outputBytesWritten: records.reduce((sum, record) => sum + record.outputBytes, 0),
+    records,
   };
 }
 
@@ -220,6 +335,50 @@ function renderConversationFlow(sourceLabel: string, messages: ConversationMessa
   ];
 
   return `${blocks.join("\n\n")}\n`;
+}
+
+async function discoverConversationFlowSources(rootPath: string): Promise<Array<{
+  sourcePath: string;
+  sourceRelativePath: string;
+  sourceBytes: number;
+}>> {
+  const sources: Array<{
+    sourcePath: string;
+    sourceRelativePath: string;
+    sourceBytes: number;
+  }> = [];
+
+  async function walk(directory: string): Promise<void> {
+    const entries = await opendir(directory);
+
+    for await (const entry of entries) {
+      const entryPath = join(directory, entry.name);
+
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+        continue;
+      }
+
+      if (!entry.isFile() || !entry.name.endsWith(".jsonl")) {
+        continue;
+      }
+
+      const fileStat = await stat(entryPath);
+      sources.push({
+        sourcePath: entryPath,
+        sourceRelativePath: relative(rootPath, entryPath).split(sep).join("/"),
+        sourceBytes: fileStat.size,
+      });
+    }
+  }
+
+  await walk(rootPath);
+  return sources;
+}
+
+function sourceDigestLabel(path: string): string {
+  const name = basename(path);
+  return name.endsWith(".jsonl") ? name.slice(0, -".jsonl".length) : name;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

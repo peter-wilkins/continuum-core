@@ -8991,7 +8991,11 @@ export {
 
 export {
   extractCodexConversationFlow,
+  runCodexConversationFlowBatch,
   writeCodexConversationFlow,
+  type CodexConversationFlowBatchCommand,
+  type CodexConversationFlowBatchRecord,
+  type CodexConversationFlowBatchResult,
   type CodexConversationFlowCommand,
   type CodexConversationFlowStats,
 } from "./codex-conversation-flow";
