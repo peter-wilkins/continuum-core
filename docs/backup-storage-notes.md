@@ -21,11 +21,18 @@ Use:
 
 ```bash
 rsync -a --delete \
-  --exclude-from=/home/peter/continuum-core/docs/backup-excludes.home.rsync \
+  --exclude-from=/home/peter/.backup/rsync-home.exclude \
   /home/peter/ <backup-target>/home-peter/
 ```
 
-The exclude file is conservative. It excludes:
+The shared exclude file lives outside this repo so other projects can add their
+own rebuildable caches:
+
+```text
+/home/peter/.backup/rsync-home.exclude
+```
+
+Continuum's entries are conservative. They exclude:
 
 - `node_modules`
 - `dist`
