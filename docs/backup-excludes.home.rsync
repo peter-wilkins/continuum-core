@@ -1,0 +1,25 @@
+# Rsync exclude patterns for backing up /home/peter.
+#
+# Intended use:
+#   rsync -a --delete --exclude-from=/home/peter/continuum-core/docs/backup-excludes.home.rsync /home/peter/ <backup-target>/home-peter/
+#
+# This file excludes rebuildable Continuum Core caches, package outputs, and
+# public/downloadable datasets. It does not exclude private source logs.
+
+/continuum-core/node_modules/
+/continuum-core/dist/
+/continuum-core/coverage/
+/continuum-core/.vitest/
+
+# Local reports and indexes are rebuildable from source/projection files.
+/continuum-core/local/reports/
+/continuum-core/local/codex-session-conversations/search.sqlite
+/continuum-core/local/codex-session-conversations/search.sqlite-shm
+/continuum-core/local/codex-session-conversations/search.sqlite-wal
+
+# Public/re-fetchable audio datasets and downloaded archives.
+/continuum-core/data/audio-datasets/
+
+# Incomplete atomic-write scratch files from the Codex mirror.
+/continuum-core/data/codex/session-mirror/**/*.tmp
+
