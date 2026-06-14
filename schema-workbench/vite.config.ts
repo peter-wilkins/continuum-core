@@ -209,6 +209,9 @@ async function importWorkbenchData() {
 }
 
 export default defineConfig({
+  server: {
+    allowedHosts: ["peter.tail33843e.ts.net"],
+  },
   plugins: [
     {
       name: "continuum-git-hash",
