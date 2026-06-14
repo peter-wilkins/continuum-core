@@ -14,8 +14,10 @@ type ParsedCli = {
   manifestPath: string;
   limit: number;
   minimumSourceBytes: number;
+  minimumAgeSeconds: number;
   maxMessageBytes: number;
   deleteRawAfterProjection: boolean;
+  skipManifestRecordedSources: boolean;
 };
 
 function parseCli(args: string[]): ParsedCli {
@@ -33,8 +35,10 @@ function parseCli(args: string[]): ParsedCli {
     manifestPath: "local/codex-session-conversations/conversation-flow-manifest.jsonl",
     limit: 25,
     minimumSourceBytes: 1024 * 1024,
+    minimumAgeSeconds: 60,
     maxMessageBytes: 12000,
     deleteRawAfterProjection: false,
+    skipManifestRecordedSources: true,
   };
 
   for (let index = 0; index < flags.length; index += 1) {
@@ -46,6 +50,11 @@ function parseCli(args: string[]): ParsedCli {
 
     if (flag === "--delete-raw-after-projection") {
       parsed.deleteRawAfterProjection = true;
+      continue;
+    }
+
+    if (flag === "--include-manifest-recorded-sources") {
+      parsed.skipManifestRecordedSources = false;
       continue;
     }
 
@@ -77,6 +86,11 @@ function parseCli(args: string[]): ParsedCli {
       continue;
     }
 
+    if (flag === "--minimum-age-seconds") {
+      parsed.minimumAgeSeconds = parseNonNegativeInteger(value, flag);
+      continue;
+    }
+
     if (flag === "--max-message-bytes") {
       parsed.maxMessageBytes = parsePositiveInteger(value, flag);
       continue;
@@ -103,8 +117,10 @@ export async function runCodexConversationFlowBatchCli(args: string[]): Promise<
     manifestPath: parsed.manifestPath,
     limit: parsed.limit,
     minimumSourceBytes: parsed.minimumSourceBytes,
+    minimumAgeSeconds: parsed.minimumAgeSeconds,
     maxMessageBytes: parsed.maxMessageBytes,
     deleteRawAfterProjection: parsed.deleteRawAfterProjection,
+    skipManifestRecordedSources: parsed.skipManifestRecordedSources,
     generatedAt,
   };
   const result = await runCodexConversationFlowBatch(command);

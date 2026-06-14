@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { appendFile, mkdir, opendir, stat, unlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, opendir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
 
@@ -27,8 +27,10 @@ export type CodexConversationFlowBatchCommand = {
   manifestPath: string;
   limit: number;
   minimumSourceBytes: number;
+  minimumAgeSeconds: number;
   maxMessageBytes: number;
   deleteRawAfterProjection: boolean;
+  skipManifestRecordedSources: boolean;
   generatedAt: string;
 };
 
@@ -36,6 +38,7 @@ export type CodexConversationFlowBatchRecord = {
   sourcePath: string;
   sourceRelativePath: string;
   sourceBytes: number;
+  sourceModifiedAt: string;
   outputPath: string;
   outputBytes: number;
   keptMessageCount: number;
@@ -96,13 +99,27 @@ export async function runCodexConversationFlowBatch(
     throw new Error("minimumSourceBytes must be zero or greater");
   }
 
+  if (command.minimumAgeSeconds < 0) {
+    throw new Error("minimumAgeSeconds must be zero or greater");
+  }
+
   const rootPath = resolve(command.rootPath);
   const outputDirectory = resolve(command.outputDirectory);
   const manifestPath = resolve(command.manifestPath);
   await mkdir(outputDirectory, { recursive: true });
   await mkdir(dirname(manifestPath), { recursive: true });
+  const recordedSources = command.skipManifestRecordedSources
+    ? await readManifestRecordedSources(manifestPath)
+    : new Set<string>();
+  const minimumModifiedAtMs = Date.now() - command.minimumAgeSeconds * 1000;
   const sources = (await discoverConversationFlowSources(rootPath))
     .filter((source) => source.sourceBytes >= command.minimumSourceBytes)
+    .filter((source) => source.sourceModifiedAtMs <= minimumModifiedAtMs)
+    .filter(
+      (source) =>
+        !recordedSources.has(source.sourcePath) &&
+        !recordedSources.has(source.sourceRelativePath),
+    )
     .sort((left, right) => right.sourceBytes - left.sourceBytes || left.sourcePath.localeCompare(right.sourcePath))
     .slice(0, command.limit);
   const records: CodexConversationFlowBatchRecord[] = [];
@@ -133,6 +150,7 @@ export async function runCodexConversationFlowBatch(
       sourcePath: source.sourcePath,
       sourceRelativePath: source.sourceRelativePath,
       sourceBytes: source.sourceBytes,
+      sourceModifiedAt: new Date(source.sourceModifiedAtMs).toISOString(),
       outputPath,
       outputBytes: stats.outputBytes,
       keptMessageCount: stats.keptMessageCount,
@@ -341,11 +359,13 @@ async function discoverConversationFlowSources(rootPath: string): Promise<Array<
   sourcePath: string;
   sourceRelativePath: string;
   sourceBytes: number;
+  sourceModifiedAtMs: number;
 }>> {
   const sources: Array<{
     sourcePath: string;
     sourceRelativePath: string;
     sourceBytes: number;
+    sourceModifiedAtMs: number;
   }> = [];
 
   async function walk(directory: string): Promise<void> {
@@ -368,12 +388,52 @@ async function discoverConversationFlowSources(rootPath: string): Promise<Array<
         sourcePath: entryPath,
         sourceRelativePath: relative(rootPath, entryPath).split(sep).join("/"),
         sourceBytes: fileStat.size,
+        sourceModifiedAtMs: fileStat.mtimeMs,
       });
     }
   }
 
   await walk(rootPath);
   return sources;
+}
+
+async function readManifestRecordedSources(manifestPath: string): Promise<Set<string>> {
+  try {
+    const text = await readFile(manifestPath, "utf8");
+    const sources = new Set<string>();
+
+    for (const line of text.split(/\r?\n/)) {
+      if (line.trim().length === 0) {
+        continue;
+      }
+
+      try {
+        const parsed = JSON.parse(line) as unknown;
+
+        if (!isRecord(parsed)) {
+          continue;
+        }
+
+        if (typeof parsed.sourcePath === "string") {
+          sources.add(parsed.sourcePath);
+        }
+
+        if (typeof parsed.sourceRelativePath === "string") {
+          sources.add(parsed.sourceRelativePath);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return sources;
+  } catch (error: unknown) {
+    if (isRecord(error) && error.code === "ENOENT") {
+      return new Set<string>();
+    }
+
+    throw error;
+  }
 }
 
 function sourceDigestLabel(path: string): string {

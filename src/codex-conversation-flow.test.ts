@@ -1,4 +1,4 @@
-import { access, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -172,8 +172,10 @@ describe("Codex conversation flow projection", () => {
       manifestPath: join(root, "projection", "manifest.jsonl"),
       limit: 2,
       minimumSourceBytes: 0,
+      minimumAgeSeconds: 0,
       maxMessageBytes: 1000,
       deleteRawAfterProjection: true,
+      skipManifestRecordedSources: true,
       generatedAt: "2026-06-12T08:10:00.000Z",
     });
 
@@ -199,5 +201,91 @@ describe("Codex conversation flow projection", () => {
     expect(await readFile(join(root, "projection", "deletable.conversation-flow.txt"), "utf8")).toContain(
       "Peter:\nKeep this conversation.",
     );
+  });
+
+  it("batch mode does not touch blobs from the last minute", async () => {
+    const root = await mkdtemp(join(tmpdir(), "continuum-conversation-fresh-"));
+    const blobs = join(root, "blobs");
+    await mkdir(blobs, { recursive: true });
+    const freshPath = join(blobs, "fresh.jsonl");
+    await writeFile(
+      freshPath,
+      `${JSON.stringify({
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "Do not touch this yet." }],
+        },
+      })}\n`,
+      "utf8",
+    );
+
+    const result = await runCodexConversationFlowBatch({
+      rootPath: blobs,
+      outputDirectory: join(root, "projection"),
+      manifestPath: join(root, "projection", "manifest.jsonl"),
+      limit: 10,
+      minimumSourceBytes: 0,
+      minimumAgeSeconds: 60,
+      maxMessageBytes: 1000,
+      deleteRawAfterProjection: true,
+      skipManifestRecordedSources: true,
+      generatedAt: "2026-06-14T12:30:00.000Z",
+    });
+
+    await expect(access(freshPath)).resolves.toBeUndefined();
+    expect(result.processedCount).toBe(0);
+    expect(result.deletedCount).toBe(0);
+  });
+
+  it("batch mode skips blobs already recorded in the manifest", async () => {
+    const root = await mkdtemp(join(tmpdir(), "continuum-conversation-manifest-"));
+    const blobs = join(root, "blobs");
+    const projection = join(root, "projection");
+    await mkdir(blobs, { recursive: true });
+    await mkdir(projection, { recursive: true });
+    const oldPath = join(blobs, "already-seen.jsonl");
+    await writeFile(
+      oldPath,
+      `${JSON.stringify({
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "Already handled." }],
+        },
+      })}\n`,
+      "utf8",
+    );
+    const oldDate = new Date("2026-06-14T12:00:00.000Z");
+    await utimes(oldPath, oldDate, oldDate);
+    await writeFile(
+      join(projection, "manifest.jsonl"),
+      `${JSON.stringify({
+        sourcePath: oldPath,
+        sourceRelativePath: "already-seen.jsonl",
+        deletedRawBlob: false,
+        skippedDeletionReason: "projection-kept-no-messages",
+      })}\n`,
+      "utf8",
+    );
+
+    const result = await runCodexConversationFlowBatch({
+      rootPath: blobs,
+      outputDirectory: projection,
+      manifestPath: join(projection, "manifest.jsonl"),
+      limit: 10,
+      minimumSourceBytes: 0,
+      minimumAgeSeconds: 0,
+      maxMessageBytes: 1000,
+      deleteRawAfterProjection: true,
+      skipManifestRecordedSources: true,
+      generatedAt: "2026-06-14T12:30:00.000Z",
+    });
+
+    await expect(access(oldPath)).resolves.toBeUndefined();
+    expect(result.processedCount).toBe(0);
+    expect(result.deletedCount).toBe(0);
   });
 });

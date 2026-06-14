@@ -62,6 +62,7 @@ node dist/codex-conversation-flow-batch-cli.js data/codex/session-mirror/blobs \
   --delete-raw-after-projection \
   --limit 25 \
   --minimum-source-bytes 1048576 \
+  --minimum-age-seconds 60 \
   --out local/codex-session-conversations/conversation-flow \
   --manifest local/codex-session-conversations/conversation-flow-manifest.jsonl
 ```
@@ -74,3 +75,20 @@ Deletion guard:
 - delete that one raw blob
 
 If a blob produces no kept messages, the raw blob is left in place.
+
+By default the batch command:
+
+- ignores blobs modified in the last 60 seconds
+- skips sources already recorded in the manifest
+
+## User Timer
+
+The local timer files are:
+
+```text
+docs/systemd/continuum-codex-conversation-flow-cleanup.service
+docs/systemd/continuum-codex-conversation-flow-cleanup.timer
+```
+
+The timer runs every 15 minutes and uses `flock` so overlapping runs exit
+without touching files.

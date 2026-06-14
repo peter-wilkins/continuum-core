@@ -1,0 +1,8 @@
+[Unit]
+Description=Compact Continuum Codex session mirror blobs into conversation flow
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/peter/continuum-core
+ExecStart=/usr/bin/flock -n /home/peter/continuum-core/local/codex-session-conversations/cleanup.lock /usr/bin/node /home/peter/continuum-core/dist/codex-conversation-flow-batch-cli.js /home/peter/continuum-core/data/codex/session-mirror/blobs --delete-raw-after-projection --limit 500 --minimum-source-bytes 1048576 --minimum-age-seconds 60 --out /home/peter/continuum-core/local/codex-session-conversations/conversation-flow --manifest /home/peter/continuum-core/local/codex-session-conversations/conversation-flow-manifest.jsonl
+
