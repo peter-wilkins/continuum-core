@@ -4,8 +4,7 @@ Current scan date: 2026-06-14.
 
 ## Current Large Areas
 
-- `local/codex-session-conversations/search.sqlite`: about 9.2GB.
-  Rebuildable SQLite FTS cache.
+- `local/codex-session-conversations/search-cache`: rebuildable SQLite FTS cache.
 - `data/audio-datasets`: about 9.7GB.
   Public or manually fetched research datasets from `npm run audio-datasets:fetch`.
 - `data/codex/session-mirror`: about 1.8GB after compaction.
@@ -38,7 +37,7 @@ Continuum's entries are conservative. They exclude:
 - `dist`
 - test/build caches
 - local reports
-- SQLite search cache
+- SQLite search cache folder
 - public/re-fetchable audio datasets
 - stale `.tmp` files from the Codex mirror
 

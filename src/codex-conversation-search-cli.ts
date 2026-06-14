@@ -41,14 +41,14 @@ function parseIndexCli(args: string[]): ParsedCli {
 
   if (!inputDirectory) {
     throw new Error(
-      "Usage: continuum-codex-conversation-search index <conversation-flow-dir> [--db local/codex-session-conversations/search.sqlite] [--reset]",
+      "Usage: continuum-codex-conversation-search index <conversation-flow-dir> [--db local/codex-session-conversations/search-cache/search.sqlite] [--reset]",
     );
   }
 
   const parsed = {
     mode: "index" as const,
     inputDirectory,
-    databasePath: "local/codex-session-conversations/search.sqlite",
+    databasePath: "local/codex-session-conversations/search-cache/search.sqlite",
     reset: false,
   };
 
@@ -84,13 +84,13 @@ function parseSearchCli(args: string[]): ParsedCli {
 
   if (!query) {
     throw new Error(
-      "Usage: continuum-codex-conversation-search search <query> [--db local/codex-session-conversations/search.sqlite] [--limit 10]",
+      "Usage: continuum-codex-conversation-search search <query> [--db local/codex-session-conversations/search-cache/search.sqlite] [--limit 10]",
     );
   }
 
   const parsed = {
     mode: "search" as const,
-    databasePath: "local/codex-session-conversations/search.sqlite",
+    databasePath: "local/codex-session-conversations/search-cache/search.sqlite",
     query,
     limit: 10,
   };

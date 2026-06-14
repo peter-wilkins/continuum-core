@@ -17,7 +17,7 @@ The SQLite database can be deleted and rebuilt.
 npm run build
 node dist/codex-conversation-search-cli.js index \
   local/codex-session-conversations/conversation-flow \
-  --db local/codex-session-conversations/search.sqlite \
+  --db local/codex-session-conversations/search-cache/search.sqlite \
   --reset
 ```
 
@@ -25,7 +25,7 @@ node dist/codex-conversation-search-cli.js index \
 
 ```bash
 node dist/codex-conversation-search-cli.js search "extended thought" \
-  --db local/codex-session-conversations/search.sqlite \
+  --db local/codex-session-conversations/search-cache/search.sqlite \
   --limit 10
 ```
 
