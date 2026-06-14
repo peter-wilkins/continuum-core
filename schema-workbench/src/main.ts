@@ -9,6 +9,7 @@ type CodexConversationSearchResult = {
   rank: number;
   speaker: "Peter" | "Agent";
   snippet: string;
+  excerpt: string;
   projectionPath: string;
   sourceLabel: string;
   messageIndex: number;
@@ -235,22 +236,21 @@ function renderCodexSearchPanel(): string {
   const stats = importWorkbenchData.codexConversationSearch;
 
   return `
-    <section class="panel search-panel">
+    <section class="panel search-panel search-panel-primary">
       <header class="section-header">
         <div>
-          <h2>Codex Conversation Search</h2>
-          <p><code>${escapeHtml(stats.databasePath)}</code></p>
+          <h2>Conversation Search</h2>
+          <p>${stats.projectionFileCount} projected conversations · ${formatBytes(stats.databaseBytes)} search cache</p>
         </div>
         <dl>
-          ${renderMetric("Search Cache", stats.ready ? "ready" : "missing")}
-          ${renderMetric("DB Size", formatBytes(stats.databaseBytes))}
-          ${renderMetric("Projections", stats.projectionFileCount)}
+          ${renderMetric("Cache", stats.ready ? "ready" : "missing")}
+          ${renderMetric("Chunks", "top 10")}
         </dl>
       </header>
       <form id="codex-search-form" class="search-form">
-        <label for="codex-search-query">Query</label>
         <input
           id="codex-search-query"
+          aria-label="Search conversations"
           name="query"
           type="search"
           value="blog posts"
@@ -260,7 +260,7 @@ function renderCodexSearchPanel(): string {
         <button type="submit">Search</button>
       </form>
       <div id="codex-search-status" class="search-status" role="status">
-        Search the local SQLite FTS cache.
+        Ready.
       </div>
       <ol id="codex-search-results" class="search-results"></ol>
     </section>
@@ -272,10 +272,10 @@ function renderSearchResult(result: CodexConversationSearchResult): string {
     <li>
       <article>
         <header>
-          <strong>${result.rank}. ${escapeHtml(result.speaker)}</strong>
-          <code>${escapeHtml(result.projectionPath)}#${result.messageIndex}</code>
+          <strong>Chunk ${result.rank}</strong>
+          <span>${escapeHtml(result.speaker)}</span>
         </header>
-        <p>${escapeHtml(result.snippet)}</p>
+        <p>${escapeHtml(result.excerpt)}</p>
       </article>
     </li>
   `;
@@ -300,6 +300,8 @@ function renderApp(schema: EventSchema): string {
         ${renderMetric("Schema Fields", fieldCount(schema))}
       </dl>
     </header>
+
+    ${renderCodexSearchPanel()}
 
     <section class="dashboard-grid">
       <div class="panel">
@@ -336,8 +338,6 @@ function renderApp(schema: EventSchema): string {
       </header>
       <div class="candidate-stack">${candidates}</div>
     </section>
-
-    ${renderCodexSearchPanel()}
 
     <section class="panel">
       <h2>Timeline</h2>
@@ -383,7 +383,7 @@ async function runCodexSearch(query: string): Promise<void> {
   searchResults.innerHTML = "";
 
   const response = await fetch(
-    `/api/codex-conversation-search?query=${encodeURIComponent(query)}&limit=12`,
+    `/api/codex-conversation-search?query=${encodeURIComponent(query)}&limit=10`,
     {
       headers: {
         Accept: "application/json",
@@ -400,7 +400,7 @@ async function runCodexSearch(query: string): Promise<void> {
     return;
   }
 
-  searchStatus.textContent = `${payload.results.length} result${payload.results.length === 1 ? "" : "s"}`;
+  searchStatus.textContent = `${payload.results.length} relevant chunk${payload.results.length === 1 ? "" : "s"}`;
   searchResults.innerHTML = payload.results.map(renderSearchResult).join("");
 }
 

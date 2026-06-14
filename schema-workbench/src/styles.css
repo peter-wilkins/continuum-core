@@ -247,17 +247,10 @@ code {
 
 .search-form {
   display: grid;
-  grid-template-columns: auto minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto;
   gap: 10px;
   align-items: center;
-  margin-top: 14px;
-}
-
-.search-form label {
-  color: #66716b;
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  margin-top: 16px;
 }
 
 .search-form input {
@@ -269,6 +262,7 @@ code {
   color: #151917;
   background: #ffffff;
   font: inherit;
+  font-size: 1.05rem;
 }
 
 .search-form button {
@@ -311,8 +305,16 @@ code {
   align-items: flex-start;
 }
 
+.search-results header span {
+  color: #66716b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .search-results p {
   margin: 8px 0 0;
+  color: #202823;
+  white-space: pre-wrap;
 }
 
 .search-results mark,

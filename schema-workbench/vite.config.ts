@@ -40,6 +40,7 @@ type CodexConversationSearchResult = {
   rank: number;
   speaker: "Peter" | "Agent";
   snippet: string;
+  excerpt: string;
   projectionPath: string;
   sourceLabel: string;
   messageIndex: number;

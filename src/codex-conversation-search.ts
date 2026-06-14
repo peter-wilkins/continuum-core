@@ -32,6 +32,7 @@ export type CodexConversationSearchResult = {
   rank: number;
   speaker: "Peter" | "Agent";
   snippet: string;
+  excerpt: string;
   projectionPath: string;
   sourceLabel: string;
   messageIndex: number;
@@ -126,6 +127,7 @@ export function searchCodexConversationFlow(
         SELECT
           speaker,
           snippet(conversation_messages_fts, 1, '[', ']', '...', 18) AS snippet,
+          substr(text, 1, 900) AS excerpt,
           projection_path AS projectionPath,
           source_label AS sourceLabel,
           message_index AS messageIndex,
@@ -142,6 +144,7 @@ export function searchCodexConversationFlow(
       rank: index + 1,
       speaker: readSpeaker(row.speaker),
       snippet: String(row.snippet),
+      excerpt: String(row.excerpt),
       projectionPath: String(row.projectionPath),
       sourceLabel: String(row.sourceLabel),
       messageIndex: Number(row.messageIndex),
