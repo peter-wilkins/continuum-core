@@ -53,5 +53,12 @@ declare module "virtual:continuum-import-workbench-data" {
         }>;
       }>;
     };
+    codexConversationSearch: {
+      ready: boolean;
+      databasePath: string;
+      databaseBytes: number;
+      conversationFlowDirectory: string;
+      projectionFileCount: number;
+    };
   };
 }

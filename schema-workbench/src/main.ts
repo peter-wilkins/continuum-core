@@ -5,6 +5,14 @@ import "./styles.css";
 
 type CanonicalEvent = (typeof importWorkbenchData.events)[number];
 type RetrievalCandidate = (typeof importWorkbenchData.retrieval.candidates)[number];
+type CodexConversationSearchResult = {
+  rank: number;
+  speaker: "Peter" | "Agent";
+  snippet: string;
+  projectionPath: string;
+  sourceLabel: string;
+  messageIndex: number;
+};
 
 function escapeHtml(value: string): string {
   return value
@@ -68,6 +76,23 @@ function renderMetric(label: string, value: string | number): string {
       <dd>${escapeHtml(String(value))}</dd>
     </div>
   `;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[unitIndex]}`;
 }
 
 function renderSourceBars(): string {
@@ -206,6 +231,56 @@ function renderSection(section: EventSchema["sections"][number]): string {
   `;
 }
 
+function renderCodexSearchPanel(): string {
+  const stats = importWorkbenchData.codexConversationSearch;
+
+  return `
+    <section class="panel search-panel">
+      <header class="section-header">
+        <div>
+          <h2>Codex Conversation Search</h2>
+          <p><code>${escapeHtml(stats.databasePath)}</code></p>
+        </div>
+        <dl>
+          ${renderMetric("Search Cache", stats.ready ? "ready" : "missing")}
+          ${renderMetric("DB Size", formatBytes(stats.databaseBytes))}
+          ${renderMetric("Projections", stats.projectionFileCount)}
+        </dl>
+      </header>
+      <form id="codex-search-form" class="search-form">
+        <label for="codex-search-query">Query</label>
+        <input
+          id="codex-search-query"
+          name="query"
+          type="search"
+          value="blog posts"
+          autocomplete="off"
+          spellcheck="true"
+        />
+        <button type="submit">Search</button>
+      </form>
+      <div id="codex-search-status" class="search-status" role="status">
+        Search the local SQLite FTS cache.
+      </div>
+      <ol id="codex-search-results" class="search-results"></ol>
+    </section>
+  `;
+}
+
+function renderSearchResult(result: CodexConversationSearchResult): string {
+  return `
+    <li>
+      <article>
+        <header>
+          <strong>${result.rank}. ${escapeHtml(result.speaker)}</strong>
+          <code>${escapeHtml(result.projectionPath)}#${result.messageIndex}</code>
+        </header>
+        <p>${escapeHtml(result.snippet)}</p>
+      </article>
+    </li>
+  `;
+}
+
 function renderApp(schema: EventSchema): string {
   const candidates = importWorkbenchData.retrieval.candidates
     .map(renderCandidate)
@@ -262,6 +337,8 @@ function renderApp(schema: EventSchema): string {
       <div class="candidate-stack">${candidates}</div>
     </section>
 
+    ${renderCodexSearchPanel()}
+
     <section class="panel">
       <h2>Timeline</h2>
       <table>
@@ -291,3 +368,52 @@ if (!app) {
 }
 
 app.innerHTML = renderApp(canonicalEventSchema);
+
+const searchForm = document.querySelector<HTMLFormElement>("#codex-search-form");
+const searchQuery = document.querySelector<HTMLInputElement>("#codex-search-query");
+const searchStatus = document.querySelector<HTMLDivElement>("#codex-search-status");
+const searchResults = document.querySelector<HTMLOListElement>("#codex-search-results");
+
+async function runCodexSearch(query: string): Promise<void> {
+  if (!searchStatus || !searchResults) {
+    return;
+  }
+
+  searchStatus.textContent = "Searching...";
+  searchResults.innerHTML = "";
+
+  const response = await fetch(
+    `/api/codex-conversation-search?query=${encodeURIComponent(query)}&limit=12`,
+    {
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+  const payload = (await response.json()) as {
+    results: CodexConversationSearchResult[];
+    error: string | null;
+  };
+
+  if (payload.error !== null) {
+    searchStatus.textContent = payload.error;
+    return;
+  }
+
+  searchStatus.textContent = `${payload.results.length} result${payload.results.length === 1 ? "" : "s"}`;
+  searchResults.innerHTML = payload.results.map(renderSearchResult).join("");
+}
+
+searchForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  if (!searchQuery) {
+    return;
+  }
+
+  void runCodexSearch(searchQuery.value);
+});
+
+if (searchQuery && importWorkbenchData.codexConversationSearch.ready) {
+  void runCodexSearch(searchQuery.value);
+}

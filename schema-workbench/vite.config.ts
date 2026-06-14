@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { defineConfig } from "vite";
 
@@ -36,6 +36,15 @@ type CanonicalEvent = {
   };
 };
 
+type CodexConversationSearchResult = {
+  rank: number;
+  speaker: "Peter" | "Agent";
+  snippet: string;
+  projectionPath: string;
+  sourceLabel: string;
+  messageIndex: number;
+};
+
 function readJsonFile(path: string): unknown | null {
   if (!existsSync(path)) {
     return null;
@@ -64,6 +73,92 @@ function sourceCounts(events: CanonicalEvent[]): Record<string, number> {
   }
 
   return counts;
+}
+
+function fileSize(path: string): number {
+  if (!existsSync(path)) {
+    return 0;
+  }
+
+  return statSync(path).size;
+}
+
+function countFiles(path: string, suffix: string): number {
+  if (!existsSync(path)) {
+    return 0;
+  }
+
+  let count = 0;
+
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    const entryPath = join(path, entry.name);
+
+    if (entry.isDirectory()) {
+      count += countFiles(entryPath, suffix);
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.endsWith(suffix)) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+function codexConversationSearchStats(repoRoot: string) {
+  const conversationFlowDirectory = resolve(
+    repoRoot,
+    "local/codex-session-conversations/conversation-flow",
+  );
+  const databasePath = resolve(
+    repoRoot,
+    "local/codex-session-conversations/search-cache/search.sqlite",
+  );
+
+  return {
+    ready: existsSync(databasePath),
+    databasePath: "local/codex-session-conversations/search-cache/search.sqlite",
+    databaseBytes: fileSize(databasePath),
+    conversationFlowDirectory: "local/codex-session-conversations/conversation-flow",
+    projectionFileCount: countFiles(conversationFlowDirectory, ".conversation-flow.txt"),
+  };
+}
+
+async function searchCodexConversation(repoRoot: string, query: string, limit: number): Promise<{
+  results: CodexConversationSearchResult[];
+  error: string | null;
+}> {
+  if (query.trim().length === 0) {
+    return {
+      results: [],
+      error: "Enter a query.",
+    };
+  }
+
+  try {
+    const indexModule = await import(pathToFileURL(resolve(repoRoot, "dist/index.js")).href);
+    const results = indexModule.searchCodexConversationFlow({
+      databasePath: resolve(
+        repoRoot,
+        "local/codex-session-conversations/search-cache/search.sqlite",
+      ),
+      query,
+      limit,
+    }) as CodexConversationSearchResult[];
+
+    return {
+      results,
+      error: null,
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    return {
+      results: [],
+      error: message,
+    };
+  }
 }
 
 async function importWorkbenchData() {
@@ -108,6 +203,7 @@ async function importWorkbenchData() {
       candidateSpread: surface.candidateSpread,
       candidates,
     },
+    codexConversationSearch: codexConversationSearchStats(repoRoot),
   };
 }
 
@@ -165,6 +261,30 @@ export default defineConfig({
         }
 
         return null;
+      },
+    },
+    {
+      name: "continuum-codex-conversation-search-api",
+      configureServer(server) {
+        server.middlewares.use(async (request, response, next) => {
+          const url = new URL(request.url ?? "/", "http://127.0.0.1");
+
+          if (url.pathname !== "/api/codex-conversation-search") {
+            next();
+            return;
+          }
+
+          const query = url.searchParams.get("query") ?? "";
+          const limit = Number(url.searchParams.get("limit") ?? "10");
+          const payload = await searchCodexConversation(
+            process.cwd(),
+            query,
+            Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 50) : 10,
+          );
+          response.setHeader("Content-Type", "application/json");
+          response.setHeader("Cache-Control", "no-store");
+          response.end(JSON.stringify(payload));
+        });
       },
     },
   ],
