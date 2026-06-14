@@ -277,6 +277,30 @@ code {
   cursor: pointer;
 }
 
+.quick-query-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.quick-query-list button {
+  padding: 6px 10px;
+  border: 1px solid #c7d0ca;
+  border-radius: 999px;
+  color: #26312b;
+  background: #f5f7f5;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.quick-query-list button:hover,
+.quick-query-list button:focus-visible {
+  border-color: #2f7d64;
+  outline: none;
+}
+
 .search-status {
   margin-top: 12px;
   color: #4f5a54;
@@ -291,34 +315,103 @@ code {
   list-style: none;
 }
 
-.search-results article {
-  padding: 12px;
+.thought-result-card {
+  padding: 14px;
   border: 1px solid #e4e9e6;
   border-radius: 8px;
   background: #fbfcfb;
 }
 
-.search-results header {
+.thought-result-card header {
   display: flex;
   gap: 10px;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
 }
 
-.search-results header span {
+.thought-result-card header strong {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  color: #173e31;
+  background: #dceee7;
+}
+
+.thought-result-card header span {
   color: #66716b;
   font-size: 0.9rem;
   font-weight: 700;
 }
 
-.search-results p {
-  margin: 8px 0 0;
+.thought-result-card p {
+  margin: 10px 0 0;
   color: #202823;
-  white-space: pre-wrap;
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+.match-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e4e9e6;
+}
+
+.match-line span,
+.thought-result-card summary {
+  color: #66716b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.match-line q {
+  color: #4f5a54;
+  quotes: none;
+}
+
+.match-line mark {
+  padding: 1px 3px;
+  border-radius: 4px;
+  color: #173e31;
+  background: #dceee7;
+}
+
+.thought-result-card details {
+  margin-top: 10px;
+}
+
+.thought-result-card summary {
+  cursor: pointer;
+}
+
+.source-trail-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.source-trail-list div {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.source-trail-list dd {
+  margin: 0;
+  color: #4f5a54;
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 
 .search-results mark,
-.search-results p {
+.search-results p,
+.match-line q,
+.source-trail-list dd {
   overflow-wrap: anywhere;
 }
 
@@ -347,5 +440,10 @@ code {
 
   .metric {
     flex: 1;
+  }
+
+  .match-line,
+  .source-trail-list div {
+    grid-template-columns: 1fr;
   }
 }

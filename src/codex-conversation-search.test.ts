@@ -93,4 +93,50 @@ describe("Codex conversation search", () => {
     });
     expect(results[0]?.snippet).toContain("[blog]");
   });
+
+  it("returns distinct conversation chunks when mirrored blobs repeat the same message", async () => {
+    const root = await mkdtemp(join(tmpdir(), "continuum-conversation-search-dedupe-"));
+    const flowDir = join(root, "flow");
+    await mkdir(flowDir, { recursive: true });
+    const duplicateFlow = [
+      "Source: duplicated-fixture",
+      "",
+      "Agent:",
+      "Prototype UI should answer the product question before visual polish.",
+      "",
+    ].join("\n");
+    await writeFile(join(flowDir, "one.conversation-flow.txt"), duplicateFlow, "utf8");
+    await writeFile(join(flowDir, "two.conversation-flow.txt"), duplicateFlow, "utf8");
+    await writeFile(
+      join(flowDir, "three.conversation-flow.txt"),
+      [
+        "Source: distinct-fixture",
+        "",
+        "Peter:",
+        "Prototype UI needs thought-sized chunks instead of document blobs.",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const databasePath = join(root, "search.sqlite");
+    await indexCodexConversationFlow({
+      inputDirectory: flowDir,
+      databasePath,
+      generatedAt: "2026-06-14T14:55:00.000Z",
+      reset: true,
+    });
+
+    const results = searchCodexConversationFlow({
+      databasePath,
+      query: "prototype UI",
+      limit: 10,
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results.map((result) => result.rank)).toEqual([1, 2]);
+    expect(results.map((result) => result.excerpt)).toEqual([
+      "Prototype UI should answer the product question before visual polish.",
+      "Prototype UI needs thought-sized chunks instead of document blobs.",
+    ]);
+  });
 });

@@ -234,6 +234,7 @@ function renderSection(section: EventSchema["sections"][number]): string {
 
 function renderCodexSearchPanel(): string {
   const stats = importWorkbenchData.codexConversationSearch;
+  const quickQueries = ["prototype UI", "phone testing", "extended thought", "blog posts"];
 
   return `
     <section class="panel search-panel search-panel-primary">
@@ -259,6 +260,17 @@ function renderCodexSearchPanel(): string {
         />
         <button type="submit">Search</button>
       </form>
+      <div class="quick-query-list" aria-label="Quick searches">
+        ${quickQueries
+          .map(
+            (query) => `
+              <button type="button" data-query="${escapeHtml(query)}">
+                ${escapeHtml(query)}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
       <div id="codex-search-status" class="search-status" role="status">
         Ready.
       </div>
@@ -267,15 +279,52 @@ function renderCodexSearchPanel(): string {
   `;
 }
 
+function speakerLabel(speaker: CodexConversationSearchResult["speaker"]): string {
+  return speaker === "Peter" ? "You said" : "Agent replied";
+}
+
+function cleanConversationExcerpt(value: string): string {
+  const collapsed = value.replace(/\s+/g, " ").trim();
+
+  if (collapsed.length <= 420) {
+    return collapsed;
+  }
+
+  return `${collapsed.slice(0, 417).trimEnd()}...`;
+}
+
+function renderHighlightedSnippet(value: string): string {
+  return escapeHtml(value)
+    .replaceAll("[", "<mark>")
+    .replaceAll("]", "</mark>");
+}
+
 function renderSearchResult(result: CodexConversationSearchResult): string {
   return `
     <li>
-      <article>
+      <article class="thought-result-card">
         <header>
-          <strong>Chunk ${result.rank}</strong>
-          <span>${escapeHtml(result.speaker)}</span>
+          <strong>${result.rank}</strong>
+          <span>${speakerLabel(result.speaker)}</span>
         </header>
-        <p>${escapeHtml(result.excerpt)}</p>
+        <p>${escapeHtml(cleanConversationExcerpt(result.excerpt))}</p>
+        <div class="match-line">
+          <span>Matched</span>
+          <q>${renderHighlightedSnippet(result.snippet)}</q>
+        </div>
+        <details>
+          <summary>Source trail</summary>
+          <dl class="source-trail-list">
+            <div>
+              <dt>Projection</dt>
+              <dd>${escapeHtml(result.sourceLabel)}</dd>
+            </div>
+            <div>
+              <dt>Turn</dt>
+              <dd>${result.messageIndex + 1}</dd>
+            </div>
+          </dl>
+        </details>
       </article>
     </li>
   `;
@@ -373,6 +422,7 @@ const searchForm = document.querySelector<HTMLFormElement>("#codex-search-form")
 const searchQuery = document.querySelector<HTMLInputElement>("#codex-search-query");
 const searchStatus = document.querySelector<HTMLDivElement>("#codex-search-status");
 const searchResults = document.querySelector<HTMLOListElement>("#codex-search-results");
+const quickQueryButtons = document.querySelectorAll<HTMLButtonElement>("[data-query]");
 
 async function runCodexSearch(query: string): Promise<void> {
   if (!searchStatus || !searchResults) {
@@ -412,6 +462,18 @@ searchForm?.addEventListener("submit", (event) => {
   }
 
   void runCodexSearch(searchQuery.value);
+});
+
+quickQueryButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (!searchQuery) {
+      return;
+    }
+
+    searchQuery.value = button.dataset.query ?? "";
+    searchQuery.focus();
+    void runCodexSearch(searchQuery.value);
+  });
 });
 
 if (searchQuery && importWorkbenchData.codexConversationSearch.ready) {

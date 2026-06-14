@@ -121,6 +121,7 @@ export function searchCodexConversationFlow(
 
   try {
     const ftsQuery = buildFtsQuery(command.query);
+    const candidateLimit = Math.min(Math.max(command.limit * 5, command.limit), 100);
     const rows = database
       .prepare(
         `
@@ -138,17 +139,37 @@ export function searchCodexConversationFlow(
         LIMIT ?
         `,
       )
-      .all(ftsQuery, command.limit);
+      .all(ftsQuery, candidateLimit);
 
-    return rows.map((row, index) => ({
-      rank: index + 1,
-      speaker: readSpeaker(row.speaker),
-      snippet: String(row.snippet),
-      excerpt: String(row.excerpt),
-      projectionPath: String(row.projectionPath),
-      sourceLabel: String(row.sourceLabel),
-      messageIndex: Number(row.messageIndex),
-    }));
+    const results: CodexConversationSearchResult[] = [];
+    const seen = new Set<string>();
+
+    for (const row of rows) {
+      const speaker = readSpeaker(row.speaker);
+      const excerpt = String(row.excerpt);
+      const dedupeKey = `${speaker}\n${normalizeConversationSearchText(excerpt)}`;
+
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+
+      seen.add(dedupeKey);
+      results.push({
+        rank: results.length + 1,
+        speaker,
+        snippet: String(row.snippet),
+        excerpt,
+        projectionPath: String(row.projectionPath),
+        sourceLabel: String(row.sourceLabel),
+        messageIndex: Number(row.messageIndex),
+      });
+
+      if (results.length >= command.limit) {
+        break;
+      }
+    }
+
+    return results;
   } finally {
     database.close();
   }
@@ -252,6 +273,10 @@ function buildFtsQuery(query: string): string {
   }
 
   return terms.map((term) => `"${term.replaceAll('"', '""')}"`).join(" AND ");
+}
+
+function normalizeConversationSearchText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function readSpeaker(value: unknown): "Peter" | "Agent" {
